@@ -25,7 +25,14 @@ Detailed documentation is available in the `docs` directory:
 
 ## Current Status
 
-This is the beta version of the Interface Data API. It is currently in pre-release stage and may undergo changes before the final release. The interface is not considered stable for production use without understanding that breaking changes may occur.
+This is the development version (`beta`) of the Interface Data API. It is currently in pre-release stage and may undergo changes before the final release. The interface is not considered stable for production use without understanding that breaking changes may occur.
+
+## Versions
+
+| Version | Link                                                                                             | Status                                        |
+| ------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------- |
+| beta    | [data-api@beta](https://github.com/AntelopeJS/data-api/tree/main/.antelope/output/data-api/beta) | Waiting validation from community to go in v1 |
+| 1       | _Not yet released_                                                                               | Planned stable release                        |
 
 ## License
 
