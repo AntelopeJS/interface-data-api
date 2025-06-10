@@ -3,7 +3,7 @@
 # Interface Data API
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE.md)
-[![Version](https://img.shields.io/badge/version-beta-orange.svg)](https://github.com/antelopejs/antelope)
+[![Version](https://img.shields.io/badge/version-beta-orange.svg)](https://github.com/AntelopeJS/data-api/tree/main/.antelope/output/data-api/beta)
 
 A robust framework for building data-driven APIs with a focus on CRUD operations. Interface Data API extends the core API interface with specialized functionality for handling database records, making it simple to create RESTful endpoints for your data models.
 
