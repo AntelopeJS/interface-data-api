@@ -22,9 +22,12 @@ Detailed documentation is available in the `docs` directory:
 
 - [Introduction](./docs/1.introduction.md) - Overview and basic concepts
 - [Data Controllers](./docs/2.data-controllers.md) - Creating and using Data API controllers
-- [Data Metadata](./docs/3.data-metadata.md) - Decorators for configuring data fields
-- [Query Operations](./docs/4.query-operations.md) - Documentation on data querying capabilities
-- [Parameter Handling](./docs/5.parameter-handling.md) - Details on parameter processing for data endpoints
+- [Routes](./docs/3.routes.md) - Defining routes and endpoints
+- [Access Rights](./docs/4.access-rights.md) - Managing read and write access of objects fields
+- [Validation](./docs/5.validators.md) - Validating requests data data before processing
+- [Listing](./docs/6.listable.md) - Retrieving lists of records with pagination
+- [Foreign Keys](./docs/7.foreign-keys.md) - Handling foreign key relationships in data models
+- [Filters](./docs/8.filters.md) - Applying filters to data queries
 
 ## Current Status
 
