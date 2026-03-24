@@ -46,7 +46,7 @@ importers:
         specifier: ^10.1.4
         version: 10.4.3(socks@2.8.7)
       release-it:
-        specifier: ^19.0.2
+        specifier: ^19.2.4
         version: 19.2.4(@types/node@22.19.15)
       release-it-changelogen:
         specifier: ^0.1.0
