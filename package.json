@@ -38,7 +38,7 @@
   "dependencies": {
     "@antelopejs/interface-api": "^0.0.2",
     "@antelopejs/interface-api-util": "^0.0.2",
-    "@antelopejs/interface-core": "^0.0.2",
+    "@antelopejs/interface-core": "^0.0.3",
     "@antelopejs/interface-database": "^0.0.2",
     "@antelopejs/interface-database-decorators": "^0.0.2"
   },
