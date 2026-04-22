@@ -1,6 +1,6 @@
 {
   "name": "@antelopejs/interface-data-api",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "AntelopeJS interface for data API with CRUD controllers and route generation",
   "keywords": [
     "antelopejs",

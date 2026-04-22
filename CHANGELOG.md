@@ -1,6 +1,18 @@
 # Changelog
 
 
+## v0.0.4
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.0.3...v0.0.4)
+
+### 🏡 Chore
+
+- Bump @antelopejs/interface-* deps and revert TS2742 workaround ([a14bb5e](https://github.com/AntelopeJS/interface-data-api/commit/a14bb5e))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v0.0.3
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.0.2...v0.0.3)
