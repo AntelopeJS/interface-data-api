@@ -1,6 +1,35 @@
 # Changelog
 
 
+## v0.0.3
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.0.2...v0.0.3)
+
+### 🩹 Fixes
+
+- **types:** Annotate DefaultRoutes exports to avoid TS2742 ([5f6d4da](https://github.com/AntelopeJS/interface-data-api/commit/5f6d4da))
+
+### 💅 Refactors
+
+- Switch test modules from local to npm packages ([8c088b3](https://github.com/AntelopeJS/interface-data-api/commit/8c088b3))
+
+### 📖 Documentation
+
+- Rewrite documentation for production readiness ([9b6ae10](https://github.com/AntelopeJS/interface-data-api/commit/9b6ae10))
+
+### 🏡 Chore
+
+- Update dependencies ([e4ddefe](https://github.com/AntelopeJS/interface-data-api/commit/e4ddefe))
+- Package maintenance ([#9](https://github.com/AntelopeJS/interface-data-api/pull/9))
+
+### 🤖 CI
+
+- Add test step to CI workflow ([8c1c6c4](https://github.com/AntelopeJS/interface-data-api/commit/8c1c6c4))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v0.0.2
 
 
