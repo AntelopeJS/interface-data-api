@@ -294,45 +294,39 @@ export namespace DefaultRoutes {
     }
   }
 
-  export const Get: DataControllerCallback = {
+  export const Get = {
     func: Methods.prototype.get,
     args: [Context(), Parameters.Get()],
     method: "get",
   };
-  export const List: DataControllerCallback = {
+  export const List = {
     func: Methods.prototype.list,
     args: [Context(), Parameters.List()],
     method: "get",
   };
-  export const New: DataControllerCallback = {
+  export const New = {
     func: Methods.prototype.new,
     args: [Context(), Parameters.New(), RawBody()],
     method: "post",
   };
-  export const Edit: DataControllerCallback = {
+  export const Edit = {
     func: Methods.prototype.edit,
     args: [Context(), Parameters.Edit(), RawBody()],
     method: "put",
   };
-  export const Delete: DataControllerCallback = {
+  export const Delete = {
     func: Methods.prototype.delete,
     args: [Context(), Parameters.Delete()],
     method: "delete",
   };
 
-  export const All: {
-    get: DataControllerCallback;
-    list: DataControllerCallback;
-    new: DataControllerCallback;
-    edit: DataControllerCallback;
-    delete: DataControllerCallback;
-  } = {
+  export const All = {
     get: Get,
     list: List,
     new: New,
     edit: Edit,
     delete: Delete,
-  };
+  } as const;
 
   export function WithOptions<O>(
     callback: DataControllerCallback<O> | DataControllerCallbackWithOptions<O>,
