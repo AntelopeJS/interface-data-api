@@ -24,10 +24,6 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./*": {
-      "types": "./dist/*.d.ts",
-      "default": "./dist/*.js"
-    },
     "./package.json": "./package.json"
   },
   "scripts": {
@@ -42,7 +38,7 @@
   "dependencies": {
     "@antelopejs/interface-api": "^0.0.2",
     "@antelopejs/interface-api-util": "^0.0.2",
-    "@antelopejs/interface-core": "^0.0.2",
+    "@antelopejs/interface-core": "^0.0.3",
     "@antelopejs/interface-database": "^0.0.2",
     "@antelopejs/interface-database-decorators": "^0.0.2"
   },
