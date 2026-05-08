@@ -148,6 +148,8 @@ export namespace DefaultRoutes {
       const model = Query.GetModel(this, meta);
       let query = Query.Get(model.table, params.id, params.index);
 
+      query = Query.Joined(model.database, meta, query);
+
       if (!params.noForeign) {
         query = Query.Foreign(model.database, meta, query);
       }
@@ -180,6 +182,7 @@ export namespace DefaultRoutes {
         reqCtx,
         sort,
         params?.filters,
+        model.database,
       );
 
       const pluck: Set<string> | undefined =

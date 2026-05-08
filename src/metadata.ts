@@ -75,6 +75,20 @@ export interface FieldData {
   ];
 
   /**
+   * Joined-from-other-table reference.
+   *
+   * Imports a single scalar field from another table at query time and
+   * flattens it into the row, enabling sort/search/filter natively in DB.
+   */
+  joined?: {
+    table: string;
+    tableClass?: Class<Table>;
+    localKey: string;
+    remoteField: string;
+    remoteIndex: string;
+  };
+
+  /**
    * Value validator callback.
    */
   validator?: (value: unknown) => boolean | Promise<boolean>;
@@ -313,12 +327,16 @@ export class DataAPIMeta {
     mode = "list",
   ) {
     const field = this.field(name);
-    const names =
+    const baseNames =
       typeof requiredFields === "boolean"
         ? requiredFields
           ? [name]
           : []
         : requiredFields;
+    const names =
+      baseNames.length > 0 && field.joined
+        ? Array.from(new Set([...baseNames, name, field.joined.localKey]))
+        : baseNames;
     if (!field.listable) {
       field.listable = {};
     }
@@ -347,7 +365,82 @@ export class DataAPIMeta {
    * @returns
    */
   public setSortable(name: string, active: boolean, noIndex?: boolean) {
-    this.field(name).sortable = active ? { indexed: !noIndex } : undefined;
+    const field = this.field(name);
+    if (!active) {
+      field.sortable = undefined;
+      return this;
+    }
+    field.sortable = { indexed: !noIndex && !field.joined };
+    return this;
+  }
+
+  /**
+   * Declares a field to be a flat join from another table.
+   *
+   * The value is read-only (set by lookup at query time, not persisted on this table).
+   * The field becomes natively sortable/searchable/filterable since the join
+   * is applied to the underlying query before sorting/filtering.
+   *
+   * @param name Field name
+   * @param options Joined options (other table, local key, remote field, remote index)
+   */
+  public setJoined(
+    name: string,
+    options: {
+      table: string | Class<Table>;
+      localKey: string;
+      remoteField: string;
+      remoteIndex?: string;
+    },
+  ) {
+    const databaseSchema = getTablesForSchema(this.schemaName);
+    if (!databaseSchema)
+      throw new Error(`Schema "${this.schemaName}" not found`);
+
+    let tableName: string;
+    let tableClass: Class<Table> | undefined;
+    if (typeof options.table === "string") {
+      tableName = options.table;
+      tableClass = databaseSchema[options.table];
+    } else {
+      const found = Object.entries(databaseSchema).find(
+        ([, table_]) => table_ === options.table,
+      );
+      if (!found) {
+        throw new Error(
+          `Unable to infer joined table name for field "${name}"`,
+        );
+      }
+      tableName = found[0];
+      tableClass = options.table;
+    }
+
+    const field = this.field(name);
+    field.joined = {
+      table: tableName,
+      tableClass,
+      localKey: options.localKey,
+      remoteField: options.remoteField,
+      remoteIndex: options.remoteIndex ?? "_id",
+    };
+
+    field.mode = AccessMode.ReadOnly;
+
+    if (field.sortable?.indexed) {
+      field.sortable = { indexed: false };
+    }
+
+    if (field.listable) {
+      for (const mode of Object.keys(field.listable)) {
+        if (field.listable[mode].length === 0) continue;
+        field.listable[mode] = Array.from(
+          new Set([...field.listable[mode], name, field.joined.localKey]),
+        );
+      }
+      this.recomputeListable();
+    }
+
+    this.recomputeAccess();
     return this;
   }
 
@@ -565,6 +658,34 @@ export const Sortable = MakeMethodAndPropertyDecorator(
     GetMetadata(target.constructor, DataAPIMeta)
       .setDescriptor(key as string, desc)
       .setSortable(key as string, true, options?.noIndex ?? false);
+  },
+);
+
+/**
+ * Declares a field whose value is imported (flattened) from another table.
+ *
+ * The local row carries a foreign key (`localKey`); the framework adds a
+ * lookup so the remote field appears at the top level of each row before
+ * filters and sorting are applied. This makes the field natively sortable,
+ * filterable, and searchable in DB.
+ *
+ * Joined fields are auto read-only and forced to non-indexed sort.
+ */
+export const Joined = MakePropertyDecorator(
+  (
+    target,
+    key,
+    options: {
+      table: string | Class<Table>;
+      localKey: string;
+      remoteField: string;
+      remoteIndex?: string;
+    },
+  ) => {
+    GetMetadata(target.constructor, DataAPIMeta).setJoined(
+      key as string,
+      options,
+    );
   },
 );
 

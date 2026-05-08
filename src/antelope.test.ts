@@ -7,13 +7,6 @@ export default defineConfig({
   name: "interface-data-api-test",
   cacheFolder: ".antelope/cache",
   modules: {
-    "data-api": {
-      source: {
-        type: "package",
-        package: "@antelopejs/data-api",
-        version: "1.0.0",
-      },
-    },
     mongodb: {
       source: {
         type: "package",
