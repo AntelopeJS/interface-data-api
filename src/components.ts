@@ -309,6 +309,115 @@ export namespace Query {
     }
   }
 
+  interface JoinedGroup {
+    table: string;
+    localKey: string;
+    remoteIndex: string;
+    fields: Array<{ name: string; remoteField: string }>;
+  }
+
+  function collectJoinedGroups(meta: DataAPIMeta): JoinedGroup[] {
+    const groups = new Map<string, JoinedGroup>();
+    for (const [name, field] of Object.entries(meta.fields)) {
+      if (!field.joined) continue;
+      const j = field.joined;
+      const groupKey = `${j.table}|${j.localKey}|${j.remoteIndex}`;
+      let group = groups.get(groupKey);
+      if (!group) {
+        group = {
+          table: j.table,
+          localKey: j.localKey,
+          remoteIndex: j.remoteIndex,
+          fields: [],
+        };
+        groups.set(groupKey, group);
+      }
+      group.fields.push({ name, remoteField: j.remoteField });
+    }
+    return Array.from(groups.values());
+  }
+
+  export function Joined(
+    db: SchemaInstance<any>,
+    meta: DataAPIMeta,
+    query: Stream<any>,
+  ): Stream<any>;
+  export function Joined(
+    db: SchemaInstance<any>,
+    meta: DataAPIMeta,
+    query: Datum<any>,
+  ): Datum<any>;
+  export function Joined(
+    db: SchemaInstance<any>,
+    meta: DataAPIMeta,
+    query: Stream<any> | Datum<any>,
+  ): Stream<any> | Datum<any> {
+    const groups = collectJoinedGroups(meta);
+    if (groups.length === 0) {
+      return query as any;
+    }
+
+    type RowShape = Record<string, unknown>;
+    const emptyRemote: RowShape = {};
+    const tmpKeyFor = (localKey: string) => `__joined_orig_${localKey}`;
+
+    if (query instanceof Stream) {
+      let stream: Stream<RowShape> = query as Stream<RowShape>;
+      const tmpKeys: string[] = [];
+      for (const group of groups) {
+        const remoteFields = group.fields.map((f) => f.remoteField);
+        const remoteTable = db
+          .table(group.table)
+          .pluck(
+            "_internal",
+            group.remoteIndex,
+            ...remoteFields,
+          ) as Table<RowShape>;
+        const tmpKey = tmpKeyFor(group.localKey);
+        tmpKeys.push(tmpKey);
+        stream = stream
+          .map((row) => row.merge({ [tmpKey]: row.key(group.localKey) }))
+          .lookup(remoteTable, group.localKey, group.remoteIndex)
+          .map((row) => {
+            const merged: RowShape = {};
+            const remote = row.key(group.localKey).default(emptyRemote);
+            for (const f of group.fields) {
+              merged[f.name] = remote.key(f.remoteField).default(null);
+            }
+            merged[group.localKey] = row.key(tmpKey);
+            return row.merge(merged);
+          }) as Stream<RowShape>;
+      }
+      return stream.without(...tmpKeys) as Stream<RowShape>;
+    }
+
+    let datum: Datum<RowShape> = query as Datum<RowShape>;
+    for (const group of groups) {
+      const remoteFields = group.fields.map((f) => f.remoteField);
+      const remoteTable = db
+        .table(group.table)
+        .pluck(
+          "_internal",
+          group.remoteIndex,
+          ...remoteFields,
+        ) as Table<RowShape>;
+      const tmpKey = tmpKeyFor(group.localKey);
+      datum = datum
+        .do((row) => row.merge({ [tmpKey]: row.key(group.localKey) }))
+        .lookup(remoteTable, group.localKey, group.remoteIndex)
+        .do((row) => {
+          const merged: RowShape = {};
+          const remote = row.key(group.localKey).default(emptyRemote);
+          for (const f of group.fields) {
+            merged[f.name] = remote.key(f.remoteField).default(null);
+          }
+          merged[group.localKey] = row.key(tmpKey);
+          return row.merge(merged);
+        }) as Datum<RowShape>;
+    }
+    return datum;
+  }
+
   export async function ReadProperties(
     obj: any,
     meta: DataAPIMeta,
@@ -390,6 +499,7 @@ export namespace Query {
     reqCtx: RequestContext,
     sorting?: [string, "asc" | "desc" | undefined],
     filters?: Record<string, FilterValue>,
+    db?: SchemaInstance<any>,
   ): [sorted: Stream<T>, total: Datum<number>] {
     const filterList = Object.entries(meta.filters).filter(
       ([name]) => filters && name in filters,
@@ -402,9 +512,13 @@ export namespace Query {
       : undefined;
     const indexedFilter = indexFilter ? filters?.[indexFilter] : undefined;
 
-    let tmpRequest = index
+    let tmpRequest: Stream<T> = index
       ? request.getAll(indexedFilter?.[0] ?? "", index)
       : request;
+
+    if (db) {
+      tmpRequest = Joined(db, meta, tmpRequest as Stream<any>) as Stream<T>;
+    }
 
     const sortField = sorting?.[0];
     const shouldSort = sortField ? meta.fields[sortField]?.sortable : undefined;
