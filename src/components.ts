@@ -359,15 +359,24 @@ export namespace Query {
 
     type RowShape = Record<string, unknown>;
     const emptyRemote: RowShape = {};
+    const tmpKeyFor = (localKey: string) => `__joined_orig_${localKey}`;
 
     if (query instanceof Stream) {
       let stream: Stream<RowShape> = query as Stream<RowShape>;
+      const tmpKeys: string[] = [];
       for (const group of groups) {
         const remoteFields = group.fields.map((f) => f.remoteField);
         const remoteTable = db
           .table(group.table)
-          .pluck("_internal", group.remoteIndex, ...remoteFields) as Table<RowShape>;
+          .pluck(
+            "_internal",
+            group.remoteIndex,
+            ...remoteFields,
+          ) as Table<RowShape>;
+        const tmpKey = tmpKeyFor(group.localKey);
+        tmpKeys.push(tmpKey);
         stream = stream
+          .map((row) => row.merge({ [tmpKey]: row.key(group.localKey) }))
           .lookup(remoteTable, group.localKey, group.remoteIndex)
           .map((row) => {
             const merged: RowShape = {};
@@ -375,11 +384,11 @@ export namespace Query {
             for (const f of group.fields) {
               merged[f.name] = remote.key(f.remoteField).default(null);
             }
-            merged[group.localKey] = remote.key(group.remoteIndex).default(null);
+            merged[group.localKey] = row.key(tmpKey);
             return row.merge(merged);
           }) as Stream<RowShape>;
       }
-      return stream;
+      return stream.without(...tmpKeys) as Stream<RowShape>;
     }
 
     let datum: Datum<RowShape> = query as Datum<RowShape>;
@@ -387,8 +396,14 @@ export namespace Query {
       const remoteFields = group.fields.map((f) => f.remoteField);
       const remoteTable = db
         .table(group.table)
-        .pluck("_internal", group.remoteIndex, ...remoteFields) as Table<RowShape>;
+        .pluck(
+          "_internal",
+          group.remoteIndex,
+          ...remoteFields,
+        ) as Table<RowShape>;
+      const tmpKey = tmpKeyFor(group.localKey);
       datum = datum
+        .do((row) => row.merge({ [tmpKey]: row.key(group.localKey) }))
         .lookup(remoteTable, group.localKey, group.remoteIndex)
         .do((row) => {
           const merged: RowShape = {};
@@ -396,7 +411,7 @@ export namespace Query {
           for (const f of group.fields) {
             merged[f.name] = remote.key(f.remoteField).default(null);
           }
-          merged[group.localKey] = remote.key(group.remoteIndex).default(null);
+          merged[group.localKey] = row.key(tmpKey);
           return row.merge(merged);
         }) as Datum<RowShape>;
     }

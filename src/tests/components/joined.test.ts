@@ -265,6 +265,7 @@ async function returnsNullForOrphanForeignKey() {
   expect(orphan).to.not.equal(undefined);
   expect(orphan?.name).to.equal(null);
   expect(orphan?.email).to.equal(null);
+  expect(orphan?.authorId).to.equal(orphanAuthorId);
 }
 
 async function ignoresJoinedFieldOnEdit() {
