@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v0.0.5
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.0.4...v0.0.5)
+
+### 🚀 Enhancements
+
+- Add Joined field decorator for native cross-table flattening ([355ef87](https://github.com/AntelopeJS/interface-data-api/commit/355ef87))
+
+### 🩹 Fixes
+
+- **joined:** Preserve original localKey for orphan rows ([f363461](https://github.com/AntelopeJS/interface-data-api/commit/f363461))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v0.0.4
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.0.3...v0.0.4)
