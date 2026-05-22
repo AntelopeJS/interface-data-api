@@ -16,9 +16,9 @@ import {
 } from "@antelopejs/interface-data-api/metadata";
 import {
   BasicDataModel,
-  RegisterSchema,
   Index,
   Model,
+  RegisterSchema,
   RegisterTable,
   Table,
 } from "@antelopejs/interface-database-decorators";

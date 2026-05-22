@@ -17,8 +17,8 @@ import {
 import { Schema } from "@antelopejs/interface-database";
 import {
   BasicDataModel,
-  RegisterSchema,
   Model,
+  RegisterSchema,
   RegisterTable,
   Table,
 } from "@antelopejs/interface-database-decorators";

@@ -13,9 +13,9 @@ import {
 import type { SchemaInstance } from "@antelopejs/interface-database";
 import {
   BasicDataModel,
-  RegisterSchema,
   Index,
   Model,
+  RegisterSchema,
   RegisterTable,
   Table,
 } from "@antelopejs/interface-database-decorators";
