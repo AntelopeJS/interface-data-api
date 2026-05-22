@@ -1,6 +1,27 @@
 # Changelog
 
 
+## v0.1.0
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.0.4...v0.1.0)
+
+### 🚀 Enhancements
+
+- Add Joined field decorator for native cross-table flattening ([#10](https://github.com/AntelopeJS/interface-data-api/pull/10))
+
+### 🏡 Chore
+
+- Bump @antelopejs/mongodb to 1.0.8 in test config ([128fd75](https://github.com/AntelopeJS/interface-data-api/commit/128fd75))
+- Bump @antelopejs/interface-database{,-decorators} to ^0.1.1 ([9ef87c6](https://github.com/AntelopeJS/interface-data-api/commit/9ef87c6))
+
+### 🎨 Styles
+
+- **tests:** Sort RegisterSchema import alphabetically ([14a8be6](https://github.com/AntelopeJS/interface-data-api/commit/14a8be6))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v0.0.4
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.0.3...v0.0.4)
