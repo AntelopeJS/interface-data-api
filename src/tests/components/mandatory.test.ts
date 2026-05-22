@@ -14,7 +14,7 @@ import {
 import { Schema } from "@antelopejs/interface-database";
 import {
   BasicDataModel,
-  CreateDatabaseSchemaInstance,
+  RegisterSchema,
   Index,
   Model,
   RegisterTable,
@@ -131,7 +131,7 @@ async function _createDataController(
     @Access(AccessMode.ReadWrite)
     declare internalReference: string;
   }
-  await CreateDatabaseSchemaInstance(schemaName);
+  await RegisterSchema(schemaName);
   await _dropOrderTable();
   const orderModel = new OrderModel(getSchemaInstance(schemaName));
 

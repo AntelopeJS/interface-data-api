@@ -13,7 +13,7 @@ import {
 } from "@antelopejs/interface-data-api/metadata";
 import {
   BasicDataModel,
-  CreateDatabaseSchemaInstance,
+  RegisterSchema,
   Index,
   Model,
   RegisterTable,
@@ -146,7 +146,7 @@ async function _createDataController(
     )
     declare tags: string[];
   }
-  await CreateDatabaseSchemaInstance(schemaName);
+  await RegisterSchema(schemaName);
   const productModel = new ProductModel(getSchemaInstance(schemaName));
 
   if (product) {

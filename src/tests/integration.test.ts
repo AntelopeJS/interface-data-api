@@ -16,7 +16,7 @@ import {
 } from "@antelopejs/interface-data-api/metadata";
 import {
   BasicDataModel,
-  CreateDatabaseSchemaInstance,
+  RegisterSchema,
   Index,
   Model,
   RegisterTable,
@@ -536,7 +536,7 @@ class _OrderItemAPI extends DataController(
 }
 
 async function initializeDatabase() {
-  await CreateDatabaseSchemaInstance(schemaName);
+  await RegisterSchema(schemaName);
 }
 
 async function cleanTables() {

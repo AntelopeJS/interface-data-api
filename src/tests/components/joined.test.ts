@@ -17,7 +17,7 @@ import {
 import { Schema } from "@antelopejs/interface-database";
 import {
   BasicDataModel,
-  CreateDatabaseSchemaInstance,
+  RegisterSchema,
   Model,
   RegisterTable,
   Table,
@@ -140,7 +140,7 @@ async function _createDataController(testName: string) {
     declare email: string;
   }
 
-  await CreateDatabaseSchemaInstance(schemaName);
+  await RegisterSchema(schemaName);
   await _dropTables();
 
   const schemaInstance = getSchemaInstance(schemaName);

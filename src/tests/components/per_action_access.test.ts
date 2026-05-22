@@ -13,7 +13,7 @@ import {
 } from "@antelopejs/interface-data-api/metadata";
 import {
   BasicDataModel,
-  CreateDatabaseSchemaInstance,
+  RegisterSchema,
   Index,
   Model,
   RegisterTable,
@@ -93,7 +93,7 @@ async function _createDataController(testName: string, user: Partial<User>) {
     @Access(AccessMode.ReadOnly, { new: AccessMode.ReadWrite })
     declare age: number;
   }
-  await CreateDatabaseSchemaInstance(schemaName);
+  await RegisterSchema(schemaName);
   const database = getSchemaInstance(schemaName);
   const userModel = new UserModel(database);
   const insertResult = await userModel.insert(user);

@@ -13,7 +13,7 @@ import {
 import type { SchemaInstance } from "@antelopejs/interface-database";
 import {
   BasicDataModel,
-  CreateDatabaseSchemaInstance,
+  RegisterSchema,
   Index,
   Model,
   RegisterTable,
@@ -91,7 +91,7 @@ async function _createDataController(testName: string, user: Partial<User>) {
     @Access(AccessMode.ReadWrite)
     declare email: string;
   }
-  await CreateDatabaseSchemaInstance(schemaName);
+  await RegisterSchema(schemaName);
   database = getSchemaInstance(schemaName);
   const userModel = new UserModel(database);
   const insertResult = await userModel.insert(user);
