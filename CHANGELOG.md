@@ -1,6 +1,18 @@
 # Changelog
 
 
+## v0.1.1
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.1.0...v0.1.1)
+
+### 🚀 Enhancements
+
+- Support cross-schema targets for Foreign and Joined decorators ([56fad2b](https://github.com/AntelopeJS/interface-data-api/commit/56fad2b))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v0.1.0
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.0.4...v0.1.0)
