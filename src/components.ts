@@ -6,6 +6,7 @@ import { assert } from "@antelopejs/interface-api-util";
 import { MakeParameterAndPropertyDecorator } from "@antelopejs/interface-core/decorators";
 import {
   type Datum,
+  Schema,
   type SchemaInstance,
   Stream,
   type Table,
@@ -257,8 +258,9 @@ export namespace Query {
         if (!field.foreign || (pluck && !pluck.has(name))) {
           continue;
         }
-        const [table, _tableClass, index, _multi, pluckField] = field.foreign;
-        const other = db.table(table);
+        const [table, _tableClass, index, _multi, pluckField, schemaName] =
+          field.foreign;
+        const other = resolveSchemaDb(db, schemaName).table(table);
         if (pluckField) {
           query = query.lookup(
             other.pluck("_internal", ...pluckField) as Table<any>,
@@ -277,13 +279,15 @@ export namespace Query {
           if (!field.foreign || (pluck && !pluck.has(name))) {
             continue;
           }
-          const [table, _tableClass, index, multi, pluckField] = field.foreign;
+          const [table, _tableClass, index, multi, pluckField, schemaName] =
+            field.foreign;
+          const remoteDb = resolveSchemaDb(db, schemaName);
           if (multi) {
             changedFields[name] = (obj.key(name) as ValueProxy<string[]>)
               .default([])
               .map((val) => {
                 let foreignObject: Datum<any> = Get(
-                  db.table(table),
+                  remoteDb.table(table),
                   val,
                   index,
                 );
@@ -297,7 +301,7 @@ export namespace Query {
               });
           } else {
             changedFields[name] = Get(
-              db.table(table),
+              remoteDb.table(table),
               obj.key(name) as ValueProxy<string>,
               index,
             ).default(null);
@@ -313,6 +317,7 @@ export namespace Query {
     table: string;
     localKey: string;
     remoteIndex: string;
+    schemaName?: string;
     fields: Array<{ name: string; remoteField: string }>;
   }
 
@@ -321,13 +326,14 @@ export namespace Query {
     for (const [name, field] of Object.entries(meta.fields)) {
       if (!field.joined) continue;
       const j = field.joined;
-      const groupKey = `${j.table}|${j.localKey}|${j.remoteIndex}`;
+      const groupKey = `${j.schemaName ?? ""}|${j.table}|${j.localKey}|${j.remoteIndex}`;
       let group = groups.get(groupKey);
       if (!group) {
         group = {
           table: j.table,
           localKey: j.localKey,
           remoteIndex: j.remoteIndex,
+          schemaName: j.schemaName,
           fields: [],
         };
         groups.set(groupKey, group);
@@ -335,6 +341,16 @@ export namespace Query {
       group.fields.push({ name, remoteField: j.remoteField });
     }
     return Array.from(groups.values());
+  }
+
+  function resolveSchemaDb(
+    sourceDb: SchemaInstance<any>,
+    schemaName: string | undefined,
+  ): SchemaInstance<any> {
+    if (!schemaName) return sourceDb;
+    const schema = Schema.get(schemaName);
+    assert(schema, 500, `Schema "${schemaName}" not registered`);
+    return schema.instance();
   }
 
   export function Joined(
@@ -366,7 +382,8 @@ export namespace Query {
       const tmpKeys: string[] = [];
       for (const group of groups) {
         const remoteFields = group.fields.map((f) => f.remoteField);
-        const remoteTable = db
+        const remoteDb = resolveSchemaDb(db, group.schemaName);
+        const remoteTable = remoteDb
           .table(group.table)
           .pluck(
             "_internal",
@@ -394,7 +411,8 @@ export namespace Query {
     let datum: Datum<RowShape> = query as Datum<RowShape>;
     for (const group of groups) {
       const remoteFields = group.fields.map((f) => f.remoteField);
-      const remoteTable = db
+      const remoteDb = resolveSchemaDb(db, group.schemaName);
+      const remoteTable = remoteDb
         .table(group.table)
         .pluck(
           "_internal",

@@ -65,6 +65,10 @@ export interface FieldData {
 
   /**
    * Foreign key reference.
+   *
+   * `schemaName` is set when the target lives in another schema than the
+   * controller's table; runtime resolves the foreign lookup against that
+   * schema's default instance instead of the source instance.
    */
   foreign?: [
     table: string,
@@ -72,6 +76,7 @@ export interface FieldData {
     index?: string,
     multi?: true,
     pluck?: string[],
+    schemaName?: string,
   ];
 
   /**
@@ -79,6 +84,10 @@ export interface FieldData {
    *
    * Imports a single scalar field from another table at query time and
    * flattens it into the row, enabling sort/search/filter natively in DB.
+   *
+   * `schemaName` is set when the target lives in another schema than the
+   * controller's table; runtime resolves the join against that schema's
+   * default instance instead of the source instance.
    */
   joined?: {
     table: string;
@@ -86,6 +95,7 @@ export interface FieldData {
     localKey: string;
     remoteField: string;
     remoteIndex: string;
+    schemaName?: string;
   };
 
   /**
@@ -125,6 +135,66 @@ export type FilterFunction<
 export interface ReadableAccessFields {
   getters: [string, FieldData][];
   props: [string, FieldData][];
+}
+
+interface ResolvedTableReference {
+  tableName: string;
+  tableClass?: Class<Table>;
+  /** `undefined` means same schema as the source DataAPI. */
+  schemaName?: string;
+}
+
+function readTableMetadata(table: Class<Table>): {
+  schemaName?: string;
+  tableName?: string;
+} {
+  const meta = getMetadata(table, DatumStaticMetadata) as
+    | { schemaName?: string; tableName?: string }
+    | undefined;
+  return { schemaName: meta?.schemaName, tableName: meta?.tableName };
+}
+
+function resolveTableReference(
+  sourceSchemaName: string,
+  table: string | Class<Table>,
+  explicitSchema: string | undefined,
+  contextLabel: string,
+): ResolvedTableReference {
+  if (typeof table !== "string") {
+    const inferred = readTableMetadata(table);
+    const schemaName = explicitSchema ?? inferred.schemaName;
+    const tableName = inferred.tableName;
+    if (!schemaName || !tableName) {
+      throw new Error(
+        `Unable to infer table name/schema for ${contextLabel}: pass @RegisterTable on the table class`,
+      );
+    }
+    if (
+      explicitSchema &&
+      inferred.schemaName &&
+      explicitSchema !== inferred.schemaName
+    ) {
+      throw new Error(
+        `Schema mismatch for ${contextLabel}: class registers in "${inferred.schemaName}" but option specifies "${explicitSchema}"`,
+      );
+    }
+    return {
+      tableName,
+      tableClass: table,
+      schemaName: schemaName === sourceSchemaName ? undefined : schemaName,
+    };
+  }
+
+  const targetSchema = explicitSchema ?? sourceSchemaName;
+  const databaseSchema = getTablesForSchema(targetSchema);
+  if (!databaseSchema) {
+    throw new Error(`Schema "${targetSchema}" not found for ${contextLabel}`);
+  }
+  return {
+    tableName: table,
+    tableClass: databaseSchema[table],
+    schemaName: targetSchema === sourceSchemaName ? undefined : targetSchema,
+  };
 }
 
 export interface WritableAccessFields {
@@ -391,37 +461,24 @@ export class DataAPIMeta {
       localKey: string;
       remoteField: string;
       remoteIndex?: string;
+      schema?: string;
     },
   ) {
-    const databaseSchema = getTablesForSchema(this.schemaName);
-    if (!databaseSchema)
-      throw new Error(`Schema "${this.schemaName}" not found`);
-
-    let tableName: string;
-    let tableClass: Class<Table> | undefined;
-    if (typeof options.table === "string") {
-      tableName = options.table;
-      tableClass = databaseSchema[options.table];
-    } else {
-      const found = Object.entries(databaseSchema).find(
-        ([, table_]) => table_ === options.table,
-      );
-      if (!found) {
-        throw new Error(
-          `Unable to infer joined table name for field "${name}"`,
-        );
-      }
-      tableName = found[0];
-      tableClass = options.table;
-    }
+    const resolved = resolveTableReference(
+      this.schemaName,
+      options.table,
+      options.schema,
+      `joined field "${name}"`,
+    );
 
     const field = this.field(name);
     field.joined = {
-      table: tableName,
-      tableClass,
+      table: resolved.tableName,
+      tableClass: resolved.tableClass,
       localKey: options.localKey,
       remoteField: options.remoteField,
       remoteIndex: options.remoteIndex ?? "_id",
+      schemaName: resolved.schemaName,
     };
 
     field.mode = AccessMode.ReadOnly;
@@ -458,36 +515,22 @@ export class DataAPIMeta {
     index?: string,
     multi?: boolean,
     pluck?: string[],
+    schema?: string,
   ) {
-    const databaseSchema = getTablesForSchema(this.schemaName);
-    if (!databaseSchema)
-      throw new Error(`Schema "${this.schemaName}" not found`);
-    if (typeof table === "string") {
-      this.field(name).foreign = [
-        table,
-        databaseSchema[table],
-        index,
-        multi || undefined,
-        pluck || undefined,
-      ];
-    } else {
-      const tableName = Object.entries(databaseSchema).find(
-        ([, table_]) => table_ === table,
-      )?.[0];
-      if (!tableName) {
-        throw new Error(
-          `Unable to infer foreign table name for field "${name}"`,
-        );
-      }
-
-      this.field(name).foreign = [
-        tableName,
-        table,
-        index,
-        multi || undefined,
-        pluck || undefined,
-      ];
-    }
+    const resolved = resolveTableReference(
+      this.schemaName,
+      table,
+      schema,
+      `foreign field "${name}"`,
+    );
+    this.field(name).foreign = [
+      resolved.tableName,
+      resolved.tableClass,
+      index,
+      multi || undefined,
+      pluck || undefined,
+      resolved.schemaName,
+    ];
     return this;
   }
 
@@ -680,6 +723,7 @@ export const Joined = MakePropertyDecorator(
       localKey: string;
       remoteField: string;
       remoteIndex?: string;
+      schema?: string;
     },
   ) => {
     GetMetadata(target.constructor, DataAPIMeta).setJoined(
@@ -705,10 +749,11 @@ export const Foreign = MakeMethodAndPropertyDecorator(
     index?: string,
     multi?: boolean,
     pluck?: string[],
+    schema?: string,
   ) => {
     GetMetadata(target.constructor, DataAPIMeta)
       .setDescriptor(key as string, desc)
-      .setForeign(key as string, table, index, multi, pluck);
+      .setForeign(key as string, table, index, multi, pluck, schema);
   },
 );
 
