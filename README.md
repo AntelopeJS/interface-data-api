@@ -28,6 +28,7 @@ Detailed documentation is available in the `docs` directory:
 - [Foreign Keys](./docs/7.foreign-keys.md) - Establish relationships between tables
 - [Filters](./docs/8.filters.md) - Add filtering capabilities to list endpoints
 - [Modifiers](./docs/9.modifiers.md) - Automatic data transformation with database-decorators
+- [Joined Fields](./docs/10.joined.md) - Flatten a remote field onto rows for native sort/filter
 
 ## License
 
