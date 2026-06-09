@@ -73,6 +73,7 @@
     }
   },
   "antelopeJs": {
+    "standalone": true,
     "test": "src/antelope.test.ts"
   }
 }
