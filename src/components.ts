@@ -633,7 +633,11 @@ export namespace Validation {
       const key = obj[field];
       unlock(dbData, modifier, undefined, key);
       for (const [foreign, fieldData] of Object.entries(meta.fields)) {
-        if (fieldData.foreign && typeof dbData[foreign] === "object") {
+        if (
+          fieldData.foreign &&
+          dbData[foreign] &&
+          typeof dbData[foreign] === "object"
+        ) {
           unlock(dbData[foreign], modifier, undefined, key);
         }
       }
