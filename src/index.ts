@@ -140,6 +140,26 @@ export function GetDataControllerMeta(thisObj: any): DataAPIMeta {
   );
 }
 
+function displayOnlyComputedFields(
+  meta: DataAPIMeta,
+  params: Parameters.ListParameters,
+  pluck: Set<string> | undefined,
+): Set<string> {
+  const alreadyInjected = new Set(Object.keys(params.filters ?? {}));
+  if (params.sortKey) {
+    alreadyInjected.add(params.sortKey);
+  }
+  const names = Object.entries(meta.fields)
+    .filter(
+      ([name, field]) =>
+        field.computed &&
+        !alreadyInjected.has(name) &&
+        (params.noPluck || pluck?.has(name)),
+    )
+    .map(([name]) => name);
+  return new Set(names);
+}
+
 export namespace DefaultRoutes {
   class Methods {
     async get(_reqCtx: RequestContext, params: Parameters.GetParameters) {
@@ -149,6 +169,7 @@ export namespace DefaultRoutes {
       let query = Query.Get(model.table, params.id, params.index);
 
       query = Query.Joined(model.database, meta, query);
+      query = Query.Computed(model.database, meta, query);
 
       if (!params.noForeign) {
         query = Query.Foreign(model.database, meta, query);
@@ -205,6 +226,16 @@ export namespace DefaultRoutes {
       const offset = params.offset || 0;
       const limit = params.limit || 10;
       let queryPaged = query.slice(offset, limit);
+
+      const displayComputed = displayOnlyComputedFields(meta, params, pluck);
+      if (displayComputed.size > 0) {
+        queryPaged = Query.Computed(
+          model.database,
+          meta,
+          queryPaged,
+          displayComputed,
+        );
+      }
 
       if (!params.noPluck && pluck) {
         queryPaged = queryPaged.pluck("_internal", ...pluck);
