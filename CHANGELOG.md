@@ -1,6 +1,27 @@
 # Changelog
 
 
+## v0.1.2
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.1.1...v0.1.2)
+
+### 🚀 Enhancements
+
+- Declare interface as standalone ([06e7392](https://github.com/AntelopeJS/interface-data-api/commit/06e7392))
+
+### 🩹 Fixes
+
+- **components:** Guard null foreign values in Validation.Unlock ([#11](https://github.com/AntelopeJS/interface-data-api/pull/11))
+
+### 📖 Documentation
+
+- Document @Joined decorator and @Foreign cross-schema schema param ([c41a51c](https://github.com/AntelopeJS/interface-data-api/commit/c41a51c))
+
+### ❤️ Contributors
+
+- Fabrice Cst <fabrice@altab.be>
+- Thomasims <thomasims3@hotmail.fr>
+
 ## v0.1.1
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.1.0...v0.1.1)
