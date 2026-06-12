@@ -145,7 +145,9 @@ function displayOnlyComputedFields(
   params: Parameters.ListParameters,
   pluck: Set<string> | undefined,
 ): Set<string> {
-  const alreadyInjected = new Set(Object.keys(params.filters ?? {}));
+  const alreadyInjected = new Set(
+    Object.keys(params.filters ?? {}).filter((name) => name in meta.filters),
+  );
   if (params.sortKey) {
     alreadyInjected.add(params.sortKey);
   }
