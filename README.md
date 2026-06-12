@@ -29,6 +29,7 @@ Detailed documentation is available in the `docs` directory:
 - [Filters](./docs/8.filters.md) - Add filtering capabilities to list endpoints
 - [Modifiers](./docs/9.modifiers.md) - Automatic data transformation with database-decorators
 - [Joined Fields](./docs/10.joined.md) - Flatten a remote field onto rows for native sort/filter
+- [Computed Fields](./docs/11.computed.md) - In-database computed values, sortable and pageable natively
 
 ## License
 
