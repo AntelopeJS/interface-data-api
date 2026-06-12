@@ -22,7 +22,7 @@ import {
   unlockrequest,
 } from "@antelopejs/interface-database-decorators/modifiers/common";
 import { GetDataControllerMeta } from ".";
-import type { DataAPIMeta, FilterValue } from "./metadata";
+import type { ComputedFieldData, DataAPIMeta, FilterValue } from "./metadata";
 
 export namespace Parameters {
   export function GetOptionOverrides<T extends Record<string, any>>(
@@ -436,6 +436,82 @@ export namespace Query {
     return datum;
   }
 
+  type ComputedEntry = [name: string, computed: ComputedFieldData];
+  type RowMapper = (
+    row: ValueProxy<Record<string, any>>,
+  ) => ValueProxy<Record<string, any>>;
+
+  function collectComputedEntries(
+    meta: DataAPIMeta,
+    only?: Set<string>,
+  ): ComputedEntry[] {
+    return Object.entries(meta.fields)
+      .filter(([name, field]) => field.computed && (!only || only.has(name)))
+      .map(([name, field]) => [name, field.computed as ComputedFieldData]);
+  }
+
+  function buildComputedMappers(
+    db: SchemaInstance<any>,
+    entries: ComputedEntry[],
+  ): RowMapper[] {
+    const mergeExpressions: RowMapper = (row) => {
+      const merged: Record<string, unknown> = {};
+      for (const [name, computed] of entries) {
+        merged[name] = computed.expr(row, db);
+      }
+      return row.merge(merged);
+    };
+    const defaulted = entries.filter(
+      ([, computed]) => computed.default !== undefined,
+    );
+    if (defaulted.length === 0) {
+      return [mergeExpressions];
+    }
+    const applyDefaults: RowMapper = (row) => {
+      const merged: Record<string, unknown> = {};
+      for (const [name, computed] of defaulted) {
+        merged[name] = row.key(name).default(computed.default);
+      }
+      return row.merge(merged);
+    };
+    return [mergeExpressions, applyDefaults];
+  }
+
+  export function Computed(
+    db: SchemaInstance<any>,
+    meta: DataAPIMeta,
+    query: Stream<any>,
+    only?: Set<string>,
+  ): Stream<any>;
+  export function Computed(
+    db: SchemaInstance<any>,
+    meta: DataAPIMeta,
+    query: Datum<any>,
+    only?: Set<string>,
+  ): Datum<any>;
+  export function Computed(
+    db: SchemaInstance<any>,
+    meta: DataAPIMeta,
+    query: Stream<any> | Datum<any>,
+    only?: Set<string>,
+  ): Stream<any> | Datum<any> {
+    const entries = collectComputedEntries(meta, only);
+    if (entries.length === 0) {
+      return query as any;
+    }
+    const mappers = buildComputedMappers(db, entries);
+    if (query instanceof Stream) {
+      return mappers.reduce(
+        (stream, mapper) => stream.map(mapper),
+        query as Stream<Record<string, any>>,
+      );
+    }
+    return mappers.reduce(
+      (datum, mapper) => datum.do(mapper),
+      query as Datum<Record<string, any>>,
+    );
+  }
+
   export async function ReadProperties(
     obj: any,
     meta: DataAPIMeta,
@@ -505,9 +581,7 @@ export namespace Query {
     id: string | ValueProxy<string>,
     index?: string,
   ) {
-    return index
-      ? table.getAll(id as string, index).nth(0)
-      : table.get(id as string);
+    return index ? table.getAll(id as string, index).nth(0) : table.get(id);
   }
 
   export function List<T extends Record<string, any>>(
@@ -538,6 +612,20 @@ export namespace Query {
       tmpRequest = Joined(db, meta, tmpRequest as Stream<any>) as Stream<T>;
     }
 
+    const filteredComputed = new Set(
+      filterList
+        .map(([name]) => name)
+        .filter((name) => meta.fields[name]?.computed),
+    );
+    if (db && filteredComputed.size > 0) {
+      tmpRequest = Computed(
+        db,
+        meta,
+        tmpRequest as Stream<any>,
+        filteredComputed,
+      ) as Stream<T>;
+    }
+
     const sortField = sorting?.[0];
     const shouldSort = sortField ? meta.fields[sortField]?.sortable : undefined;
     if (shouldSort?.indexed && sortField) {
@@ -562,10 +650,24 @@ export namespace Query {
             );
       }, tmpRequest);
     }
+    const total = tmpRequest.count();
+    if (
+      db &&
+      sortField &&
+      meta.fields[sortField]?.computed &&
+      !filteredComputed.has(sortField)
+    ) {
+      tmpRequest = Computed(
+        db,
+        meta,
+        tmpRequest as Stream<any>,
+        new Set([sortField]),
+      ) as Stream<T>;
+    }
     if (shouldSort && !shouldSort.indexed && sortField) {
       tmpRequest = tmpRequest.orderBy(sortField, sorting?.[1] ?? "asc");
     }
-    return [tmpRequest, tmpRequest.count()];
+    return [tmpRequest, total];
   }
 
   export function Delete(table: Table<any>, id: string | string[]) {

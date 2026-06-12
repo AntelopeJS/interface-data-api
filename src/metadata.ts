@@ -6,6 +6,8 @@ import {
   MakePropertyDecorator,
 } from "@antelopejs/interface-core/decorators";
 import type {
+  Query,
+  SchemaInstance,
   ValueProxy,
   ValueProxyOrValue,
 } from "@antelopejs/interface-database";
@@ -99,6 +101,14 @@ export interface FieldData {
   };
 
   /**
+   * In-database computed value.
+   *
+   * The expression is merged into each row at query time, enabling sort,
+   * filter, and pagination natively in DB.
+   */
+  computed?: ComputedFieldData;
+
+  /**
    * Value validator callback.
    */
   validator?: (value: unknown) => boolean | Promise<boolean>;
@@ -112,6 +122,36 @@ export interface FieldData {
    * Whether or not an `eq` filter with this field name can use an indexed lookup.
    */
   indexable?: boolean;
+}
+
+/**
+ * In-database computed field expression.
+ *
+ * Receives the row proxy and the schema instance of the controller's table.
+ * May return a row-local expression (built from `row`) or a per-row subquery
+ * (ex: an aggregate over another table).
+ */
+export type ComputedExpression = (
+  row: ValueProxy<Record<string, any>>,
+  db: SchemaInstance<any>,
+) => ValueProxyOrValue<unknown> | Query<unknown>;
+
+/**
+ * Computed field options.
+ */
+export interface ComputedOptions {
+  /**
+   * Fallback merged over the computed value when the expression yields null
+   * (ex: `0` for an aggregate count over an empty set).
+   */
+  default?: unknown;
+}
+
+/**
+ * Computed field information.
+ */
+export interface ComputedFieldData extends ComputedOptions {
+  expr: ComputedExpression;
 }
 
 type Comparison = "eq" | "ne" | "gt" | "ge" | "lt" | "le";
@@ -440,7 +480,34 @@ export class DataAPIMeta {
       field.sortable = undefined;
       return this;
     }
-    field.sortable = { indexed: !noIndex && !field.joined };
+    field.sortable = { indexed: !noIndex && !field.joined && !field.computed };
+    return this;
+  }
+
+  /**
+   * Declares a field to be computed in-database from an expression.
+   *
+   * The value is read-only (merged into the row at query time, not persisted
+   * on this table). The field becomes natively sortable/filterable/pageable
+   * since the expression is applied to the underlying query before
+   * sorting/filtering.
+   *
+   * @param name Field name
+   * @param expr Computed expression
+   * @param options Computed options
+   */
+  public setComputed(
+    name: string,
+    expr: ComputedExpression,
+    options?: ComputedOptions,
+  ) {
+    const field = this.field(name);
+    field.computed = { expr, default: options?.default };
+    field.mode = AccessMode.ReadOnly;
+    if (field.sortable?.indexed) {
+      field.sortable = { indexed: false };
+    }
+    this.recomputeAccess();
     return this;
   }
 
@@ -728,6 +795,30 @@ export const Joined = MakePropertyDecorator(
   ) => {
     GetMetadata(target.constructor, DataAPIMeta).setJoined(
       key as string,
+      options,
+    );
+  },
+);
+
+/**
+ * Declares a field whose value is computed in-database from an expression.
+ *
+ * The expression receives the row proxy and the schema instance and may
+ * return a row-local expression or a per-row subquery (ex: an aggregate over
+ * another table). The framework merges the result into each row before
+ * filters and sorting are applied, making the field natively sortable,
+ * filterable, and pageable in DB.
+ *
+ * Computed fields are auto read-only and forced to non-indexed sort.
+ *
+ * @param expr Computed expression
+ * @param options Computed options (`default`: fallback when the expression yields null)
+ */
+export const Computed = MakePropertyDecorator(
+  (target, key, expr: ComputedExpression, options?: ComputedOptions) => {
+    GetMetadata(target.constructor, DataAPIMeta).setComputed(
+      key as string,
+      expr,
       options,
     );
   },
