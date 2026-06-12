@@ -581,7 +581,9 @@ export namespace Query {
     id: string | ValueProxy<string>,
     index?: string,
   ) {
-    return index ? table.getAll(id as string, index).nth(0) : table.get(id);
+    return index
+      ? table.getAll(id as string, index).nth(0)
+      : table.get(id as string);
   }
 
   export function List<T extends Record<string, any>>(
