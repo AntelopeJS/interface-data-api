@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v0.1.3
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.1.2...v0.1.3)
+
+### 🚀 Enhancements
+
+- Add Computed field decorator for in-database computed values ([#12](https://github.com/AntelopeJS/interface-data-api/pull/12))
+
+### 🩹 Fixes
+
+- **types:** Cast ValueProxy arguments to satisfy Table signatures ([2bc5f09](https://github.com/AntelopeJS/interface-data-api/commit/2bc5f09))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v0.1.2
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.1.1...v0.1.2)
