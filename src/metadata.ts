@@ -611,14 +611,15 @@ export class DataAPIMeta {
     // re-materialize them. A joined field is not a physical column, so a plain
     // pluck of the target table returns it empty; we resolve it with a second
     // lookup at query time (see `Query.Foreign`). Only joined fields that are
-    // actually requested (present in `pluck`) are captured, and their
-    // `localKey` is added to the pluck so the join key is fetched.
-    let finalPluck = pluck;
+    // actually requested (present in `pluck`) are captured. Their `localKey`
+    // is deliberately NOT added to the stored pluck: `foreign[4]` also drives
+    // response field filtering (`Validation.ClearInternal`), so adding the join
+    // key here would leak it into the API output. `Query.Foreign` extends the
+    // lookup pluck with the join keys at query time instead.
     let targetJoined: ForeignJoinedRef[] | undefined;
     if (targetMeta) {
       const pluckSet = pluck ? new Set(pluck) : undefined;
       const groups: ForeignJoinedRef[] = [];
-      const extraKeys = new Set<string>();
       for (const [fieldName, field] of Object.entries(targetMeta.fields)) {
         if (!field.joined || (pluckSet && !pluckSet.has(fieldName))) {
           continue;
@@ -632,13 +633,9 @@ export class DataAPIMeta {
           remoteIndex: j.remoteIndex,
           schemaName: j.schemaName,
         });
-        extraKeys.add(j.localKey);
       }
       if (groups.length > 0) {
         targetJoined = groups;
-        if (pluck) {
-          finalPluck = Array.from(new Set([...pluck, ...extraKeys]));
-        }
       }
     }
 
@@ -647,7 +644,7 @@ export class DataAPIMeta {
       resolved.tableClass,
       index,
       multi || undefined,
-      finalPluck || undefined,
+      pluck || undefined,
       resolved.schemaName,
       targetJoined,
     ];

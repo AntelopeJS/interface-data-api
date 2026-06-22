@@ -85,6 +85,8 @@ describe("Foreign relation with @Joined target label", () => {
     await returnsNullForOrphanRelation());
   it("resolves a joined label through a relation in get", async () =>
     await resolvesJoinedLabelInGet());
+  it("returns null relation for an orphan foreign key in get", async () =>
+    await returnsNullForOrphanRelationInGet());
 });
 
 async function _setup(testName: string) {
@@ -198,6 +200,12 @@ async function resolvesJoinedLabelInList() {
   expect(alpha, "row for Alpha Rising").to.not.equal(undefined);
   // Core regression: the joined label resolves through the relation.
   expect(alpha?.book?.authorName).to.equal("Alice Carter");
+  // The join key must not leak: only the requested fields are exposed.
+  expect(Object.keys(alpha?.book ?? {}).sort()).to.deep.equal([
+    "_id",
+    "authorName",
+    "title",
+  ]);
 
   const beta = data.results.find((s) => s.book?.title === "Beta Stories");
   expect(beta?.book?.authorName).to.equal("Bob Stone");
@@ -210,14 +218,12 @@ async function returnsNullForOrphanRelation() {
   expect(response.status).to.equal(200);
   const data = (await response.json()) as { results: ShelfListed[] };
 
+  const resolved = data.results.filter((s) => s.book?.title);
+  expect(resolved).to.have.lengthOf(2);
   // The orphan shelf points to a non-existent book → relation stays null.
-  const titles = data.results.map((s) => s.book?.title);
-  expect(titles).to.include("Alpha Rising");
-  const orphan = data.results.find(
-    (s) => s.book === null || s.book?.title === undefined,
-  );
+  const orphan = data.results.find((s) => !s.book?.title);
   expect(orphan, "orphan relation row present").to.not.equal(undefined);
-  expect(orphan?.book?.authorName ?? null).to.equal(null);
+  expect(orphan?.book, "orphan relation value").to.equal(null);
 }
 
 async function resolvesJoinedLabelInGet() {
@@ -231,4 +237,17 @@ async function resolvesJoinedLabelInGet() {
   const shelf = (await response.json()) as ShelfListed;
   expect(shelf.book?.title).to.equal("Alpha Rising");
   expect(shelf.book?.authorName).to.equal("Alice Carter");
+}
+
+async function returnsNullForOrphanRelationInGet() {
+  const { shelfIds } = await _setup(getFunctionName());
+
+  // shelfIds[2] points to an orphan book id.
+  const response = await getRequest(getFunctionName(), { id: shelfIds[2] });
+  if (response.status !== 200) {
+    const text = await response.text();
+    throw new Error(`get orphan failed (${response.status}): ${text}`);
+  }
+  const shelf = (await response.json()) as ShelfListed;
+  expect(shelf.book, "orphan relation value in get").to.equal(null);
 }

@@ -273,16 +273,29 @@ export namespace Query {
           targetJoined,
         ] = field.foreign;
         const other = resolveSchemaDb(db, schemaName).table(table);
+        const hasTargetJoined = !multi && !!targetJoined?.length;
         if (pluckField) {
+          // The join keys of the target's @Joined fields must be fetched too
+          // (so the second lookup can resolve them), but they are NOT stored in
+          // `foreign[4]`, so they get stripped from the response by
+          // `ClearInternal` afterwards.
+          const lookupPluck = hasTargetJoined
+            ? Array.from(
+                new Set([
+                  ...pluckField,
+                  ...targetJoined.map((g) => g.localKey),
+                ]),
+              )
+            : pluckField;
           query = query.lookup(
-            other.pluck("_internal", ...pluckField) as Table<any>,
+            other.pluck("_internal", ...lookupPluck) as Table<any>,
             name,
             index || "_id",
           );
         } else {
           query = query.lookup(other, name, index || "_id");
         }
-        if (!multi && targetJoined && targetJoined.length > 0) {
+        if (hasTargetJoined) {
           query = applyForeignJoinedStream(db, query, name, targetJoined);
         }
       }
@@ -366,22 +379,22 @@ export namespace Query {
       s = s
         .map((row) =>
           row.merge({
-            [tmpKey]: row.key(foreignName).default({}).key(group.localKey),
+            [tmpKey]: row.key(foreignName).key(group.localKey),
           }),
         )
         .lookup(remoteTable, tmpKey, group.remoteIndex)
         .map((row) =>
           row.merge({
-            [foreignName]: row
-              .key(foreignName)
-              .default({})
-              .merge({
-                [group.name]: row
-                  .key(tmpKey)
-                  .default({})
-                  .key(group.remoteField)
-                  .default(null),
-              }),
+            // For an orphan foreign key this yields `{ [joined]: null }`; it is
+            // normalized back to a null relation in `ClearInternal` (the DSL has
+            // no value-level conditional to do it here).
+            [foreignName]: row.key(foreignName).merge({
+              [group.name]: row
+                .key(tmpKey)
+                .default({})
+                .key(group.remoteField)
+                .default(null),
+            }),
           }),
         )
         .without(tmpKey) as Stream<any>;
@@ -897,6 +910,25 @@ export namespace Validation {
             const plain = toPlainData(data);
             if (!foreign?.[4]) {
               return plain;
+            }
+            // An orphan foreign key whose target exposes @Joined fields produces
+            // an object with only those joined fields (all null) and none of the
+            // physical pluck fields. Normalize it back to a null relation, so it
+            // matches the get path and non-joined foreigns (which already null).
+            const targetJoined = foreign[6];
+            if (targetJoined?.length) {
+              const joinedNames = new Set(targetJoined.map((g) => g.name));
+              const physicalKeys = foreign[4].filter(
+                (k) => !joinedNames.has(k),
+              );
+              if (
+                physicalKeys.length > 0 &&
+                physicalKeys.every(
+                  (k) => plain[k] === null || plain[k] === undefined,
+                )
+              ) {
+                return null;
+              }
             }
             const plainPlucked: Record<string, unknown> = {};
             for (const key of foreign[4]) {
