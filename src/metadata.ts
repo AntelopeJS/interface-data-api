@@ -30,6 +30,20 @@ export enum AccessMode {
 }
 
 /**
+ * A `@Joined` field declared on the target of a relation, captured so the
+ * foreign lookup can re-materialize it (joined fields are not physical columns,
+ * so a plain pluck of the target table would return them empty).
+ */
+export interface ForeignJoinedRef {
+  name: string;
+  table: string;
+  localKey: string;
+  remoteField: string;
+  remoteIndex: string;
+  schemaName?: string;
+}
+
+/**
  * DataAPI Metadata field information.
  */
 export interface FieldData {
@@ -79,6 +93,7 @@ export interface FieldData {
     multi?: true,
     pluck?: string[],
     schemaName?: string,
+    targetJoined?: ForeignJoinedRef[],
   ];
 
   /**
@@ -583,6 +598,7 @@ export class DataAPIMeta {
     multi?: boolean,
     pluck?: string[],
     schema?: string,
+    targetMeta?: DataAPIMeta,
   ) {
     const resolved = resolveTableReference(
       this.schemaName,
@@ -590,6 +606,39 @@ export class DataAPIMeta {
       schema,
       `foreign field "${name}"`,
     );
+
+    // Capture the target's `@Joined` fields so the foreign lookup can
+    // re-materialize them. A joined field is not a physical column, so a plain
+    // pluck of the target table returns it empty; we resolve it with a second
+    // lookup at query time (see `Query.Foreign`). Only joined fields that are
+    // actually requested (present in `pluck`) are captured. Their `localKey`
+    // is deliberately NOT added to the stored pluck: `foreign[4]` also drives
+    // response field filtering (`Validation.ClearInternal`), so adding the join
+    // key here would leak it into the API output. `Query.Foreign` extends the
+    // lookup pluck with the join keys at query time instead.
+    let targetJoined: ForeignJoinedRef[] | undefined;
+    if (targetMeta) {
+      const pluckSet = pluck ? new Set(pluck) : undefined;
+      const groups: ForeignJoinedRef[] = [];
+      for (const [fieldName, field] of Object.entries(targetMeta.fields)) {
+        if (!field.joined || (pluckSet && !pluckSet.has(fieldName))) {
+          continue;
+        }
+        const j = field.joined;
+        groups.push({
+          name: fieldName,
+          table: j.table,
+          localKey: j.localKey,
+          remoteField: j.remoteField,
+          remoteIndex: j.remoteIndex,
+          schemaName: j.schemaName,
+        });
+      }
+      if (groups.length > 0) {
+        targetJoined = groups;
+      }
+    }
+
     this.field(name).foreign = [
       resolved.tableName,
       resolved.tableClass,
@@ -597,6 +646,7 @@ export class DataAPIMeta {
       multi || undefined,
       pluck || undefined,
       resolved.schemaName,
+      targetJoined,
     ];
     return this;
   }
@@ -841,10 +891,19 @@ export const Foreign = MakeMethodAndPropertyDecorator(
     multi?: boolean,
     pluck?: string[],
     schema?: string,
+    targetMeta?: DataAPIMeta,
   ) => {
     GetMetadata(target.constructor, DataAPIMeta)
       .setDescriptor(key as string, desc)
-      .setForeign(key as string, table, index, multi, pluck, schema);
+      .setForeign(
+        key as string,
+        table,
+        index,
+        multi,
+        pluck,
+        schema,
+        targetMeta,
+      );
   },
 );
 

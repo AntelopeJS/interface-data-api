@@ -22,7 +22,12 @@ import {
   unlockrequest,
 } from "@antelopejs/interface-database-decorators/modifiers/common";
 import { GetDataControllerMeta } from ".";
-import type { ComputedFieldData, DataAPIMeta, FilterValue } from "./metadata";
+import type {
+  ComputedFieldData,
+  DataAPIMeta,
+  FilterValue,
+  ForeignJoinedRef,
+} from "./metadata";
 
 export namespace Parameters {
   export function GetOptionOverrides<T extends Record<string, any>>(
@@ -258,17 +263,40 @@ export namespace Query {
         if (!field.foreign || (pluck && !pluck.has(name))) {
           continue;
         }
-        const [table, _tableClass, index, _multi, pluckField, schemaName] =
-          field.foreign;
+        const [
+          table,
+          _tableClass,
+          index,
+          multi,
+          pluckField,
+          schemaName,
+          targetJoined,
+        ] = field.foreign;
         const other = resolveSchemaDb(db, schemaName).table(table);
+        const hasTargetJoined = !multi && !!targetJoined?.length;
         if (pluckField) {
+          // The join keys of the target's @Joined fields must be fetched too
+          // (so the second lookup can resolve them), but they are NOT stored in
+          // `foreign[4]`, so they get stripped from the response by
+          // `ClearInternal` afterwards.
+          const lookupPluck = hasTargetJoined
+            ? Array.from(
+                new Set([
+                  ...pluckField,
+                  ...targetJoined.map((g) => g.localKey),
+                ]),
+              )
+            : pluckField;
           query = query.lookup(
-            other.pluck("_internal", ...pluckField) as Table<any>,
+            other.pluck("_internal", ...lookupPluck) as Table<any>,
             name,
             index || "_id",
           );
         } else {
           query = query.lookup(other, name, index || "_id");
+        }
+        if (hasTargetJoined) {
+          query = applyForeignJoinedStream(db, query, name, targetJoined);
         }
       }
       return query;
@@ -279,8 +307,15 @@ export namespace Query {
           if (!field.foreign || (pluck && !pluck.has(name))) {
             continue;
           }
-          const [table, _tableClass, index, multi, pluckField, schemaName] =
-            field.foreign;
+          const [
+            table,
+            _tableClass,
+            index,
+            multi,
+            pluckField,
+            schemaName,
+            targetJoined,
+          ] = field.foreign;
           const remoteDb = resolveSchemaDb(db, schemaName);
           if (multi) {
             changedFields[name] = (obj.key(name) as ValueProxy<string[]>)
@@ -300,17 +335,102 @@ export namespace Query {
                 return foreignObject.default(null);
               });
           } else {
-            changedFields[name] = Get(
+            let foreignObject: Datum<any> = Get(
               remoteDb.table(table),
               obj.key(name) as ValueProxy<string>,
               index,
-            ).default(null);
+            );
+            if (targetJoined && targetJoined.length > 0) {
+              foreignObject = applyForeignJoinedDatum(
+                db,
+                foreignObject,
+                targetJoined,
+              );
+            }
+            changedFields[name] = foreignObject.default(null);
           }
         }
         return obj.merge(changedFields);
       };
       return query.do(oldForeign);
     }
+  }
+
+  /**
+   * Re-materializes the `@Joined` fields of a relation target on the looked-up
+   * sub-object (Stream/list path). The base `Foreign` lookup only plucks the
+   * target's physical columns, so a joined label would come back empty; here we
+   * resolve each joined field with a second lookup keyed on the target's
+   * (already plucked) local key, then merge it back into the relation object.
+   */
+  function applyForeignJoinedStream(
+    db: SchemaInstance<any>,
+    stream: Stream<any>,
+    foreignName: string,
+    groups: ForeignJoinedRef[],
+  ): Stream<any> {
+    let s = stream;
+    for (const group of groups) {
+      const remoteDb = resolveSchemaDb(db, group.schemaName);
+      const remoteTable = remoteDb
+        .table(group.table)
+        .pluck("_internal", group.remoteIndex, group.remoteField) as Table<any>;
+      const tmpKey = `__fjoin_${foreignName}_${group.name}`;
+      s = s
+        .map((row) =>
+          row.merge({
+            [tmpKey]: row.key(foreignName).key(group.localKey),
+          }),
+        )
+        .lookup(remoteTable, tmpKey, group.remoteIndex)
+        .map((row) =>
+          row.merge({
+            // For an orphan foreign key this yields `{ [joined]: null }`; it is
+            // normalized back to a null relation in `ClearInternal` (the DSL has
+            // no value-level conditional to do it here).
+            [foreignName]: row.key(foreignName).merge({
+              [group.name]: row
+                .key(tmpKey)
+                .default({})
+                .key(group.remoteField)
+                .default(null),
+            }),
+          }),
+        )
+        .without(tmpKey) as Stream<any>;
+    }
+    return s;
+  }
+
+  /**
+   * Datum/get counterpart of {@link applyForeignJoinedStream}: resolves each of
+   * the target's `@Joined` fields with a secondary `Get` and merges it into the
+   * relation object.
+   */
+  function applyForeignJoinedDatum(
+    db: SchemaInstance<any>,
+    datum: Datum<any>,
+    groups: ForeignJoinedRef[],
+  ): Datum<any> {
+    let d = datum;
+    for (const group of groups) {
+      const remoteDb = resolveSchemaDb(db, group.schemaName);
+      // Use the raw table here (not a plucked stream): `Get` relies on
+      // `getAll`/`get`, which exist on Selection/Table but not on a Stream.
+      const remoteTable = remoteDb.table(group.table);
+      d = d.do((row) =>
+        row.merge({
+          [group.name]: Get(
+            remoteTable,
+            row.key(group.localKey) as ValueProxy<string>,
+            group.remoteIndex,
+          )
+            .key(group.remoteField)
+            .default(null),
+        }),
+      ) as Datum<any>;
+    }
+    return d;
   }
 
   interface JoinedGroup {
@@ -790,6 +910,25 @@ export namespace Validation {
             const plain = toPlainData(data);
             if (!foreign?.[4]) {
               return plain;
+            }
+            // An orphan foreign key whose target exposes @Joined fields produces
+            // an object with only those joined fields (all null) and none of the
+            // physical pluck fields. Normalize it back to a null relation, so it
+            // matches the get path and non-joined foreigns (which already null).
+            const targetJoined = foreign[6];
+            if (targetJoined?.length) {
+              const joinedNames = new Set(targetJoined.map((g) => g.name));
+              const physicalKeys = foreign[4].filter(
+                (k) => !joinedNames.has(k),
+              );
+              if (
+                physicalKeys.length > 0 &&
+                physicalKeys.every(
+                  (k) => plain[k] === null || plain[k] === undefined,
+                )
+              ) {
+                return null;
+              }
             }
             const plainPlucked: Record<string, unknown> = {};
             for (const key of foreign[4]) {
