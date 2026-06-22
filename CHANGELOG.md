@@ -1,6 +1,18 @@
 # Changelog
 
 
+## v0.1.5
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.1.4...v0.1.5)
+
+### 🩹 Fixes
+
+- Resolve target @Joined fields through relation lookups ([#15](https://github.com/AntelopeJS/interface-data-api/pull/15))
+
+### ❤️ Contributors
+
+- Fabrice Cst <fabrice@altab.be>
+
 ## v0.1.4
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.1.3...v0.1.4)
