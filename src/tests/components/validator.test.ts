@@ -13,6 +13,7 @@ import {
 } from "@antelopejs/interface-data-api/metadata";
 import {
   BasicDataModel,
+  Field,
   Index,
   Model,
   RegisterSchema,
@@ -38,13 +39,25 @@ class Product extends Table {
   declare _id: string;
 
   @Index()
+  @Field("string")
   declare sku: string;
 
+  @Field("string")
   declare name: string;
+
+  @Field("number")
   declare price: number;
+
+  @Field("string")
   declare email: string;
+
+  @Field("date")
   declare birthDate: Date;
+
+  @Field("string")
   declare status: string;
+
+  @Field(["string"])
   declare tags: string[];
 }
 class ProductModel extends BasicDataModel(Product, productTableName) {}

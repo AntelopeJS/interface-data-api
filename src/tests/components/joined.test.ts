@@ -17,9 +17,11 @@ import {
 import { Schema } from "@antelopejs/interface-database";
 import {
   BasicDataModel,
+  Field,
   Model,
   RegisterSchema,
   RegisterTable,
+  Relation,
   Table,
 } from "@antelopejs/interface-database-decorators";
 import { expect } from "chai";
@@ -41,7 +43,11 @@ const schemaName = "default";
 @RegisterTable(authorTableName, schemaName)
 class Author extends Table {
   declare _id: string;
+
+  @Field("string")
   declare name: string;
+
+  @Field("string")
   declare email: string;
 }
 class AuthorModel extends BasicDataModel(Author, authorTableName) {}
@@ -49,8 +55,15 @@ class AuthorModel extends BasicDataModel(Author, authorTableName) {}
 @RegisterTable(bookTableName, schemaName)
 class Book extends Table {
   declare _id: string;
+
+  @Field("string")
+  @Relation({ to: () => Author })
   declare authorId: string;
+
+  @Field("string")
   declare title: string;
+
+  @Field("number")
   declare price: number;
 }
 class BookModel extends BasicDataModel(Book, bookTableName) {}

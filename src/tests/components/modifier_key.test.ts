@@ -16,11 +16,13 @@ import {
 import { Schema } from "@antelopejs/interface-database";
 import {
   BasicDataModel,
+  Field,
   LocalizationModifier,
   Localized,
   Model,
   RegisterSchema,
   RegisterTable,
+  Relation,
   Table,
 } from "@antelopejs/interface-database-decorators";
 import { expect } from "chai";
@@ -42,7 +44,11 @@ const locale = "en";
 @RegisterTable(authorTableName, schemaName)
 class Author extends Table {
   declare _id: string;
+
+  @Field("string")
   declare name: string;
+
+  @Field("string")
   declare email: string;
 }
 class AuthorModel extends BasicDataModel(Author, authorTableName) {}
@@ -50,6 +56,9 @@ class AuthorModel extends BasicDataModel(Author, authorTableName) {}
 @RegisterTable(postTableName, schemaName)
 class Post extends Table.with(LocalizationModifier) {
   declare _id: string;
+
+  @Field("string")
+  @Relation({ to: () => Author })
   declare authorId: string | null;
 
   @Localized()

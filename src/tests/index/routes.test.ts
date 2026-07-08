@@ -14,6 +14,7 @@ import {
 import { Schema } from "@antelopejs/interface-database";
 import {
   BasicDataModel,
+  Field,
   Index,
   Model,
   RegisterSchema,
@@ -42,10 +43,16 @@ class User extends Table {
   declare _id: string;
 
   @Index()
+  @Field("string")
   declare email: string;
 
+  @Field("string")
   declare password: string;
+
+  @Field("string")
   declare name: string;
+
+  @Field("number")
   declare age: number;
 }
 class UserModel extends BasicDataModel(User, userTableName) {}

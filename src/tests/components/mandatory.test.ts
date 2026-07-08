@@ -14,6 +14,7 @@ import {
 import { Schema } from "@antelopejs/interface-database";
 import {
   BasicDataModel,
+  Field,
   Index,
   Model,
   RegisterSchema,
@@ -41,12 +42,22 @@ class Order extends Table {
   declare _id: string;
 
   @Index()
+  @Field("string")
   declare internalReference: string;
 
+  @Field("string")
   declare customerName: string;
+
+  @Field("string")
   declare customerEmail: string;
+
+  @Field("number")
   declare totalAmount: number;
+
+  @Field("string")
   declare status: string;
+
+  @Field("string")
   declare notes: string;
 }
 class OrderModel extends BasicDataModel(Order, orderTableName) {}
