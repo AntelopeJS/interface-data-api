@@ -19,10 +19,12 @@ import {
 import { Schema, type ValueProxy } from "@antelopejs/interface-database";
 import {
   BasicDataModel,
+  Field,
   Index,
   Model,
   RegisterSchema,
   RegisterTable,
+  Relation,
   Table,
 } from "@antelopejs/interface-database-decorators";
 import { expect } from "chai";
@@ -44,6 +46,8 @@ const schemaName = "default";
 @RegisterTable(groupTableName, schemaName)
 class Group extends Table {
   declare _id: string;
+
+  @Field("string")
   declare name: string;
 }
 class GroupModel extends BasicDataModel(Group, groupTableName) {}
@@ -51,8 +55,13 @@ class GroupModel extends BasicDataModel(Group, groupTableName) {}
 @RegisterTable(deviceTableName, schemaName)
 class Device extends Table {
   declare _id: string;
+
   @Index()
+  @Field("string")
+  @Relation({ to: () => Group })
   declare group_id: string;
+
+  @Field("string")
   declare label: string;
 }
 class DeviceModel extends BasicDataModel(Device, deviceTableName) {}

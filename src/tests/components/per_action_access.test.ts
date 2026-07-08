@@ -13,6 +13,7 @@ import {
 } from "@antelopejs/interface-data-api/metadata";
 import {
   BasicDataModel,
+  Field,
   Index,
   Model,
   RegisterSchema,
@@ -39,10 +40,16 @@ class User extends Table {
   declare _id: string;
 
   @Index()
+  @Field("string")
   declare email: string;
 
+  @Field("string")
   declare name: string;
+
+  @Field("string")
   declare role: string;
+
+  @Field("number")
   declare age: number;
 }
 class UserModel extends BasicDataModel(User, userTableName) {}

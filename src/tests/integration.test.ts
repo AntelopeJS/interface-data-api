@@ -16,10 +16,12 @@ import {
 } from "@antelopejs/interface-data-api/metadata";
 import {
   BasicDataModel,
+  Field,
   Index,
   Model,
   RegisterSchema,
   RegisterTable,
+  Relation,
   Table,
 } from "@antelopejs/interface-database-decorators";
 import { expect } from "chai";
@@ -47,18 +49,40 @@ class Customer extends Table {
   declare _id: string;
 
   @Index()
+  @Field("string")
   declare email: string;
 
+  @Field("string")
   declare firstName: string;
+
+  @Field("string")
   declare lastName: string;
+
+  @Field("string")
   declare phone: string;
+
+  @Field("string")
   declare address: string;
+
+  @Field("string")
   declare city: string;
+
+  @Field("string")
   declare postalCode: string;
+
+  @Field("string")
   declare country: string;
+
+  @Field("date")
   declare registrationDate: Date;
+
+  @Field("boolean")
   declare isActive: boolean;
+
+  @Field("number")
   declare loyaltyPoints: number;
+
+  @Field(["string"])
   declare preferences: string[];
 }
 
@@ -67,19 +91,43 @@ class Product extends Table {
   declare _id: string;
 
   @Index()
+  @Field("string")
   declare sku: string;
 
+  @Field("string")
   declare name: string;
+
+  @Field("string")
   declare description: string;
+
+  @Field("number")
   declare price: number;
+
+  @Field("number")
   declare costPrice: number;
+
+  @Field("number")
   declare stockQuantity: number;
+
+  @Field("string")
   declare category: string;
+
+  @Field("string")
   declare brand: string;
+
+  @Field(["string"])
   declare tags: string[];
+
+  @Field(["string"])
   declare images: string[];
+
+  @Field("boolean")
   declare isActive: boolean;
+
+  @Field("date")
   declare createdAt: Date;
+
+  @Field("date")
   declare updatedAt: Date;
 }
 
@@ -88,22 +136,48 @@ class Order extends Table {
   declare _id: string;
 
   @Index()
+  @Field("string")
   declare orderNumber: string;
 
   @Index()
+  @Field("string")
+  @Relation({ to: () => Customer })
   declare customerId: string;
 
+  @Field("string")
   declare status: string;
+
+  @Field("number")
   declare totalAmount: number;
+
+  @Field("number")
   declare shippingCost: number;
+
+  @Field("number")
   declare taxAmount: number;
+
+  @Field("number")
   declare discountAmount: number;
+
+  @Field("number")
   declare finalAmount: number;
+
+  @Field("string")
   declare shippingAddress: string;
+
+  @Field("string")
   declare billingAddress: string;
+
+  @Field("string")
   declare paymentMethod: string;
+
+  @Field("string")
   declare notes: string;
+
+  @Field("date")
   declare createdAt: Date;
+
+  @Field("date")
   declare updatedAt: Date;
 }
 
@@ -112,15 +186,28 @@ class OrderItem extends Table {
   declare _id: string;
 
   @Index()
+  @Field("string")
+  @Relation({ to: () => Order })
   declare orderId: string;
 
   @Index()
+  @Field("string")
+  @Relation({ to: () => Product })
   declare productId: string;
 
+  @Field("number")
   declare quantity: number;
+
+  @Field("number")
   declare unitPrice: number;
+
+  @Field("number")
   declare totalPrice: number;
+
+  @Field("number")
   declare finalPrice: number;
+
+  @Field("number")
   declare discount: number;
 }
 
