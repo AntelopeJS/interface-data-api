@@ -95,6 +95,8 @@ describe("Field Joined", () => {
   it("sorts by joined field descending", async () =>
     await sortsByJoinedFieldDescending());
   it("filters by joined field", async () => await filtersByJoinedField());
+  it("keeps joined fields on paginated rows when unused by sort and filter", async () =>
+    await keepsJoinedFieldsOnPaginatedRows());
   it("returns null for orphan foreign key", async () =>
     await returnsNullForOrphanForeignKey());
   it("ignores joined field on edit body", async () =>
@@ -266,6 +268,35 @@ async function filtersByJoinedField() {
   for (const book of data.results) {
     expect(book.name).to.equal("Alice Carter");
   }
+}
+
+async function keepsJoinedFieldsOnPaginatedRows() {
+  await _createDataController(getFunctionName());
+
+  const response = await listRequest(getFunctionName(), {
+    sortKey: "title",
+    sortDirection: "asc",
+    offset: "1",
+    limit: "2",
+  });
+  expect(response.status).to.equal(200);
+  const data = (await response.json()) as {
+    results: BookListed[];
+    total: number;
+  };
+  expect(data.total).to.equal(5);
+  expect(data.results.map((b) => b.title)).to.deep.equal([
+    "Alpha Rising",
+    "Beta Stories",
+  ]);
+  expect(data.results.map((b) => b.name)).to.deep.equal([
+    "Alice Carter",
+    "Bob Stone",
+  ]);
+  expect(data.results.map((b) => b.email)).to.deep.equal([
+    "alice@example.com",
+    "bob@example.com",
+  ]);
 }
 
 async function returnsNullForOrphanForeignKey() {

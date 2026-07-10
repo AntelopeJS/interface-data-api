@@ -162,6 +162,18 @@ function displayOnlyComputedFields(
   return new Set(names);
 }
 
+function displayOnlyJoinedFields(
+  meta: DataAPIMeta,
+  params: Parameters.ListParameters,
+  pluck: Set<string> | undefined,
+  sort: [string, "asc" | "desc" | undefined] | undefined,
+): Set<string> {
+  const names = Array.from(
+    Query.DeferredJoinedFields(meta, sort, params.filters),
+  ).filter((name) => params.noPluck || pluck?.has(name));
+  return new Set(names);
+}
+
 export namespace DefaultRoutes {
   class Methods {
     async get(_reqCtx: RequestContext, params: Parameters.GetParameters) {
@@ -228,6 +240,16 @@ export namespace DefaultRoutes {
       const offset = params.offset || 0;
       const limit = params.limit || 10;
       let queryPaged = query.slice(offset, limit);
+
+      const displayJoined = displayOnlyJoinedFields(meta, params, pluck, sort);
+      if (displayJoined.size > 0) {
+        queryPaged = Query.Joined(
+          model.database,
+          meta,
+          queryPaged,
+          displayJoined,
+        );
+      }
 
       const displayComputed = displayOnlyComputedFields(meta, params, pluck);
       if (displayComputed.size > 0) {
