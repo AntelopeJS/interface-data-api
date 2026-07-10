@@ -519,15 +519,13 @@ export namespace Query {
 
   /**
    * Joined field names that {@link List} does not materialize for the given
-   * sort/filter parameters. The default list route resolves these after
-   * pagination so their lookups only run on the returned page.
+   * split. The default list route resolves these after pagination so their
+   * lookups only run on the returned page.
    */
-  export function DeferredJoinedFields(
+  function deferredJoinedFields(
     meta: DataAPIMeta,
-    sorting?: [string, "asc" | "desc" | undefined],
-    filters?: Record<string, FilterValue>,
+    split: JoinedFieldSplit,
   ): Set<string> {
-    const split = splitJoinedFields(meta, sorting, filters);
     return new Set(
       Object.entries(meta.fields)
         .filter(
@@ -794,7 +792,7 @@ export namespace Query {
     sorting?: [string, "asc" | "desc" | undefined],
     filters?: Record<string, FilterValue>,
     db?: SchemaInstance<any>,
-  ): [sorted: Stream<T>, total: Datum<number>] {
+  ): [sorted: Stream<T>, total: Datum<number>, deferredJoined: Set<string>] {
     const filterList = Object.entries(meta.filters).filter(
       ([name]) => filters && name in filters,
     );
@@ -883,7 +881,7 @@ export namespace Query {
     if (shouldSort && !shouldSort.indexed && sortField) {
       tmpRequest = tmpRequest.orderBy(sortField, sorting?.[1] ?? "asc");
     }
-    return [tmpRequest, total];
+    return [tmpRequest, total, deferredJoinedFields(meta, joinedSplit)];
   }
 
   export function Delete(table: Table<any>, id: string | string[]) {

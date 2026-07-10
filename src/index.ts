@@ -163,13 +163,11 @@ function displayOnlyComputedFields(
 }
 
 function displayOnlyJoinedFields(
-  meta: DataAPIMeta,
+  deferred: Set<string>,
   params: Parameters.ListParameters,
   pluck: Set<string> | undefined,
-  sort: [string, "asc" | "desc" | undefined] | undefined,
   materializeAll: boolean,
 ): Set<string> {
-  const deferred = Query.DeferredJoinedFields(meta, sort, params.filters);
   if (materializeAll) {
     return deferred;
   }
@@ -215,7 +213,7 @@ export namespace DefaultRoutes {
             "asc" | "desc" | undefined,
           ])
         : undefined;
-      let [query, queryTotal] = Query.List(
+      let [query, queryTotal, deferredJoined] = Query.List(
         this,
         meta,
         model.table,
@@ -253,10 +251,9 @@ export namespace DefaultRoutes {
       // rule Query.List applies pre-count). The extra lookups only run on the
       // page and the final pluck() strips fields the response did not ask for.
       const displayJoined = displayOnlyJoinedFields(
-        meta,
+        deferredJoined,
         params,
         pluck,
-        sort,
         displayComputed.size > 0,
       );
       if (displayJoined.size > 0) {
