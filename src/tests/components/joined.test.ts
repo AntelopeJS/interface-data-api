@@ -8,13 +8,14 @@ import {
 import {
   Access,
   AccessMode,
+  Computed,
   Filter,
   Joined,
   Listable,
   ModelReference,
   Sortable,
 } from "@antelopejs/interface-data-api/metadata";
-import { Schema } from "@antelopejs/interface-database";
+import { Schema, type ValueProxy } from "@antelopejs/interface-database";
 import {
   BasicDataModel,
   Field,
@@ -97,6 +98,8 @@ describe("Field Joined", () => {
   it("filters by joined field", async () => await filtersByJoinedField());
   it("keeps joined fields on paginated rows when unused by sort and filter", async () =>
     await keepsJoinedFieldsOnPaginatedRows());
+  it("resolves computed fields reading a non-plucked joined field", async () =>
+    await resolvesComputedFieldReadingNonPluckedJoinedField());
   it("returns null for orphan foreign key", async () =>
     await returnsNullForOrphanForeignKey());
   it("ignores joined field on edit body", async () =>
@@ -155,6 +158,52 @@ async function _createDataController(testName: string) {
     declare email: string;
   }
 
+  return _seedTables();
+}
+
+// Regression fixture for the lazy joined-field split: `name` is a joined
+// field that is neither listable, filtered, nor sorted, while `display` is a
+// listable computed field whose expression reads it. The deferred joined
+// lookup must still run before the computed expression on the paginated rows.
+async function _createComputedJoinedController(testName: string) {
+  @RegisterDataController()
+  class _JoinedComputedTestAPI extends DataController(
+    Book,
+    {
+      list: DefaultRoutes.List,
+    },
+    Controller(`/${testName}`),
+  ) {
+    @ModelReference()
+    @Model(BookModel)
+    declare bookModel: BookModel;
+
+    @Listable()
+    @Access(AccessMode.ReadOnly)
+    declare _id: string;
+
+    @Listable()
+    @Access(AccessMode.ReadWrite)
+    declare title: string;
+
+    @Joined({
+      table: authorTableName,
+      localKey: "authorId",
+      remoteField: "name",
+    })
+    declare name: string;
+
+    @Listable()
+    @Computed((row) =>
+      (row.key("name") as ValueProxy<string>).concat(" (author)"),
+    )
+    declare display: string;
+  }
+
+  return _seedTables();
+}
+
+async function _seedTables() {
   await RegisterSchema(schemaName);
   await _dropTables();
 
@@ -297,6 +346,25 @@ async function keepsJoinedFieldsOnPaginatedRows() {
     "alice@example.com",
     "bob@example.com",
   ]);
+}
+
+async function resolvesComputedFieldReadingNonPluckedJoinedField() {
+  await _createComputedJoinedController(getFunctionName());
+
+  const response = await listRequest(getFunctionName(), {});
+  expect(response.status).to.equal(200);
+  const data = (await response.json()) as {
+    results: { title: string; display: string | null; name?: string }[];
+    total: number;
+  };
+  expect(data.total).to.equal(5);
+  expect(data.results).to.have.lengthOf(5);
+
+  const alphaRising = data.results.find((b) => b.title === "Alpha Rising");
+  expect(alphaRising).to.not.equal(undefined);
+  expect(alphaRising?.display).to.equal("Alice Carter (author)");
+  // the joined field itself is not listable, so it must stay out of the response
+  expect(alphaRising?.name).to.equal(undefined);
 }
 
 async function returnsNullForOrphanForeignKey() {
