@@ -162,6 +162,21 @@ function displayOnlyComputedFields(
   return new Set(names);
 }
 
+function displayOnlyJoinedFields(
+  deferred: Set<string>,
+  params: Parameters.ListParameters,
+  pluck: Set<string> | undefined,
+  materializeAll: boolean,
+): Set<string> {
+  if (materializeAll) {
+    return deferred;
+  }
+  const names = Array.from(deferred).filter(
+    (name) => params.noPluck || pluck?.has(name),
+  );
+  return new Set(names);
+}
+
 export namespace DefaultRoutes {
   class Methods {
     async get(_reqCtx: RequestContext, params: Parameters.GetParameters) {
@@ -198,7 +213,7 @@ export namespace DefaultRoutes {
             "asc" | "desc" | undefined,
           ])
         : undefined;
-      let [query, queryTotal] = Query.List(
+      let [query, queryTotal, deferredJoined] = Query.List(
         this,
         meta,
         model.table,
@@ -230,6 +245,26 @@ export namespace DefaultRoutes {
       let queryPaged = query.slice(offset, limit);
 
       const displayComputed = displayOnlyComputedFields(meta, params, pluck);
+      // A computed expression may read any joined field, so when a computed
+      // field is materialized after the slice, every deferred joined group
+      // must be merged first regardless of pluck (mirroring the conservative
+      // rule Query.List applies pre-count). The extra lookups only run on the
+      // page and the final pluck() strips fields the response did not ask for.
+      const displayJoined = displayOnlyJoinedFields(
+        deferredJoined,
+        params,
+        pluck,
+        displayComputed.size > 0,
+      );
+      if (displayJoined.size > 0) {
+        queryPaged = Query.Joined(
+          model.database,
+          meta,
+          queryPaged,
+          displayJoined,
+        );
+      }
+
       if (displayComputed.size > 0) {
         queryPaged = Query.Computed(
           model.database,
