@@ -1,6 +1,27 @@
 # Changelog
 
 
+## v0.1.6
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.1.5...v0.1.6)
+
+### 🔥 Performance
+
+- Defer unused joined-field lookups to the paginated page ([#18](https://github.com/AntelopeJS/interface-data-api/pull/18))
+
+### 📖 Documentation
+
+- Declare table fields with @Field and @Relation decorators in examples ([#19](https://github.com/AntelopeJS/interface-data-api/pull/19))
+
+### ✅ Tests
+
+- Declare table fields with @Field and @Relation decorators in fixtures ([#16](https://github.com/AntelopeJS/interface-data-api/pull/16))
+
+### ❤️ Contributors
+
+- Fabrice Cst <fabrice@altab.be>
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v0.1.5
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.1.4...v0.1.5)
