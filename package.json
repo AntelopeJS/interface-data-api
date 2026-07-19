@@ -17,7 +17,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "skills"
   ],
   "exports": {
     ".": {
@@ -79,6 +80,9 @@
   },
   "antelopeJs": {
     "standalone": true,
-    "test": "src/antelope.test.ts"
+    "test": "src/antelope.test.ts",
+    "skills": [
+      "./skills"
+    ]
   }
 }
