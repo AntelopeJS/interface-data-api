@@ -74,9 +74,11 @@ This exposes `GET /users/get?id=`, `GET /users/list`, `POST /users/new`, `PUT /u
   (`maxPage`). Sorting uses `sortKey`/`sortDirection` query params and requires `@Sortable` on the
   field (400 otherwise). List responses only include `@Listable` fields unless `noPluck` is set.
 - Filters come from `filter_<name>=<mode>:<value>` query params (plain value means `eq`); modes are
-  `eq|ne|gt|ge|lt|le`. Only fields declared with `@Filter()` are filterable.
-- `@Joined` and `@Computed` fields are materialized in-database (sortable/filterable natively) but
-  are forced read-only and to non-indexed sorting.
+  `eq|ne|gt|ge|lt|le` (the default filter compares the raw query-string value — pass a custom filter
+  function to cast for numeric ranges). Only fields declared with `@Filter()` are filterable.
+- `@Joined` and `@Computed` fields are materialized in-database, so `@Sortable` and `@Filter()` work
+  efficiently on them — but those decorators must still be applied explicitly. Such fields are
+  forced read-only and to non-indexed sorting.
 - Route selection: pass a subset like `{ get: DefaultRoutes.Get, list: DefaultRoutes.List }` instead
   of `DefaultRoutes.All`; use `DefaultRoutes.WithOptions(route, options, endpoint)` to rename an
   endpoint or preset parameter options.
