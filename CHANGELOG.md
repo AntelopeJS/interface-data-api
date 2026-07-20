@@ -1,6 +1,18 @@
 # Changelog
 
 
+## v0.1.7
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.1.6...v0.1.7)
+
+### 🚀 Enhancements
+
+- **skills:** Ship a consumer skill with the package ([#20](https://github.com/AntelopeJS/interface-data-api/pull/20))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v0.1.6
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.1.5...v0.1.6)
