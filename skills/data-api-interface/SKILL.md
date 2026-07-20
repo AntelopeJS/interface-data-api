@@ -32,21 +32,21 @@ import { DataController, DefaultRoutes, RegisterDataController } from "@antelope
 import { Access, AccessMode, Listable, Mandatory, ModelReference, Sortable } from "@antelopejs/interface-data-api/metadata";
 import { BasicDataModel, Field, Model, RegisterTable, Table } from "@antelopejs/interface-database-decorators";
 
-@RegisterTable("users", "default")
-class User extends Table {
+@RegisterTable("tasks", "default")
+class Task extends Table {
   declare _id: string;
 
   @Field("string")
-  declare email: string;
+  declare summary: string;
 }
 
-class UserModel extends BasicDataModel(User, "users") {}
+class TaskModel extends BasicDataModel(Task, "tasks") {}
 
 @RegisterDataController()
-class UserAPI extends DataController(User, DefaultRoutes.All, Controller("/users")) {
+class TaskAPI extends DataController(Task, DefaultRoutes.All, Controller("/tasks")) {
   @ModelReference()
-  @Model(UserModel, "my-database")
-  declare userModel: UserModel;
+  @Model(TaskModel, "my-database")
+  declare taskModel: TaskModel;
 
   @Listable()
   @Access(AccessMode.ReadOnly)
@@ -56,12 +56,12 @@ class UserAPI extends DataController(User, DefaultRoutes.All, Controller("/users
   @Sortable()
   @Mandatory("new")
   @Access(AccessMode.ReadWrite)
-  declare email: string;
+  declare summary: string;
 }
 ```
 
-This exposes `GET /users/get?id=`, `GET /users/list`, `POST /users/new`, `PUT /users/edit?id=`,
-`DELETE /users/delete?id=` (repeat `id` to delete several).
+This exposes `GET /tasks/get?id=`, `GET /tasks/list`, `POST /tasks/new`, `PUT /tasks/edit?id=`,
+`DELETE /tasks/delete?id=` (repeat `id` to delete several).
 
 ## Gotchas
 
