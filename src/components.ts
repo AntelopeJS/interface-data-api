@@ -576,6 +576,19 @@ export namespace Query {
     };
   }
 
+  /**
+   * Resolves the joined fields through the stream form of {@link Joined}
+   * rather than its datum form: only the datum form has no way to drop the
+   * temporary key it stages (neither `Datum` nor `ValueProxy` exposes
+   * `without`), so it would leave `__joined_orig_*` on the row.
+   */
+  function nthDeferredJoinOperation(): DeferredJoinedOperation {
+    return function (this: DeferredJoinedStream, n: number) {
+      const { db, meta, names, raw } = this.deferredJoin;
+      return Joined(db, meta, raw.slice(n, 1), names).nth(0);
+    };
+  }
+
   function rawDeferredJoinOperation(name: string): DeferredJoinedOperation {
     return function (this: DeferredJoinedStream, ...args: any[]) {
       return (this.deferredJoin.raw as any)[name](...args);
@@ -612,7 +625,7 @@ export namespace Query {
     (name: string) => DeferredJoinedOperation
   > = {
     slice: pagedDeferredJoinOperation,
-    nth: pagedDeferredJoinOperation,
+    nth: nthDeferredJoinOperation,
     changes: rawDeferredJoinOperation,
     count: (name) => fieldAggregateDeferredJoinOperation(name, true),
     sum: (name) => fieldAggregateDeferredJoinOperation(name, false),

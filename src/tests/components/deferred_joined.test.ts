@@ -288,6 +288,15 @@ async function resolvesJoinedFieldsOnNthDatum() {
   expect(first.title).to.be.a("string");
   expect(first).to.have.property("name");
   expect(first).to.have.property("email");
+
+  const internalKeys = Object.keys(first).filter((key) =>
+    key.startsWith("__joined_orig_"),
+  );
+  expect(internalKeys).to.deep.equal([]);
+  expect(first.authorId).to.be.a("string");
+
+  const second = (await query.nth(1)) as BookListed;
+  expect(second.title).to.not.equal(first.title);
 }
 
 async function ordersByJoinedFieldOnCallerSort() {
