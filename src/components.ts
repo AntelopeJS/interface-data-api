@@ -536,6 +536,168 @@ export namespace Query {
     );
   }
 
+  interface DeferredJoinContext {
+    db: SchemaInstance<any>;
+    meta: DataAPIMeta;
+    names: Set<string>;
+    raw: Stream<any>;
+  }
+
+  /**
+   * Stream returned by {@link List} when the deferred joined fields are not
+   * exposed to the caller: it resolves them itself, so consumers that
+   * destructure `[query, total]` alone still observe every `@Joined` field.
+   * The lookups are appended after `slice`/`nth`, keeping them on the
+   * requested page only; bare `count()` calls and field aggregates on
+   * non-joined fields skip them (left-join lookups never change the row
+   * count nor other fields); `changes()` attaches to the raw stream, since
+   * change feeds cannot carry the lookups. Any other operation may observe
+   * the joined fields, so it materializes them first.
+   */
+  class DeferredJoinedStream extends Stream<any> {
+    declare deferredJoin: DeferredJoinContext;
+  }
+
+  type DeferredJoinedOperation = (
+    this: DeferredJoinedStream,
+    ...args: any[]
+  ) => any;
+
+  function materializeDeferredJoin(stream: DeferredJoinedStream) {
+    const { db, meta, names, raw } = stream.deferredJoin;
+    return Joined(db, meta, raw, names);
+  }
+
+  function pagedDeferredJoinOperation(name: string): DeferredJoinedOperation {
+    return function (this: DeferredJoinedStream, ...args: any[]) {
+      const { db, meta, names, raw } = this.deferredJoin;
+      const paged = (raw as any)[name](...args);
+      return Joined(db, meta, paged, names);
+    };
+  }
+
+  /**
+   * Resolves the joined fields through the stream form of {@link Joined}
+   * rather than its datum form: only the datum form has no way to drop the
+   * temporary key it stages (neither `Datum` nor `ValueProxy` exposes
+   * `without`), so it would leave `__joined_orig_*` on the row.
+   */
+  function nthDeferredJoinOperation(): DeferredJoinedOperation {
+    return function (this: DeferredJoinedStream, n: number) {
+      const { db, meta, names, raw } = this.deferredJoin;
+      return Joined(db, meta, raw.slice(n, 1), names).nth(0);
+    };
+  }
+
+  function rawDeferredJoinOperation(name: string): DeferredJoinedOperation {
+    return function (this: DeferredJoinedStream, ...args: any[]) {
+      return (this.deferredJoin.raw as any)[name](...args);
+    };
+  }
+
+  function fieldAggregateDeferredJoinOperation(
+    name: string,
+    bareCallOnRaw: boolean,
+  ): DeferredJoinedOperation {
+    return function (this: DeferredJoinedStream, field?: string) {
+      const { db, meta, names, raw } = this.deferredJoin;
+      if (!field) {
+        const bareTarget = bareCallOnRaw ? raw : materializeDeferredJoin(this);
+        return (bareTarget as any)[name]();
+      }
+      const target = names.has(field)
+        ? Joined(db, meta, raw, new Set([field]))
+        : raw;
+      return (target as any)[name](field);
+    };
+  }
+
+  function forwardingDeferredJoinOperation(
+    name: string,
+  ): DeferredJoinedOperation {
+    return function (this: DeferredJoinedStream, ...args: any[]) {
+      return (materializeDeferredJoin(this) as any)[name](...args);
+    };
+  }
+
+  const DEFERRED_JOIN_OPERATION_FACTORIES: Record<
+    string,
+    (name: string) => DeferredJoinedOperation
+  > = {
+    slice: pagedDeferredJoinOperation,
+    nth: nthDeferredJoinOperation,
+    changes: rawDeferredJoinOperation,
+    count: (name) => fieldAggregateDeferredJoinOperation(name, true),
+    sum: (name) => fieldAggregateDeferredJoinOperation(name, false),
+    avg: (name) => fieldAggregateDeferredJoinOperation(name, false),
+    min: (name) => fieldAggregateDeferredJoinOperation(name, false),
+    max: (name) => fieldAggregateDeferredJoinOperation(name, false),
+    distinct: (name) => fieldAggregateDeferredJoinOperation(name, false),
+  };
+
+  const DEFERRED_JOIN_INHERITED_OPERATIONS = new Set(["constructor", "cast"]);
+
+  function wireDeferredJoinedStream() {
+    const operationNames = [
+      ...Object.getOwnPropertyNames(Stream.prototype),
+      "run",
+      "cursor",
+      "build",
+    ].filter((name) => !DEFERRED_JOIN_INHERITED_OPERATIONS.has(name));
+    for (const name of operationNames) {
+      const factory =
+        DEFERRED_JOIN_OPERATION_FACTORIES[name] ??
+        forwardingDeferredJoinOperation;
+      (DeferredJoinedStream.prototype as any)[name] = factory(name);
+    }
+  }
+  wireDeferredJoinedStream();
+
+  /**
+   * Wraps `raw` into a {@link DeferredJoinedStream}. The wrapper keeps the
+   * raw stages as its own (an unobservable fallback, since every operation
+   * is overridden) while `build()` serializes the materialized pipeline, so
+   * a wrapper embedded as an argument of another query never leaks rows
+   * without the joined fields.
+   */
+  function wrapDeferredJoined(
+    db: SchemaInstance<any>,
+    meta: DataAPIMeta,
+    names: Set<string>,
+    raw: Stream<any>,
+  ): Stream<any> {
+    const wrapped: DeferredJoinedStream = Object.create(
+      DeferredJoinedStream.prototype,
+    );
+    (wrapped as any).stages = raw.build();
+    wrapped.deferredJoin = { db, meta, names, raw };
+    return wrapped;
+  }
+
+  function listResultTuple<T extends Record<string, any>>(
+    tmpRequest: Stream<T>,
+    total: Datum<number>,
+    meta: DataAPIMeta,
+    joinedSplit: JoinedFieldSplit,
+    db?: SchemaInstance<any>,
+    options?: ListOptions,
+  ): [sorted: Stream<T>, total: Datum<number>, deferredJoined: Set<string>] {
+    const deferredJoined = deferredJoinedFields(meta, joinedSplit);
+    if (options?.exposeDeferredJoined || !db || deferredJoined.size === 0) {
+      return [tmpRequest, total, deferredJoined];
+    }
+    return [
+      wrapDeferredJoined(
+        db,
+        meta,
+        deferredJoined,
+        tmpRequest as Stream<any>,
+      ) as Stream<T>,
+      total,
+      new Set(),
+    ];
+  }
+
   function resolveSchemaDb(
     sourceDb: SchemaInstance<any>,
     schemaName: string | undefined,
@@ -784,6 +946,26 @@ export namespace Query {
       : table.get(id as string);
   }
 
+  export interface ListOptions {
+    /**
+     * Return the joined field names {@link List} did not materialize as the
+     * third tuple element instead of a self-resolving stream, leaving their
+     * page-time resolution to the caller. The default list route uses this
+     * to restrict the page lookups to the plucked fields.
+     */
+    exposeDeferredJoined?: boolean;
+  }
+
+  /**
+   * Builds the filtered and sorted stream of a list request along with its
+   * total count. Joined fields that no filter or sort references are not
+   * materialized in either pipeline; by default the returned stream resolves
+   * them itself once the caller pages it (or otherwise observes rows), so the
+   * third tuple element is empty. With
+   * {@link ListOptions.exposeDeferredJoined} — or when no `db` is provided,
+   * since no lookup can be built without one — the raw stream is returned
+   * and the third element names the joined fields left for the caller.
+   */
   export function List<T extends Record<string, any>>(
     obj: any,
     meta: DataAPIMeta,
@@ -792,6 +974,7 @@ export namespace Query {
     sorting?: [string, "asc" | "desc" | undefined],
     filters?: Record<string, FilterValue>,
     db?: SchemaInstance<any>,
+    options?: ListOptions,
   ): [sorted: Stream<T>, total: Datum<number>, deferredJoined: Set<string>] {
     const filterList = Object.entries(meta.filters).filter(
       ([name]) => filters && name in filters,
@@ -881,7 +1064,7 @@ export namespace Query {
     if (shouldSort && !shouldSort.indexed && sortField) {
       tmpRequest = tmpRequest.orderBy(sortField, sorting?.[1] ?? "asc");
     }
-    return [tmpRequest, total, deferredJoinedFields(meta, joinedSplit)];
+    return listResultTuple(tmpRequest, total, meta, joinedSplit, db, options);
   }
 
   export function Delete(table: Table<any>, id: string | string[]) {

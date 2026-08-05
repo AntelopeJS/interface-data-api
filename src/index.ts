@@ -221,6 +221,7 @@ export namespace DefaultRoutes {
         sort,
         params?.filters,
         model.database,
+        { exposeDeferredJoined: true },
       );
 
       const pluck: Set<string> | undefined =
