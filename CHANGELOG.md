@@ -1,6 +1,18 @@
 # Changelog
 
 
+## v0.1.8
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.1.7...v0.1.8)
+
+### 🩹 Fixes
+
+- Resolve deferred joined fields from the List stream itself ([#21](https://github.com/AntelopeJS/interface-data-api/pull/21), [#22](https://github.com/AntelopeJS/interface-data-api/pull/22))
+
+### ❤️ Contributors
+
+- Fabrice Cst <fabrice@altab.be>
+
 ## v0.1.7
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.1.6...v0.1.7)
