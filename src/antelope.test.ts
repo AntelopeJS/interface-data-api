@@ -7,18 +7,18 @@ export default defineConfig({
   name: "interface-data-api-test",
   cacheFolder: ".antelope/cache",
   modules: {
+    local: {
+      source: { type: "local", path: "." },
+      importOverrides: {
+        "@antelopejs/interface-api": "api",
+        "@antelopejs/interface-database": "mongodb",
+      },
+    },
     mongodb: {
       source: {
         type: "package",
         package: "@antelopejs/mongodb",
         version: "1.2.7",
-      },
-    },
-    database_decorators: {
-      source: {
-        type: "package",
-        package: "@antelopejs/database-decorators",
-        version: "1.1.1",
       },
     },
     api: {
