@@ -3,7 +3,6 @@
     "target": "esnext",
     "module": "commonjs",
     "lib": ["ES2022"],
-    "moduleResolution": "node",
     "types": ["node", "mocha"],
     "esModuleInterop": true,
     "strict": true,
@@ -13,10 +12,9 @@
     "sourceMap": true,
     "outDir": "dist",
     "rootDir": "src",
-    "baseUrl": ".",
     "paths": {
-      "@antelopejs/interface-data-api": ["src/index.ts"],
-      "@antelopejs/interface-data-api/*": ["src/*"]
+      "@antelopejs/interface-data-api": ["./src/index.ts"],
+      "@antelopejs/interface-data-api/*": ["./src/*"]
     }
   },
   "include": ["src"]

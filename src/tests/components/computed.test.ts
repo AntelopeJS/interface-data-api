@@ -1,6 +1,8 @@
 import path from "node:path";
+import { expect } from "chai";
 import { Controller } from "@antelopejs/interface-api";
 import { GetMetadata } from "@antelopejs/interface-core";
+import { Schema, type ValueProxy } from "@antelopejs/interface-database";
 import {
   DataController,
   DefaultRoutes,
@@ -16,7 +18,6 @@ import {
   ModelReference,
   Sortable,
 } from "@antelopejs/interface-data-api/metadata";
-import { Schema, type ValueProxy } from "@antelopejs/interface-database";
 import {
   BasicDataModel,
   Field,
@@ -27,7 +28,7 @@ import {
   Relation,
   Table,
 } from "@antelopejs/interface-database-decorators";
-import { expect } from "chai";
+
 import {
   editRequest,
   getFunctionName,

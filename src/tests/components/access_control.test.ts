@@ -1,16 +1,17 @@
 import path from "node:path";
+import { expect } from "chai";
 import { Controller } from "@antelopejs/interface-api";
-import {
-  DataController,
-  DefaultRoutes,
-  RegisterDataController,
-} from "@antelopejs/interface-data-api";
+import type { SchemaInstance } from "@antelopejs/interface-database";
 import {
   Access,
   AccessMode,
   ModelReference,
 } from "@antelopejs/interface-data-api/metadata";
-import type { SchemaInstance } from "@antelopejs/interface-database";
+import {
+  DataController,
+  DefaultRoutes,
+  RegisterDataController,
+} from "@antelopejs/interface-data-api";
 import {
   BasicDataModel,
   Field,
@@ -20,7 +21,7 @@ import {
   RegisterTable,
   Table,
 } from "@antelopejs/interface-database-decorators";
-import { expect } from "chai";
+
 import {
   editRequest,
   getFunctionName,

@@ -1,10 +1,21 @@
 import path from "node:path";
+import { expect } from "chai";
 import { Controller } from "@antelopejs/interface-api";
+import { Schema, type ValueProxy } from "@antelopejs/interface-database";
 import {
   DataController,
   DefaultRoutes,
   RegisterDataController,
 } from "@antelopejs/interface-data-api";
+import {
+  BasicDataModel,
+  Field,
+  Model,
+  RegisterSchema,
+  RegisterTable,
+  Relation,
+  Table,
+} from "@antelopejs/interface-database-decorators";
 import {
   Access,
   AccessMode,
@@ -15,17 +26,7 @@ import {
   ModelReference,
   Sortable,
 } from "@antelopejs/interface-data-api/metadata";
-import { Schema, type ValueProxy } from "@antelopejs/interface-database";
-import {
-  BasicDataModel,
-  Field,
-  Model,
-  RegisterSchema,
-  RegisterTable,
-  Relation,
-  Table,
-} from "@antelopejs/interface-database-decorators";
-import { expect } from "chai";
+
 import {
   editRequest,
   getFunctionName,

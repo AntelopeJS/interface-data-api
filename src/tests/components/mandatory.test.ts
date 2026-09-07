@@ -1,5 +1,7 @@
 import path from "node:path";
+import { expect } from "chai";
 import { Controller } from "@antelopejs/interface-api";
+import { Schema } from "@antelopejs/interface-database";
 import {
   DataController,
   DefaultRoutes,
@@ -11,7 +13,6 @@ import {
   Mandatory,
   ModelReference,
 } from "@antelopejs/interface-data-api/metadata";
-import { Schema } from "@antelopejs/interface-database";
 import {
   BasicDataModel,
   Field,
@@ -21,7 +22,7 @@ import {
   RegisterTable,
   Table,
 } from "@antelopejs/interface-database-decorators";
-import { expect } from "chai";
+
 import {
   editRequest,
   getFunctionName,

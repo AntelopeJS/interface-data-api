@@ -1,13 +1,27 @@
 import path from "node:path";
-import type { RequestContext } from "@antelopejs/interface-api";
+import { expect } from "chai";
 import { Controller } from "@antelopejs/interface-api";
+import type { RequestContext } from "@antelopejs/interface-api";
+import { Query } from "@antelopejs/interface-data-api/components";
+import {
+  Schema,
+  type Stream,
+  type ValueProxy,
+} from "@antelopejs/interface-database";
 import {
   DataController,
   DefaultRoutes,
   GetDataControllerMeta,
   RegisterDataController,
 } from "@antelopejs/interface-data-api";
-import { Query } from "@antelopejs/interface-data-api/components";
+import {
+  BasicDataModel,
+  Field,
+  Model,
+  RegisterSchema,
+  RegisterTable,
+  Table,
+} from "@antelopejs/interface-database-decorators";
 import {
   Access,
   AccessMode,
@@ -17,20 +31,7 @@ import {
   ModelReference,
   Sortable,
 } from "@antelopejs/interface-data-api/metadata";
-import {
-  Schema,
-  type Stream,
-  type ValueProxy,
-} from "@antelopejs/interface-database";
-import {
-  BasicDataModel,
-  Field,
-  Model,
-  RegisterSchema,
-  RegisterTable,
-  Table,
-} from "@antelopejs/interface-database-decorators";
-import { expect } from "chai";
+
 import { getSchemaInstance } from "../utils";
 
 const currentTestName = path

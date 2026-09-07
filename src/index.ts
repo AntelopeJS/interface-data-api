@@ -1,4 +1,16 @@
 import assert_ from "node:assert";
+import { assert } from "@antelopejs/interface-api-util";
+import { GetMetadata } from "@antelopejs/interface-core";
+import { getTablesForSchema } from "@antelopejs/interface-database-decorators/schema";
+import { triggerEvent } from "@antelopejs/interface-database-decorators/modifiers/common";
+import {
+  type Class,
+  MakeClassDecorator,
+} from "@antelopejs/interface-core/decorators";
+import {
+  DatumStaticMetadata,
+  getMetadata,
+} from "@antelopejs/interface-database-decorators";
 import {
   Context,
   type ControllerClass,
@@ -8,47 +20,25 @@ import {
   type RequestContext,
   Route,
 } from "@antelopejs/interface-api";
-import { assert } from "@antelopejs/interface-api-util";
-import { GetMetadata } from "@antelopejs/interface-core";
-import {
-  type Class,
-  MakeClassDecorator,
-  type ParameterDecorator,
-} from "@antelopejs/interface-core/decorators";
-import {
-  DatumStaticMetadata,
-  getMetadata,
-} from "@antelopejs/interface-database-decorators";
-import { triggerEvent } from "@antelopejs/interface-database-decorators/modifiers/common";
-import { getTablesForSchema } from "@antelopejs/interface-database-decorators/schema";
+
 import { Parameters, Query, Validation } from "./components";
-import { DataAPIMeta } from "./metadata";
+import {
+  DataAPIMeta,
+  type DataControllerCallback,
+  type DataControllerCallbackWithOptions,
+  type DataControllerDef,
+  type ExtractDefCallbacks,
+  GetDataControllerMeta,
+} from "./metadata";
 
-export type DataControllerCallback<O = any> = {
-  args: (ParameterDecorator | ParameterDecorator[])[];
-  method: string;
-  func: (ctx: any, opts: O, ...args: any[]) => any;
-};
-
-export type DataControllerCallbackWithOptions<O = any> = {
-  endpoint?: string;
-  options?: Partial<O>;
-  callback: DataControllerCallback<O>;
-};
-
-export type ExtractCallback<T> = T extends DataControllerCallbackWithOptions
-  ? T["callback"]["func"]
-  : T extends DataControllerCallback
-    ? T["func"]
-    : never;
-
-export type DataControllerDef = {
-  [name: string]: DataControllerCallback | DataControllerCallbackWithOptions;
-};
-
-export type ExtractDefCallbacks<T extends {}> = {
-  [K in keyof T]: ExtractCallback<T[K]>;
-};
+export {
+  type DataControllerCallback,
+  type DataControllerCallbackWithOptions,
+  type DataControllerDef,
+  type ExtractCallback,
+  type ExtractDefCallbacks,
+  GetDataControllerMeta,
+} from "./metadata";
 
 abstract class TableHolder<C extends Class> {
   table!: InstanceType<C>;
@@ -131,14 +121,6 @@ export const RegisterDataController = MakeClassDecorator((target) => {
     );
   }
 });
-
-export function GetDataControllerMeta(thisObj: any): DataAPIMeta {
-  return GetMetadata(
-    Object.getPrototypeOf(thisObj).constructor,
-    DataAPIMeta,
-    true,
-  );
-}
 
 function displayOnlyComputedFields(
   meta: DataAPIMeta,
@@ -414,7 +396,7 @@ export namespace DefaultRoutes {
     } else {
       return {
         endpoint: endpoint ?? callback.endpoint,
-        options: { ...(callback.options ?? {}), ...(options ?? {}) },
+        options: { ...callback.options, ...options },
         callback: callback.callback,
       };
     }

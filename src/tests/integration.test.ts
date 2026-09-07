@@ -1,4 +1,5 @@
 import path from "node:path";
+import { expect } from "chai";
 import { Controller } from "@antelopejs/interface-api";
 import {
   DataController,
@@ -24,7 +25,7 @@ import {
   Relation,
   Table,
 } from "@antelopejs/interface-database-decorators";
-import { expect } from "chai";
+
 import {
   editRequest,
   getRequest,
