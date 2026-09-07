@@ -297,9 +297,8 @@ async function filtersByComputedAggregate() {
 }
 
 async function ignoresComputedFieldsOnEdit() {
-  const { groupIds, groupModel } = await _createDataController(
-    getFunctionName(),
-  );
+  const { groupIds, groupModel } =
+    await _createDataController(getFunctionName());
 
   const editPayload = {
     name: "Alpha Prime",

@@ -1,6 +1,5 @@
 # Changelog
 
-
 ## v0.1.8
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.1.7...v0.1.8)
@@ -175,7 +174,6 @@
 
 ## v0.0.2
 
-
 ### 🚀 Enhancements
 
 - Add data API interface implementation ([f203c57](https://github.com/AntelopeJS/interface-data-api/commit/f203c57))
@@ -201,4 +199,3 @@
 
 - Antony Rizzitelli <upd4ting@gmail.com>
 - Glastis ([@Glastis](http://github.com/Glastis))
-

@@ -17,9 +17,32 @@ your module must also import those peer interfaces.
 ## Imports
 
 ```typescript
-import { DataController, DefaultRoutes, RegisterDataController, GetDataControllerMeta } from "@antelopejs/interface-data-api";
-import { Access, AccessMode, Listable, Mandatory, Optional, Sortable, Filter, Foreign, Joined, Computed, Validator, ModelReference, ModifierKey } from "@antelopejs/interface-data-api/metadata";
-import { Parameters, Query, Validation } from "@antelopejs/interface-data-api/components";
+import {
+  DataController,
+  DefaultRoutes,
+  RegisterDataController,
+  GetDataControllerMeta,
+} from "@antelopejs/interface-data-api";
+import {
+  Access,
+  AccessMode,
+  Listable,
+  Mandatory,
+  Optional,
+  Sortable,
+  Filter,
+  Foreign,
+  Joined,
+  Computed,
+  Validator,
+  ModelReference,
+  ModifierKey,
+} from "@antelopejs/interface-data-api/metadata";
+import {
+  Parameters,
+  Query,
+  Validation,
+} from "@antelopejs/interface-data-api/components";
 ```
 
 `/components` is only needed for custom route callbacks (query building, validation helpers).
@@ -28,9 +51,26 @@ import { Parameters, Query, Validation } from "@antelopejs/interface-data-api/co
 
 ```typescript
 import { Controller } from "@antelopejs/interface-api";
-import { DataController, DefaultRoutes, RegisterDataController } from "@antelopejs/interface-data-api";
-import { Access, AccessMode, Listable, Mandatory, ModelReference, Sortable } from "@antelopejs/interface-data-api/metadata";
-import { BasicDataModel, Field, Model, RegisterTable, Table } from "@antelopejs/interface-database-decorators";
+import {
+  DataController,
+  DefaultRoutes,
+  RegisterDataController,
+} from "@antelopejs/interface-data-api";
+import {
+  Access,
+  AccessMode,
+  Listable,
+  Mandatory,
+  ModelReference,
+  Sortable,
+} from "@antelopejs/interface-data-api/metadata";
+import {
+  BasicDataModel,
+  Field,
+  Model,
+  RegisterTable,
+  Table,
+} from "@antelopejs/interface-database-decorators";
 
 @RegisterTable("tasks", "default")
 class Task extends Table {
@@ -43,7 +83,11 @@ class Task extends Table {
 class TaskModel extends BasicDataModel(Task, "tasks") {}
 
 @RegisterDataController()
-class TaskAPI extends DataController(Task, DefaultRoutes.All, Controller("/tasks")) {
+class TaskAPI extends DataController(
+  Task,
+  DefaultRoutes.All,
+  Controller("/tasks"),
+) {
   @ModelReference()
   @Model(TaskModel, "my-database")
   declare taskModel: TaskModel;

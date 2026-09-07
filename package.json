@@ -4,23 +4,32 @@
   "description": "AntelopeJS interface for data API with CRUD controllers and route generation",
   "keywords": [
     "antelopejs",
-    "interface",
+    "crud",
     "data-api",
-    "crud"
+    "interface"
   ],
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/AntelopeJS/interface-data-api.git"
   },
-  "license": "Apache-2.0",
-  "packageManager": "pnpm@10.6.5",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "files": [
     "dist",
     "docs",
     "skills"
   ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "components": [
+        "dist/components.d.ts"
+      ],
+      "metadata": [
+        "dist/metadata.d.ts"
+      ]
+    }
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -31,6 +40,10 @@
       "default": "./dist/*.js"
     },
     "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "build": "rimraf dist && tsc",
@@ -73,20 +86,7 @@
     "@antelopejs/interface-database": ">=0.1.2 <1.0.0",
     "@antelopejs/interface-database-decorators": ">=0.1.1 <1.0.0"
   },
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
-  },
-  "typesVersions": {
-    "*": {
-      "components": [
-        "dist/components.d.ts"
-      ],
-      "metadata": [
-        "dist/metadata.d.ts"
-      ]
-    }
-  },
+  "packageManager": "pnpm@10.6.5",
   "antelopeJs": {
     "standalone": true,
     "test": "src/antelope.test.ts",
