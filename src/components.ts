@@ -36,6 +36,7 @@ export namespace Parameters {
     return (<any>reqCtx).dataAPIEntry?.options ?? {};
   }
 
+  /** Extracts request filters and mandatory route filters, with route field keys winning. Returns fresh tuples. */
   export function ExtractFilters(
     reqCtx: RequestContext,
     meta: DataAPIMeta,
@@ -50,6 +51,10 @@ export namespace Parameters {
           ? [match[2], match[1] as FilterValue[1]]
           : [searchVal, "eq"];
       }
+    }
+    const overrides = GetOptionOverrides<ListParameters>(reqCtx);
+    for (const [key, value] of Object.entries(overrides.filters ?? {})) {
+      result[key] = [...value];
     }
     return result;
   }
@@ -75,7 +80,7 @@ export namespace Parameters {
     const overrides = GetOptionOverrides<T>(reqCtx);
     const result: Partial<T> = { ...overrides };
     for (const key of Object.keys(dynamic)) {
-      if (!(key in result)) {
+      if (!(key in result) || dynamic[key] === ExtractFilters) {
         const extractor = dynamic[key];
         if (typeof extractor === "string") {
           if (extractor.startsWith("multi:")) {
@@ -100,6 +105,7 @@ export namespace Parameters {
   }
 
   export interface ListParameters {
+    /** Mandatory route filters when supplied through WithOptions; combined with request filters by field key. */
     filters?: Record<string, FilterValue>;
 
     offset?: number;
