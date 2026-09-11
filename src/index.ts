@@ -160,8 +160,20 @@ function displayOnlyJoinedFields(
 }
 
 export namespace DefaultRoutes {
+  /** Receives the loaded, unlocked model before readable fields are selected. Throw to deny the read. */
+  export type GetGuard = (
+    this: unknown,
+    ctx: RequestContext,
+    current: Record<string, any>,
+    params: Parameters.GetParameters,
+  ) => void | Promise<void>;
+
   class Methods {
-    async get(_reqCtx: RequestContext, params: Parameters.GetParameters) {
+    async get(
+      reqCtx: RequestContext,
+      params: Parameters.GetParameters,
+      guard?: GetGuard,
+    ) {
       const meta = GetDataControllerMeta(this);
 
       const model = Query.GetModel(this, meta);
@@ -177,6 +189,7 @@ export namespace DefaultRoutes {
       const dbResult = model.constructor.fromDatabase(await query);
       assert(dbResult, 404, "Not Found");
       Validation.Unlock(this, meta, dbResult);
+      await guard?.call(this, reqCtx, dbResult, params);
 
       const results = await Query.ReadProperties(this, meta, dbResult, "get");
 
@@ -353,6 +366,25 @@ export namespace DefaultRoutes {
     args: [Context(), Parameters.Get()],
     method: "get",
   };
+
+  /**
+   * Creates a Get route with an awaited guard after loading and unlocking the
+   * model, before response projection/transformation. Uses the same query and
+   * preserves controller `this` and request context. Missing rows remain 404.
+   * The guard must treat the model as read-only; it includes non-readable fields
+   * and the normal Get joined/computed/foreign data, not the response DTO.
+   */
+  export function WithGetGuard(
+    guard: GetGuard,
+  ): DataControllerCallback<Parameters.GetParameters> {
+    return {
+      ...Get,
+      func: function (ctx, params) {
+        return Methods.prototype.get.call(this, ctx, params, guard);
+      },
+    };
+  }
+
   export const List = {
     func: Methods.prototype.list,
     args: [Context(), Parameters.List()],

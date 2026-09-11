@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.1.9
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.1.8...v0.1.9)
+
+### 🩹 Fixes
+
+- Merge mandatory filters and add loaded-model Get guard ([#25](https://github.com/AntelopeJS/interface-data-api/pull/25))
+
+### 🤖 CI
+
+- Standardize npm releases ([#23](https://github.com/AntelopeJS/interface-data-api/pull/23))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v0.1.8
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.1.7...v0.1.8)
