@@ -1,9 +1,11 @@
+import { assert } from "@antelopejs/interface-api-util";
+import type { DataModel } from "@antelopejs/interface-database-decorators/model";
+import type { Constructible } from "@antelopejs/interface-database-decorators/common";
+import { MakeParameterAndPropertyDecorator } from "@antelopejs/interface-core/decorators";
 import {
   type RequestContext,
   SetParameterProvider,
 } from "@antelopejs/interface-api";
-import { assert } from "@antelopejs/interface-api-util";
-import { MakeParameterAndPropertyDecorator } from "@antelopejs/interface-core/decorators";
 import {
   type Datum,
   Schema,
@@ -12,8 +14,6 @@ import {
   type Table,
   type ValueProxy,
 } from "@antelopejs/interface-database";
-import type { Constructible } from "@antelopejs/interface-database-decorators/common";
-import type { DataModel } from "@antelopejs/interface-database-decorators/model";
 import {
   fromDatabase,
   lock,
@@ -21,12 +21,13 @@ import {
   unlock,
   unlockrequest,
 } from "@antelopejs/interface-database-decorators/modifiers/common";
-import { GetDataControllerMeta } from ".";
-import type {
-  ComputedFieldData,
-  DataAPIMeta,
-  FilterValue,
-  ForeignJoinedRef,
+
+import {
+  type ComputedFieldData,
+  type DataAPIMeta,
+  type FilterValue,
+  type ForeignJoinedRef,
+  GetDataControllerMeta,
 } from "./metadata";
 
 export namespace Parameters {

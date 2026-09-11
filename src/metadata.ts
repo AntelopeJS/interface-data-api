@@ -1,10 +1,6 @@
-import type { RequestContext } from "@antelopejs/interface-api";
 import { GetMetadata } from "@antelopejs/interface-core";
-import {
-  type Class,
-  MakeMethodAndPropertyDecorator,
-  MakePropertyDecorator,
-} from "@antelopejs/interface-core/decorators";
+import type { RequestContext } from "@antelopejs/interface-api";
+import type { ContainerModifier } from "@antelopejs/interface-database-decorators/modifiers/common";
 import type {
   Query,
   SchemaInstance,
@@ -17,8 +13,38 @@ import {
   getTablesForSchema,
   type Table,
 } from "@antelopejs/interface-database-decorators";
-import type { ContainerModifier } from "@antelopejs/interface-database-decorators/modifiers/common";
-import type { DataControllerCallbackWithOptions } from ".";
+import {
+  type Class,
+  MakeMethodAndPropertyDecorator,
+  MakePropertyDecorator,
+  type ParameterDecorator,
+} from "@antelopejs/interface-core/decorators";
+
+export type DataControllerCallback<O = any> = {
+  args: (ParameterDecorator | ParameterDecorator[])[];
+  method: string;
+  func: (ctx: any, opts: O, ...args: any[]) => any;
+};
+
+export type DataControllerCallbackWithOptions<O = any> = {
+  endpoint?: string;
+  options?: Partial<O>;
+  callback: DataControllerCallback<O>;
+};
+
+export type ExtractCallback<T> = T extends DataControllerCallbackWithOptions
+  ? T["callback"]["func"]
+  : T extends DataControllerCallback
+    ? T["func"]
+    : never;
+
+export type DataControllerDef = {
+  [name: string]: DataControllerCallback | DataControllerCallbackWithOptions;
+};
+
+export type ExtractDefCallbacks<T extends {}> = {
+  [K in keyof T]: ExtractCallback<T[K]>;
+};
 
 /**
  * Field access mode enum.
@@ -997,3 +1023,11 @@ export const ModifierKey = MakePropertyDecorator(
     );
   },
 );
+
+export function GetDataControllerMeta(thisObj: any): DataAPIMeta {
+  return GetMetadata(
+    Object.getPrototypeOf(thisObj).constructor,
+    DataAPIMeta,
+    true,
+  );
+}

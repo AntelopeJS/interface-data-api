@@ -1,5 +1,5 @@
-import { defineConfig } from "@antelopejs/interface-core/config";
 import { MongoMemoryServer } from "mongodb-memory-server-core";
+import { defineConfig } from "@antelopejs/interface-core/config";
 
 let mongod: MongoMemoryServer;
 

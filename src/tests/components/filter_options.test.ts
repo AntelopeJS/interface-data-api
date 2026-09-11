@@ -1,7 +1,7 @@
+import { expect } from "chai";
 import type { RequestContext } from "@antelopejs/interface-api";
 import { Parameters } from "@antelopejs/interface-data-api/components";
 import type { DataAPIMeta } from "@antelopejs/interface-data-api/metadata";
-import { expect } from "chai";
 
 const meta = {
   filters: { documentType: {}, status: {} },

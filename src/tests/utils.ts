@@ -1,5 +1,6 @@
-import { Schema } from "@antelopejs/interface-database";
 import { expect } from "chai";
+import { Schema } from "@antelopejs/interface-database";
+
 import { URL_BASE } from "./constants";
 
 export function getFunctionName(): string {
