@@ -1,3 +1,4 @@
+import { expect } from "chai";
 import { Controller } from "@antelopejs/interface-api";
 import { assert } from "@antelopejs/interface-api-util";
 import {
@@ -10,7 +11,6 @@ import {
   DefaultRoutes,
   RegisterDataController,
 } from "@antelopejs/interface-data-api";
-import { expect } from "chai";
 import {
   BasicDataModel,
   Field,

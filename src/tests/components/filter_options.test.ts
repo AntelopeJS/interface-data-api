@@ -1,6 +1,6 @@
+import { expect } from "chai";
 import type { RequestContext } from "@antelopejs/interface-api";
 import { Parameters } from "@antelopejs/interface-data-api/components";
-import { expect } from "chai";
 import type { DataAPIMeta } from "@antelopejs/interface-data-api/metadata";
 
 const meta = {
