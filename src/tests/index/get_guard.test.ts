@@ -1,15 +1,16 @@
 import { Controller } from "@antelopejs/interface-api";
 import { assert } from "@antelopejs/interface-api-util";
 import {
-  DataController,
-  DefaultRoutes,
-  RegisterDataController,
-} from "@antelopejs/interface-data-api";
-import {
   Access,
   AccessMode,
   ModelReference,
 } from "@antelopejs/interface-data-api/metadata";
+import {
+  DataController,
+  DefaultRoutes,
+  RegisterDataController,
+} from "@antelopejs/interface-data-api";
+import { expect } from "chai";
 import {
   BasicDataModel,
   Field,
@@ -18,7 +19,7 @@ import {
   RegisterTable,
   Table,
 } from "@antelopejs/interface-database-decorators";
-import { expect } from "chai";
+
 import { getRequest, getSchemaInstance, request } from "../utils";
 
 const TABLE = "get-guard-documents";
