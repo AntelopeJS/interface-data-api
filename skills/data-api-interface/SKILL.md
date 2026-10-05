@@ -127,6 +127,11 @@ This exposes `GET /tasks/get?id=`, `GET /tasks/list`, `POST /tasks/new`, `PUT /t
   of `DefaultRoutes.All`; use `DefaultRoutes.WithOptions(route, options, endpoint)` to rename an
   endpoint or preset parameter options.
 - `@Access` accepts per-action overrides, e.g. `@Access(AccessMode.ReadOnly, { edit: AccessMode.ReadWrite })`.
+- `edit` is a partial update: a field absent from the body is left unchanged, `null` clears it, and
+  setters only run for the fields present. `@Mandatory("edit")` rejects a field cleared by the body
+  (`null`, `""`, `[]`), not an absent one. `new` still writes every writable field and runs every setter.
+- A `@Validator` may return a parse result `{ success, data }` (e.g. zod's `safeParseAsync(value)`)
+  instead of a boolean: `data` is then written in place of the raw value.
 
 ## Deeper reference
 
