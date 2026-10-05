@@ -89,8 +89,10 @@ describe("Field Mandatory", () => {
     await newWithMissingMandatoryFields());
   it("edit row with all mandatory fields", async () =>
     await editWithAllMandatoryFields());
-  it("edit row with missing mandatory fields", async () =>
-    await editWithMissingMandatoryFields());
+  it("edit row without a mandatory field keeps its value", async () =>
+    await editWithoutMandatoryFieldKeepsValue());
+  it("edit row clearing a mandatory field", async () =>
+    await editClearingMandatoryField());
   it("skip mandatory validation when noMandatory is true", async () =>
     await skipMandatoryValidationWhenNoMandatory());
 
@@ -227,10 +229,17 @@ async function editWithAllMandatoryFields() {
     "status",
     validOrderDataset.alternative.status,
   );
+  if (order) {
+    await validateObject(order, validOrderDataset.default, [
+      "customerEmail",
+      "notes",
+      "internalReference",
+    ]);
+  }
 }
 
-async function editWithMissingMandatoryFields() {
-  const { id } = await _createDataController(
+async function editWithoutMandatoryFieldKeepsValue() {
+  const { id, orderModel } = await _createDataController(
     getFunctionName(),
     { edit: DefaultRoutes.Edit },
     validOrderDataset.default,
@@ -245,9 +254,33 @@ async function editWithMissingMandatoryFields() {
     },
     { id },
   );
-  expect(response.status).to.equal(400);
-  const text = await response.text();
-  expect(text).to.include("Missing mandatory fields: status");
+  expect(response.status).to.equal(200);
+
+  const order = await orderModel.get(id);
+  expect(order).to.have.property("status", validOrderDataset.default.status);
+}
+
+async function editClearingMandatoryField() {
+  const { id, orderModel } = await _createDataController(
+    getFunctionName(),
+    { edit: DefaultRoutes.Edit },
+    validOrderDataset.default,
+  );
+  if (!id) throw new Error("Expected id from _createDataController");
+
+  for (const clearedValue of [null, "", []]) {
+    const response = await editRequest(
+      getFunctionName(),
+      { status: clearedValue },
+      { id },
+    );
+    expect(response.status).to.equal(400);
+    const text = await response.text();
+    expect(text).to.include("Missing mandatory fields: status");
+  }
+
+  const order = await orderModel.get(id);
+  expect(order).to.have.property("status", validOrderDataset.default.status);
 }
 
 async function skipMandatoryValidationWhenNoMandatory() {
