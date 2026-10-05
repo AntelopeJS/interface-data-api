@@ -72,6 +72,33 @@ export interface ForeignJoinedRef {
 /**
  * DataAPI Metadata field information.
  */
+/** Parse outcome accepting the field value, carrying the value to write. */
+export interface FieldParseSuccess {
+  success: true;
+  data: unknown;
+}
+
+/** Parse outcome rejecting the field value. */
+export interface FieldParseFailure {
+  success: false;
+}
+
+/** Parse outcome of a field value, shaped like the result of zod's `safeParse`. */
+export type FieldParseResult = FieldParseSuccess | FieldParseFailure;
+
+/**
+ * Outcome of a field validator: `true`/`false` accepts or rejects the raw
+ * value, which is then written as received; a {@link FieldParseResult}
+ * accepts or rejects it, and on success its `data` is written instead of the
+ * raw value.
+ */
+export type FieldValidationResult = boolean | FieldParseResult;
+
+/** Field value validator, see {@link FieldValidationResult}. */
+export type FieldValidator = (
+  value: unknown,
+) => FieldValidationResult | Promise<FieldValidationResult>;
+
 export interface FieldData {
   /**
    * Field name in-database.
@@ -152,7 +179,7 @@ export interface FieldData {
   /**
    * Value validator callback.
    */
-  validator?: (value: unknown) => boolean | Promise<boolean>;
+  validator?: FieldValidator;
 
   /**
    * Field property descriptor.
@@ -683,10 +710,7 @@ export class DataAPIMeta {
    * @param name Field name
    * @param validator Value validator callback
    */
-  public setValidator(
-    name: string,
-    validator?: (value: unknown) => boolean | Promise<boolean>,
-  ) {
+  public setValidator(name: string, validator?: FieldValidator) {
     this.field(name).validator = validator;
     return this;
   }
@@ -939,12 +963,7 @@ export const Foreign = MakeMethodAndPropertyDecorator(
  * @param validator Value validator callback
  */
 export const Validator = MakeMethodAndPropertyDecorator(
-  (
-    target,
-    key,
-    desc,
-    validator: (val: unknown) => boolean | Promise<boolean>,
-  ) => {
+  (target, key, desc, validator: FieldValidator) => {
     GetMetadata(target.constructor, DataAPIMeta)
       .setDescriptor(key as string, desc)
       .setValidator(key as string, validator);

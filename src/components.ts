@@ -25,6 +25,8 @@ import {
 import {
   type ComputedFieldData,
   type DataAPIMeta,
+  type FieldParseResult,
+  type FieldValidationResult,
   type FilterValue,
   type ForeignJoinedRef,
   GetDataControllerMeta,
@@ -1093,17 +1095,31 @@ export namespace Validation {
     );
   }
 
+  function toParseResult(
+    result: FieldValidationResult,
+    value: unknown,
+  ): FieldParseResult {
+    if (typeof result !== "boolean") return result;
+    return result ? { success: true, data: value } : { success: false };
+  }
+
+  /**
+   * Runs the validator of each field present in `obj` and rejects with 400
+   * when one fails. Returns a copy of `obj` where each validated field holds
+   * the value its validator parsed (see {@link FieldValidationResult}).
+   */
   export async function ValidateTypes(
     meta: DataAPIMeta,
     obj: Record<string, any>,
-  ) {
+  ): Promise<Record<string, any>> {
+    const parsed: Record<string, any> = { ...obj };
     const invalid: string[] = [];
     for (const [name, field] of Object.entries(meta.fields)) {
-      if (
-        field.validator &&
-        name in obj &&
-        !(await field.validator(obj[name]))
-      ) {
+      if (!field.validator || !(name in obj)) continue;
+      const result = toParseResult(await field.validator(obj[name]), obj[name]);
+      if (result.success) {
+        parsed[name] = result.data;
+      } else {
         invalid.push(name);
       }
     }
@@ -1112,6 +1128,7 @@ export namespace Validation {
       400,
       `Invalid field type(s): ${invalid.join(", ")}`,
     );
+    return parsed;
   }
 
   export function Lock(obj: any, meta: DataAPIMeta, data: any) {
