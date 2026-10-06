@@ -301,13 +301,13 @@ export namespace DefaultRoutes {
     ) {
       const meta = GetDataControllerMeta(this);
 
-      const data = JSON.parse(body.toString());
+      const data = Validation.ParseBody(body);
       if (!params.noMandatory) {
         Validation.MandatoryFields(meta, data, "new");
       }
-      await Validation.ValidateTypes(meta, data);
+      const parsed = await Validation.ValidateTypes(meta, data);
 
-      const dbData = await Query.WriteProperties(this, meta, data, "new");
+      const dbData = await Query.WriteProperties(this, meta, parsed, "new");
       Validation.Lock(this, meta, dbData);
 
       const model = Query.GetModel(this, meta);
@@ -324,23 +324,23 @@ export namespace DefaultRoutes {
     ) {
       const meta = GetDataControllerMeta(this);
 
-      const data = JSON.parse(body.toString());
+      const data = Validation.ParseBody(body);
       if (!params.noMandatory) {
         Validation.MandatoryFields(meta, data, "edit");
       }
-      await Validation.ValidateTypes(meta, data);
+      const parsed = await Validation.ValidateTypes(meta, data);
 
       const model = Query.GetModel(this, meta);
 
-      const queryPrevious = Query.Get(model.table, params.id, params.index);
-      const dbResultPrevious = await queryPrevious;
+      const stored = await Query.Get(model.table, params.id, params.index);
+      assert(stored, 404, "Not Found");
 
       const dbData = await Query.WriteProperties(
         this,
         meta,
-        data,
+        parsed,
         "edit",
-        dbResultPrevious,
+        stored,
       );
       Validation.Lock(this, meta, dbData);
 

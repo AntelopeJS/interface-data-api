@@ -1,6 +1,9 @@
 import { assert } from "@antelopejs/interface-api-util";
 import type { DataModel } from "@antelopejs/interface-database-decorators/model";
-import type { Constructible } from "@antelopejs/interface-database-decorators/common";
+import {
+  type Constructible,
+  getMetadata,
+} from "@antelopejs/interface-database-decorators/common";
 import { MakeParameterAndPropertyDecorator } from "@antelopejs/interface-core/decorators";
 import {
   type RequestContext,
@@ -17,6 +20,7 @@ import {
 import {
   fromDatabase,
   lock,
+  ModifiersDynamicMetadata,
   toPlainData,
   unlock,
   unlockrequest,
@@ -25,9 +29,12 @@ import {
 import {
   type ComputedFieldData,
   type DataAPIMeta,
+  type FieldParseResult,
+  type FieldValidationResult,
   type FilterValue,
   type ForeignJoinedRef,
   GetDataControllerMeta,
+  type WritableAccessFields,
 } from "./metadata";
 
 export namespace Parameters {
@@ -909,6 +916,41 @@ export namespace Query {
     return res;
   }
 
+  function writableInBody(
+    writable: WritableAccessFields,
+    bodyData: Record<string, any>,
+  ): WritableAccessFields {
+    return {
+      props: writable.props.filter(([key]) => Object.hasOwn(bodyData, key)),
+      setters: writable.setters.filter(([key]) => Object.hasOwn(bodyData, key)),
+    };
+  }
+
+  function writeTargetDefaults(
+    instance: Record<string, any>,
+    meta: DataAPIMeta,
+    dbData: Record<string, any>,
+  ) {
+    for (const [key, value] of Object.entries(new meta.target())) {
+      if (value !== undefined) {
+        instance[key] = value;
+        if (key in meta.fields) {
+          dbData[meta.fields[key].dbName || key] = value;
+        }
+      }
+    }
+  }
+
+  /**
+   * Writes the writable fields of `bodyData` into a database row.
+   *
+   * Without `existingDBData` (creation), the row starts from the controller
+   * defaults and every writable field is written: a field absent from the body
+   * is written as `undefined` and every setter runs. With `existingDBData`
+   * (update), only the fields present in the body are written over the stored
+   * row and only their setters run: an absent field keeps its stored value,
+   * `null` clears it.
+   */
   export async function WriteProperties(
     obj: any,
     meta: DataAPIMeta,
@@ -916,20 +958,16 @@ export namespace Query {
     action?: string,
     existingDBData?: Record<string, any>,
   ) {
-    const writable =
+    const actionWritable =
       meta.writable[action ?? "_default"] ?? meta.writable._default;
+    const writable = existingDBData
+      ? writableInBody(actionWritable, bodyData)
+      : actionWritable;
     const instance: Record<string, any> = { ...obj };
     const dbData: Record<string, any> = existingDBData || {};
     Object.setPrototypeOf(dbData, meta.tableClass.prototype);
     if (!existingDBData) {
-      for (const [key, value] of Object.entries(new meta.target())) {
-        if (value !== undefined) {
-          instance[key] = value;
-          if (key in meta.fields) {
-            dbData[meta.fields[key].dbName || key] = value;
-          }
-        }
-      }
+      writeTargetDefaults(instance, meta, dbData);
     }
     for (const [key, field] of writable.props) {
       instance[key] = bodyData[key];
@@ -1082,9 +1120,36 @@ export namespace Query {
 }
 
 export namespace Validation {
+  type RequestBody = Record<string, any>;
+  type MissingFieldCheck = (body: RequestBody, name: string) => boolean;
+
+  function isClearingValue(value: unknown): boolean {
+    if (value === null || value === undefined) return true;
+    if (typeof value === "string") return value.length === 0;
+    return Array.isArray(value) && value.length === 0;
+  }
+
+  const isAbsentFromBody: MissingFieldCheck = (body, name) => !(name in body);
+
+  const isClearedByBody: MissingFieldCheck = (body, name) =>
+    Object.hasOwn(body, name) && isClearingValue(body[name]);
+
+  const MISSING_MANDATORY_FIELD_CHECKS: Record<string, MissingFieldCheck> = {
+    edit: isClearedByBody,
+  };
+
+  /**
+   * Rejects with 400 the request bodies missing a field mandatory for `type`.
+   * On `edit`, a mandatory field is missing when the body clears it (`null`,
+   * `""` or `[]`); a field absent from the body keeps its stored value. On any
+   * other action, it is missing when absent from the body.
+   */
   export function MandatoryFields(meta: DataAPIMeta, obj: any, type: string) {
+    const isMissing = MISSING_MANDATORY_FIELD_CHECKS[type] ?? isAbsentFromBody;
     const missing = Object.entries(meta.fields)
-      .filter(([name, field]) => field.mandatory?.has(type) && !(name in obj))
+      .filter(
+        ([name, field]) => field.mandatory?.has(type) && isMissing(obj, name),
+      )
       .map(([name]) => name);
     assert(
       missing.length === 0,
@@ -1093,17 +1158,31 @@ export namespace Validation {
     );
   }
 
+  function toParseResult(
+    result: FieldValidationResult,
+    value: unknown,
+  ): FieldParseResult {
+    if (typeof result !== "boolean") return result;
+    return result ? { success: true, data: value } : { success: false };
+  }
+
+  /**
+   * Runs the validator of each field present in `obj` and rejects with 400
+   * when one fails. Returns a copy of `obj` where each validated field holds
+   * the value its validator parsed (see {@link FieldValidationResult}).
+   */
   export async function ValidateTypes(
     meta: DataAPIMeta,
-    obj: Record<string, any>,
-  ) {
+    obj: RequestBody,
+  ): Promise<RequestBody> {
+    const parsed: RequestBody = { ...obj };
     const invalid: string[] = [];
     for (const [name, field] of Object.entries(meta.fields)) {
-      if (
-        field.validator &&
-        name in obj &&
-        !(await field.validator(obj[name]))
-      ) {
+      if (!field.validator || !(name in obj)) continue;
+      const result = toParseResult(await field.validator(obj[name]), obj[name]);
+      if (result.success) {
+        parsed[name] = result.data;
+      } else {
         invalid.push(name);
       }
     }
@@ -1112,12 +1191,38 @@ export namespace Validation {
       400,
       `Invalid field type(s): ${invalid.join(", ")}`,
     );
+    return parsed;
   }
 
+  /** Parses a request body, rejecting with 400 anything but a JSON object. */
+  export function ParseBody(body: Buffer): RequestBody {
+    let data: unknown;
+    try {
+      data = JSON.parse(body.toString());
+    } catch {
+      assert(false, 400, "Invalid JSON body.");
+    }
+    assert(
+      typeof data === "object" && data !== null && !Array.isArray(data),
+      400,
+      "The request body must be a JSON object.",
+    );
+    return data as RequestBody;
+  }
+
+  /**
+   * Locks the modifier fields (localized, encrypted…) written into `data`
+   * since it was read, with the controller's modifier keys. A field left
+   * untouched keeps its stored locked value: read while locked it would be
+   * `undefined`, and locking it again would store that over it.
+   */
   export function Lock(obj: any, meta: DataAPIMeta, data: any) {
+    const written = Object.keys(
+      getMetadata(data, ModifiersDynamicMetadata).floating,
+    );
     for (const [modifier, field] of meta.modifierKeys.entries()) {
       const key = obj[field];
-      lock(data, modifier, undefined, key);
+      lock(data, modifier, written, key);
     }
   }
 
