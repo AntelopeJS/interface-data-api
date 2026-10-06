@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.1.10
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.1.9...v0.1.10)
+
+### 🏡 Chore
+
+- Replace Biome with oxlint, oxfmt and Knip ([#24](https://github.com/AntelopeJS/interface-data-api/pull/24))
+- Align community files with the organization defaults ([#27](https://github.com/AntelopeJS/interface-data-api/pull/27))
+- Remove .git-blame-ignore-revs ([#28](https://github.com/AntelopeJS/interface-data-api/pull/28))
+
+### 🤖 CI
+
+- Use shared npm release workflow ([#26](https://github.com/AntelopeJS/interface-data-api/pull/26))
+- **release:** Release next from a dedicated branch and restore requireCommits ([#29](https://github.com/AntelopeJS/interface-data-api/pull/29))
+- **release:** Reference the shared release workflows through v1 ([#30](https://github.com/AntelopeJS/interface-data-api/pull/30))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+- Thomas
+
 ## v0.1.9
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.1.8...v0.1.9)
