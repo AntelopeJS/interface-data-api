@@ -111,7 +111,8 @@ This exposes `GET /tasks/get?id=`, `GET /tasks/list`, `POST /tasks/new`, `PUT /t
 
 - `@RegisterDataController()` is mandatory: it wires field decorators, parameter providers, and
   routes. A `@ModelReference()` property holding a `@Model` instance is required too (`Query.GetModel`
-  throws 500 without it).
+  throws 500 without it). A controller derived from another data controller inherits it unless it
+  declares its own.
 - Fields with no decorator are invisible to the API — neither returned nor writable; visibility
   requires `@Access`. `@Optional()` only registers a field as not-mandatory (it does not expose it).
 - `list` responds `{ results, total, offset, limit }`. `limit` defaults to 10 and is capped at 100

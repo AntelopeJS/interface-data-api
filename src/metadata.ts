@@ -389,9 +389,7 @@ export class DataAPIMeta {
     for (const [key, list] of Object.entries(parent.pluck)) {
       this.pluck[key] = new Set(list);
     }
-    if (!("modelKey" in this)) {
-      this.modelKey = parent.modelKey;
-    }
+    this.modelKey ??= parent.modelKey;
     for (const key of parent.modifierKeys.keys()) {
       if (!this.modifierKeys.has(key)) {
         const value = parent.modifierKeys.get(key);
