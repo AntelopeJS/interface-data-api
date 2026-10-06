@@ -1,14 +1,67 @@
+import path from "node:path";
 import { expect } from "chai";
 import { Schema } from "@antelopejs/interface-database";
 
 import { URL_BASE } from "./constants";
 
+const UNKNOWN_FUNCTION_NAME = "unknown";
+const PREPARE_STACK_TRACE = "prepareStackTrace";
+const TESTS_FOLDER_PREFIX = `${__dirname}${path.sep}`;
+
+function readCallSites(
+  _error: Error,
+  callSites: NodeJS.CallSite[],
+): NodeJS.CallSite[] {
+  return callSites;
+}
+
+function isCallSiteList(stack: unknown): stack is NodeJS.CallSite[] {
+  return Array.isArray(stack);
+}
+
+function restoreErrorProperty(
+  property: string,
+  descriptor: PropertyDescriptor | undefined,
+): void {
+  if (!descriptor) {
+    Reflect.deleteProperty(Error, property);
+    return;
+  }
+  Object.defineProperty(Error, property, descriptor);
+}
+
+function captureCallSites(): NodeJS.CallSite[] {
+  const { stackTraceLimit } = Error;
+  const prepareStackTrace = Object.getOwnPropertyDescriptor(
+    Error,
+    PREPARE_STACK_TRACE,
+  );
+  Error.stackTraceLimit = Infinity;
+  Error.prepareStackTrace = readCallSites;
+  try {
+    const stack: unknown = new Error().stack;
+    return isCallSiteList(stack) ? stack : [];
+  } finally {
+    restoreErrorProperty(PREPARE_STACK_TRACE, prepareStackTrace);
+    Error.stackTraceLimit = stackTraceLimit;
+  }
+}
+
+function isTestCallSite(callSite: NodeJS.CallSite): boolean {
+  const fileName = callSite.getFileName();
+  return fileName !== __filename && !!fileName?.startsWith(TESTS_FOLDER_PREFIX);
+}
+
+/**
+ * Returns the name of the test function that called it.
+ *
+ * The caller is the first stack frame located in the tests folder, so frames
+ * added between the test and this helper (module loader facades, async
+ * context wrappers) do not change the result.
+ */
 export function getFunctionName(): string {
-  const err = new Error();
-  const stack = err.stack?.split("\n");
-  const line = stack?.[2] ?? "";
-  const match = line.match(/at (\w+)/);
-  return match?.[1] ?? "unknown";
+  const caller = captureCallSites().find(isTestCallSite);
+  return caller?.getFunctionName() ?? UNKNOWN_FUNCTION_NAME;
 }
 
 export async function request(
