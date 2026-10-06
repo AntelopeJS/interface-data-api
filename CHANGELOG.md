@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.2.0
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.1.10...v0.2.0)
+
+### 🩹 Fixes
+
+- **routes:** ⚠️  Make edit partial and write validator-parsed values ([#33](https://github.com/AntelopeJS/interface-data-api/pull/33))
+- **metadata:** Inherit the model key in derived data controllers ([#34](https://github.com/AntelopeJS/interface-data-api/pull/34))
+
+#### ⚠️ Breaking Changes
+
+- **routes:** ⚠️  Make edit partial and write validator-parsed values ([#33](https://github.com/AntelopeJS/interface-data-api/pull/33))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v0.1.10
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.1.9...v0.1.10)
