@@ -63,6 +63,7 @@ export enum AccessMode {
 export interface ForeignJoinedRef {
   name: string;
   table: string;
+  tableClass?: Class<Table>;
   localKey: string;
   remoteField: string;
   remoteIndex: string;
@@ -298,10 +299,17 @@ function resolveTableReference(
   if (!databaseSchema) {
     throw new Error(`Schema "${targetSchema}" not found for ${contextLabel}`);
   }
+  const tableClass = databaseSchema[table];
+  const isOtherSchema = targetSchema !== sourceSchemaName;
+  if (isOtherSchema && !tableClass) {
+    throw new Error(
+      `Table "${table}" is not registered in schema "${targetSchema}" for ${contextLabel}: register its class with @RegisterTable before declaring the field`,
+    );
+  }
   return {
     tableName: table,
-    tableClass: databaseSchema[table],
-    schemaName: targetSchema === sourceSchemaName ? undefined : targetSchema,
+    tableClass,
+    schemaName: isOtherSchema ? targetSchema : undefined,
   };
 }
 
@@ -317,7 +325,9 @@ export class DataAPIMeta {
   /**
    * Key symbol.
    */
-  public static key = Symbol();
+  public static key = Symbol.for(
+    "@antelopejs/interface-data-api/DataAPIMeta@1",
+  );
 
   public readonly filters: Record<string, FilterFunction<any>> = {};
 
@@ -679,6 +689,7 @@ export class DataAPIMeta {
         groups.push({
           name: fieldName,
           table: j.table,
+          tableClass: j.tableClass,
           localKey: j.localKey,
           remoteField: j.remoteField,
           remoteIndex: j.remoteIndex,
