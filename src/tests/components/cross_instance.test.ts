@@ -2,7 +2,11 @@ import path from "node:path";
 import { expect } from "chai";
 import type { RequestContext } from "@antelopejs/interface-api";
 import { Controller } from "@antelopejs/interface-api";
-import { Schema, type Stream } from "@antelopejs/interface-database";
+import {
+  Schema,
+  type Stream,
+  type ValueProxy,
+} from "@antelopejs/interface-database";
 import {
   Field,
   RegisterSchema,
@@ -88,10 +92,17 @@ class CustomerAPI extends DataApi.DataController(
   @Metadata.Listable()
   @Metadata.Joined({ table: User, localKey: "ownerId", remoteField: "name" })
   declare ownerName: string;
+
+  @Metadata.Listable()
+  @Metadata.Computed((row) =>
+    (row.key("name") as ValueProxy<string>).concat("!"),
+  )
+  declare label: string;
 }
 
 interface ListedCustomer {
   name: string;
+  label: string;
   owner: { name: string } | null;
   ownerName: string | null;
 }
@@ -111,6 +122,10 @@ describe("Data API across interface instances", () => {
   it(
     "Query.List and Foreign from another instance apply the filter, sort, foreign and joined fields of a controller declared through this one, resolving the other schema through the target class even when the listing instance holds a schema with the same id (dms search-route)",
     OtherInstanceListsTest,
+  );
+  it(
+    "Foreign and Computed from another instance resolve foreign and computed fields on a stream built through this one (dms search-route)",
+    OtherInstanceDecoratesStreamTest,
   );
   it(
     "a cross-schema foreign target declared by name with no registered class fails at decoration, naming the field",
@@ -161,6 +176,23 @@ async function OtherInstanceListsTest() {
   ).to.deep.equal([
     ["Bea", "Bea Owner", "Bea Owner"],
     ["Ada", "Ada Owner", "Ada Owner"],
+  ]);
+}
+
+async function OtherInstanceDecoratesStreamTest() {
+  const controller = new CustomerAPI();
+  const meta = OtherMetadata.GetDataControllerMeta(controller);
+  const db = Schema.get(clientSchema)!.instance();
+  const stream = Customer.table().orderBy("name");
+  const withForeign = OtherComponents.Query.Foreign(db, meta, stream);
+  const decorated = OtherComponents.Query.Computed(db, meta, withForeign);
+  const rows = (await decorated.run()) as ListedCustomer[];
+  expect(
+    rows.map(({ name, owner, label }) => [name, owner?.name, label]),
+  ).to.deep.equal([
+    ["Ada", "Ada Owner", "Ada!"],
+    ["Bea", "Bea Owner", "Bea!"],
+    ["Cid", "Ada Owner", "Cid!"],
   ]);
 }
 
