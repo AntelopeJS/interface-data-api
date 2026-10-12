@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.2.1
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.2.0...v0.2.1)
+
+### 🩹 Fixes
+
+- **components:** Recognise controllers and tables from another interface instance ([#35](https://github.com/AntelopeJS/interface-data-api/pull/35))
+
+### ❤️ Contributors
+
+- Thomas ([@Thomasims](http://github.com/Thomasims))
+
 ## v0.2.0
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.1.10...v0.2.0)
