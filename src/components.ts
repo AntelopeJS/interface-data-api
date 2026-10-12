@@ -11,12 +11,13 @@ import {
 } from "@antelopejs/interface-api";
 import {
   type Datum,
-  Schema,
+  IsStream,
   type SchemaInstance,
   Stream,
   type Table,
   type ValueProxy,
 } from "@antelopejs/interface-database";
+import type { TableClass } from "@antelopejs/interface-database-decorators/table";
 import {
   fromDatabase,
   lock,
@@ -272,21 +273,21 @@ export namespace Query {
     pluck?: Set<string>,
   ): Stream<any> | Datum<any> {
     /**/
-    if (query instanceof Stream) {
+    if (IsStream(query)) {
       for (const [name, field] of Object.entries(meta.fields)) {
         if (!field.foreign || (pluck && !pluck.has(name))) {
           continue;
         }
         const [
           table,
-          _tableClass,
+          tableClass,
           index,
           multi,
           pluckField,
           schemaName,
           targetJoined,
         ] = field.foreign;
-        const other = resolveSchemaDb(db, schemaName).table(table);
+        const other = targetTable(db, { table, tableClass, schemaName });
         const hasTargetJoined = !multi && !!targetJoined?.length;
         if (pluckField) {
           // The join keys of the target's @Joined fields must be fetched too
@@ -323,23 +324,19 @@ export namespace Query {
           }
           const [
             table,
-            _tableClass,
+            tableClass,
             index,
             multi,
             pluckField,
             schemaName,
             targetJoined,
           ] = field.foreign;
-          const remoteDb = resolveSchemaDb(db, schemaName);
+          const remote = targetTable(db, { table, tableClass, schemaName });
           if (multi) {
             changedFields[name] = (obj.key(name) as ValueProxy<string[]>)
               .default([])
               .map((val) => {
-                let foreignObject: Datum<any> = Get(
-                  remoteDb.table(table),
-                  val,
-                  index,
-                );
+                let foreignObject: Datum<any> = Get(remote, val, index);
                 if (pluckField) {
                   foreignObject = foreignObject.pluck(
                     "_internal",
@@ -350,7 +347,7 @@ export namespace Query {
               });
           } else {
             let foreignObject: Datum<any> = Get(
-              remoteDb.table(table),
+              remote,
               obj.key(name) as ValueProxy<string>,
               index,
             );
@@ -385,10 +382,11 @@ export namespace Query {
   ): Stream<any> {
     let s = stream;
     for (const group of groups) {
-      const remoteDb = resolveSchemaDb(db, group.schemaName);
-      const remoteTable = remoteDb
-        .table(group.table)
-        .pluck("_internal", group.remoteIndex, group.remoteField) as Table<any>;
+      const remoteTable = targetTable(db, group).pluck(
+        "_internal",
+        group.remoteIndex,
+        group.remoteField,
+      ) as Table<any>;
       const tmpKey = `__fjoin_${foreignName}_${group.name}`;
       s = s
         .map((row) =>
@@ -428,10 +426,9 @@ export namespace Query {
   ): Datum<any> {
     let d = datum;
     for (const group of groups) {
-      const remoteDb = resolveSchemaDb(db, group.schemaName);
       // Use the raw table here (not a plucked stream): `Get` relies on
       // `getAll`/`get`, which exist on Selection/Table but not on a Stream.
-      const remoteTable = remoteDb.table(group.table);
+      const remoteTable = targetTable(db, group);
       d = d.do((row) =>
         row.merge({
           [group.name]: Get(
@@ -447,8 +444,7 @@ export namespace Query {
     return d;
   }
 
-  interface JoinedGroup {
-    table: string;
+  interface JoinedGroup extends TableTargetReference {
     localKey: string;
     remoteIndex: string;
     schemaName?: string;
@@ -465,6 +461,7 @@ export namespace Query {
       if (!group) {
         group = {
           table: j.table,
+          tableClass: j.tableClass,
           localKey: j.localKey,
           remoteIndex: j.remoteIndex,
           schemaName: j.schemaName,
@@ -712,14 +709,23 @@ export namespace Query {
     ];
   }
 
-  function resolveSchemaDb(
+  interface TableTargetReference {
+    table: string;
+    tableClass?: Constructible;
+    schemaName?: string;
+  }
+
+  function targetTable(
     sourceDb: SchemaInstance<any>,
-    schemaName: string | undefined,
-  ): SchemaInstance<any> {
-    if (!schemaName) return sourceDb;
-    const schema = Schema.get(schemaName);
-    assert(schema, 500, `Schema "${schemaName}" not registered`);
-    return schema.instance();
+    target: TableTargetReference,
+  ): Table<any> {
+    if (!target.schemaName) return sourceDb.table(target.table);
+    assert(
+      target.tableClass,
+      500,
+      `Table "${target.table}" of schema "${target.schemaName}" has no registered table class`,
+    );
+    return (target.tableClass as unknown as TableClass).table();
   }
 
   export function Joined(
@@ -751,19 +757,16 @@ export namespace Query {
     const emptyRemote: RowShape = {};
     const tmpKeyFor = (localKey: string) => `__joined_orig_${localKey}`;
 
-    if (query instanceof Stream) {
+    if (IsStream(query)) {
       let stream: Stream<RowShape> = query as Stream<RowShape>;
       const tmpKeys: string[] = [];
       for (const group of groups) {
         const remoteFields = group.fields.map((f) => f.remoteField);
-        const remoteDb = resolveSchemaDb(db, group.schemaName);
-        const remoteTable = remoteDb
-          .table(group.table)
-          .pluck(
-            "_internal",
-            group.remoteIndex,
-            ...remoteFields,
-          ) as Table<RowShape>;
+        const remoteTable = targetTable(db, group).pluck(
+          "_internal",
+          group.remoteIndex,
+          ...remoteFields,
+        ) as Table<RowShape>;
         const tmpKey = tmpKeyFor(group.localKey);
         tmpKeys.push(tmpKey);
         stream = stream
@@ -785,14 +788,11 @@ export namespace Query {
     let datum: Datum<RowShape> = query as Datum<RowShape>;
     for (const group of groups) {
       const remoteFields = group.fields.map((f) => f.remoteField);
-      const remoteDb = resolveSchemaDb(db, group.schemaName);
-      const remoteTable = remoteDb
-        .table(group.table)
-        .pluck(
-          "_internal",
-          group.remoteIndex,
-          ...remoteFields,
-        ) as Table<RowShape>;
+      const remoteTable = targetTable(db, group).pluck(
+        "_internal",
+        group.remoteIndex,
+        ...remoteFields,
+      ) as Table<RowShape>;
       const tmpKey = tmpKeyFor(group.localKey);
       datum = datum
         .do((row) => row.merge({ [tmpKey]: row.key(group.localKey) }))
@@ -874,7 +874,7 @@ export namespace Query {
       return query as any;
     }
     const mappers = buildComputedMappers(db, entries);
-    if (query instanceof Stream) {
+    if (IsStream(query)) {
       return mappers.reduce(
         (stream, mapper) => stream.map(mapper),
         query as Stream<Record<string, any>>,
