@@ -317,7 +317,9 @@ export class DataAPIMeta {
   /**
    * Key symbol.
    */
-  public static key = Symbol();
+  public static key = Symbol.for(
+    "@antelopejs/interface-data-api/DataAPIMeta@1",
+  );
 
   public readonly filters: Record<string, FilterFunction<any>> = {};
 
