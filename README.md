@@ -105,28 +105,31 @@ The controller serves `GET /tasks/get?id=`, `GET /tasks/list`, `POST /tasks/new`
 
 ## Documentation
 
-- [Introduction](https://interfaces.antelopejs.com/docs/data-api/introduction)
-- [Data controllers](https://interfaces.antelopejs.com/docs/data-api/data-controllers)
-- [Routes](https://interfaces.antelopejs.com/docs/data-api/routes)
-- [Access rights](https://interfaces.antelopejs.com/docs/data-api/access-rights)
-- [Validators](https://interfaces.antelopejs.com/docs/data-api/validators)
-- [Listable fields](https://interfaces.antelopejs.com/docs/data-api/listable)
-- [Foreign keys](https://interfaces.antelopejs.com/docs/data-api/foreign-keys)
-- [Filters](https://interfaces.antelopejs.com/docs/data-api/filters)
-- [Modifiers](https://interfaces.antelopejs.com/docs/data-api/modifiers)
-- [Joined fields](https://interfaces.antelopejs.com/docs/data-api/joined)
-- [Computed fields](https://interfaces.antelopejs.com/docs/data-api/computed)
+- [Introduction](./docs/1.introduction.md)
+- [Data controllers](./docs/2.data-controllers.md)
+- [Routes and loaded-model guards](./docs/3.routes.md)
+- [Access rights](./docs/4.access-rights.md)
+- [Validators](./docs/5.validators.md)
+- [Listable fields](./docs/6.listable.md)
+- [Foreign keys](./docs/7.foreign-keys.md)
+- [Filters](./docs/8.filters.md)
+- [Modifiers](./docs/9.modifiers.md)
+- [Joined fields](./docs/10.joined.md)
+- [Computed fields](./docs/11.computed.md)
 
 ## Compatibility
 
-| Package                                            | Range             |
-| -------------------------------------------------- | ----------------- |
-| `@antelopejs/interface-api` (peer)                 | `>=0.0.13 <1.0.0` |
-| `@antelopejs/interface-api-util` (peer)            | `>=0.1.2 <1.0.0`  |
-| `@antelopejs/interface-core` (peer)                | `>=0.1.1 <1.0.0`  |
-| `@antelopejs/interface-database` (peer)            | `>=0.1.9 <1.0.0`  |
-| `@antelopejs/interface-database-decorators` (peer) | `>=0.1.8 <1.0.0`  |
-| `@antelopejs/core`                                 | `1.x`             |
+Use with `@antelopejs/core` 1.x and the following peer dependencies:
+
+<!-- docs-compat: ./package.json#peerDependencies -->
+
+| Package                                     | Range             |
+| ------------------------------------------- | ----------------- |
+| `@antelopejs/interface-api`                 | `>=0.0.13 <1.0.0` |
+| `@antelopejs/interface-api-util`            | `>=0.1.2 <1.0.0`  |
+| `@antelopejs/interface-core`                | `>=0.1.1 <1.0.0`  |
+| `@antelopejs/interface-database`            | `>=0.1.9 <1.0.0`  |
+| `@antelopejs/interface-database-decorators` | `>=0.1.8 <1.0.0`  |
 
 ## Contributing
 
