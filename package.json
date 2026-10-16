@@ -1,13 +1,19 @@
 {
   "name": "@antelopejs/interface-data-api",
   "version": "0.2.1",
-  "description": "AntelopeJS interface for data API with CRUD controllers and route generation",
+  "description": "AntelopeJS interface that generates CRUD REST endpoints from database tables, with access rules, validation and pagination",
   "keywords": [
     "antelopejs",
+    "api",
     "crud",
     "data-api",
-    "interface"
+    "interface",
+    "rest"
   ],
+  "homepage": "https://interfaces.antelopejs.com/docs/data-api",
+  "bugs": {
+    "url": "https://github.com/AntelopeJS/interface-data-api/issues"
+  },
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
