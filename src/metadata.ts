@@ -825,11 +825,13 @@ export const Access = MakeMethodAndPropertyDecorator(
 /**
  * Sets the listable state of a DataAPI field.
  *
- * Listable fields will be included in list method calls.
+ * Listable fields are selected only for the named mode; modes do not inherit
+ * the default mode's fields. Read access is still required for the response.
  *
- * Listable getters must specificy the list of in-database field names they use.
+ * Listable getters must specify the list of in-database field names they use.
  *
  * @param requiredFields Boolean or table field list
+ * @param mode Independent list mode, defaulting to "list"
  */
 export const Listable = MakeMethodAndPropertyDecorator(
   (target, key, desc, requiredFields?: boolean | string[], mode?: string) => {
@@ -1024,7 +1026,11 @@ const FilterDecoratorFactory = MakePropertyDecorator(
 /**
  * Creates a field filter.
  *
- * @param func Custom filter function
+ * @param func Custom filter function. Raw query values are strings; parse and
+ * validate numeric/boolean values here. The default compares strings unchanged.
+ * @param useIndex Allow indexed equality lookup when an index exists. Defaults
+ * to true for the default filter and false for custom filters. An indexed
+ * equality lookup uses the raw string and bypasses the callback.
  */
 export const Filter = FilterDecoratorFactory as <T extends Record<string, any>>(
   func?: FilterFunction<T, T>,
