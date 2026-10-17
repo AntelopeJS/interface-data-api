@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 510" role="img" aria-labelledby="title desc">
+  <title id="title">When the default list route resolves joined fields</title>
+  <desc id="desc">Resolve fields needed by filters before filtering and counting. Resolve sort fields before ordering and paging. Resolve remaining selected display fields only for the page. This describes the default list route, not arbitrary Query.List composition.</desc>
+  <rect width="480" height="510" rx="16" fill="#f5f7fb"/>
+  <g font-family="system-ui, sans-serif" fill="#172b45">
+    <text x="24" y="36" font-size="20" font-weight="700">Joined fields in a default list request</text>
+    <rect x="24" y="58" width="432" height="100" rx="10" fill="#e1ecfa"/>
+    <text x="42" y="87" font-size="18" font-weight="700">1. Needed by a filter</text>
+    <text x="42" y="116" font-size="16">Resolve → filter matching rows</text>
+    <text x="42" y="143" font-size="16">Count these rows for total.</text>
+    <path d="M240 168v24m-6-6 6 6 6-6" fill="none" stroke="#526780" stroke-width="2"/>
+    <rect x="24" y="204" width="432" height="100" rx="10" fill="#e1ecfa"/>
+    <text x="42" y="233" font-size="18" font-weight="700">2. Needed only for sorting</text>
+    <text x="42" y="262" font-size="16">Resolve → sort matching rows</text>
+    <text x="42" y="289" font-size="16">Then select the requested page.</text>
+    <path d="M240 314v24m-6-6 6 6 6-6" fill="none" stroke="#526780" stroke-width="2"/>
+    <rect x="24" y="350" width="432" height="100" rx="10" fill="#d9eee8"/>
+    <text x="42" y="379" font-size="18" font-weight="700">3. Needed only for display</text>
+    <text x="42" y="408" font-size="16">Resolve selected fields on the page</text>
+    <text x="42" y="435" font-size="16">Return results with pagination metadata.</text>
+    <text x="24" y="484" font-size="15">A field resolved earlier is not deferred again.</text>
+  </g>
+</svg>
