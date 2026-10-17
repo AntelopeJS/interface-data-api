@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.2.2
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.2.1...v0.2.2)
+
+### 📖 Documentation
+
+- Rewrite the README ([#37](https://github.com/AntelopeJS/interface-data-api/pull/37))
+- **agents:** Simplify repository guidance ([#38](https://github.com/AntelopeJS/interface-data-api/pull/38))
+- Correct list modes, typed filters and get guards ([#39](https://github.com/AntelopeJS/interface-data-api/pull/39))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v0.2.1
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.2.0...v0.2.1)
