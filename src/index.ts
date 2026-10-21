@@ -122,43 +122,6 @@ export const RegisterDataController = MakeClassDecorator((target) => {
   }
 });
 
-function displayOnlyComputedFields(
-  meta: DataAPIMeta,
-  params: Parameters.ListParameters,
-  pluck: Set<string> | undefined,
-): Set<string> {
-  const alreadyInjected = new Set(
-    Object.keys(params.filters ?? {}).filter((name) => name in meta.filters),
-  );
-  if (params.sortKey) {
-    alreadyInjected.add(params.sortKey);
-  }
-  const names = Object.entries(meta.fields)
-    .filter(
-      ([name, field]) =>
-        field.computed &&
-        !alreadyInjected.has(name) &&
-        (params.noPluck || pluck?.has(name)),
-    )
-    .map(([name]) => name);
-  return new Set(names);
-}
-
-function displayOnlyJoinedFields(
-  deferred: Set<string>,
-  params: Parameters.ListParameters,
-  pluck: Set<string> | undefined,
-  materializeAll: boolean,
-): Set<string> {
-  if (materializeAll) {
-    return deferred;
-  }
-  const names = Array.from(deferred).filter(
-    (name) => params.noPluck || pluck?.has(name),
-  );
-  return new Set(names);
-}
-
 export namespace DefaultRoutes {
   /** Receives the loaded, unlocked model before readable fields are selected. Throw to deny the read. */
   export type GetGuard = (
@@ -168,6 +131,51 @@ export namespace DefaultRoutes {
     params: Parameters.GetParameters,
   ) => void | Promise<void>;
 
+  /** What {@link readRow} reads, and the guard it runs on the loaded model. */
+  interface RowRead {
+    params: Parameters.GetParameters;
+    reqCtx?: RequestContext;
+    guard?: GetGuard;
+  }
+
+  /**
+   * One row as the Get route answers it: joined, computed then foreign
+   * fields, unlocked, guarded, then projected on the fields `get` reads.
+   */
+  async function readRow(
+    controller: unknown,
+    meta: DataAPIMeta,
+    { params, reqCtx, guard }: RowRead,
+  ): Promise<Record<string, any>> {
+    const model = Query.GetModel(controller, meta);
+    let query = Query.Get(model.table, params.id, params.index);
+
+    query = Query.Joined(model.database, meta, query);
+    // Before the foreign keys: a lookup replaces a key with the row it
+    // names, which a computed expression reading the key would not find.
+    query = Query.Computed(model.database, meta, query);
+
+    if (!params.noForeign) {
+      query = Query.Foreign(model.database, meta, query);
+    }
+
+    const dbResult = model.constructor.fromDatabase(await query);
+    assert(dbResult, 404, "Not Found");
+    Validation.Unlock(controller, meta, dbResult);
+    if (guard && reqCtx) await guard.call(controller, reqCtx, dbResult, params);
+
+    const results = await Query.ReadProperties(
+      controller,
+      meta,
+      dbResult,
+      "get",
+    );
+
+    Validation.ClearInternal(meta, results);
+
+    return results;
+  }
+
   class Methods {
     async get(
       reqCtx: RequestContext,
@@ -175,27 +183,7 @@ export namespace DefaultRoutes {
       guard?: GetGuard,
     ) {
       const meta = GetDataControllerMeta(this);
-
-      const model = Query.GetModel(this, meta);
-      let query = Query.Get(model.table, params.id, params.index);
-
-      query = Query.Joined(model.database, meta, query);
-      query = Query.Computed(model.database, meta, query);
-
-      if (!params.noForeign) {
-        query = Query.Foreign(model.database, meta, query);
-      }
-
-      const dbResult = model.constructor.fromDatabase(await query);
-      assert(dbResult, 404, "Not Found");
-      Validation.Unlock(this, meta, dbResult);
-      await guard?.call(this, reqCtx, dbResult, params);
-
-      const results = await Query.ReadProperties(this, meta, dbResult, "get");
-
-      Validation.ClearInternal(meta, results);
-
-      return results;
+      return readRow(this, meta, { params, reqCtx, guard });
     }
 
     async list(reqCtx: RequestContext, params: Parameters.ListParameters) {
@@ -208,7 +196,7 @@ export namespace DefaultRoutes {
             "asc" | "desc" | undefined,
           ])
         : undefined;
-      let [query, queryTotal, deferredJoined] = Query.List(
+      const [query, queryTotal, deferredJoined] = Query.List(
         this,
         meta,
         model.table,
@@ -227,52 +215,17 @@ export namespace DefaultRoutes {
         `No fields found for pluckMode '${params.pluckMode ?? "list"}'`,
       );
 
-      if (!params.noForeign) {
-        query = Query.Foreign(
-          model.database,
-          meta,
-          query,
-          params.noPluck ? undefined : pluck,
-        );
-      }
-
       const offset = params.offset || 0;
       const limit = params.limit || 10;
-      let queryPaged = query.slice(offset, limit);
-
-      const displayComputed = displayOnlyComputedFields(meta, params, pluck);
-      // A computed expression may read any joined field, so when a computed
-      // field is materialized after the slice, every deferred joined group
-      // must be merged first regardless of pluck (mirroring the conservative
-      // rule Query.List applies pre-count). The extra lookups only run on the
-      // page and the final pluck() strips fields the response did not ask for.
-      const displayJoined = displayOnlyJoinedFields(
+      const queryPaged = Query.ListPage(model.database, meta, query, {
+        offset,
+        limit,
+        filters: params.filters,
+        sortKey: params.sortKey,
+        pluck: params.noPluck ? undefined : pluck,
+        noForeign: params.noForeign,
         deferredJoined,
-        params,
-        pluck,
-        displayComputed.size > 0,
-      );
-      if (displayJoined.size > 0) {
-        queryPaged = Query.Joined(
-          model.database,
-          meta,
-          queryPaged,
-          displayJoined,
-        );
-      }
-
-      if (displayComputed.size > 0) {
-        queryPaged = Query.Computed(
-          model.database,
-          meta,
-          queryPaged,
-          displayComputed,
-        );
-      }
-
-      if (!params.noPluck && pluck) {
-        queryPaged = queryPaged.pluck("_internal", ...pluck);
-      }
+      });
 
       const [dbResult, dbTotal] = await Promise.all([queryPaged, queryTotal]);
 
@@ -297,7 +250,7 @@ export namespace DefaultRoutes {
     async new(
       _reqCtx: RequestContext,
       params: Parameters.NewParameters,
-      body: Buffer,
+      body: Validation.WrittenBody,
     ) {
       const meta = GetDataControllerMeta(this);
 
@@ -312,15 +265,18 @@ export namespace DefaultRoutes {
 
       const model = Query.GetModel(this, meta);
       triggerEvent(dbData, "insert");
-      const dbResult = await model.table.insert(dbData);
+      const [id] = await model.table.insert(dbData);
 
-      return dbResult;
+      // Its key even when `get` does not read `_id`: the caller needs it to
+      // name the row it created.
+      const created = await readRow(this, meta, { params: { id } });
+      return { _id: id, ...created };
     }
 
     async edit(
       _reqCtx: RequestContext,
       params: Parameters.EditParameters,
-      body: Buffer,
+      body: Validation.WrittenBody,
     ) {
       const meta = GetDataControllerMeta(this);
 
@@ -346,6 +302,10 @@ export namespace DefaultRoutes {
 
       triggerEvent(dbData, "update");
       await model.table.get(params.id).update(dbData);
+
+      return readRow(this, meta, {
+        params: { id: params.id, index: params.index },
+      });
     }
 
     async delete(_reqCtx: RequestContext, params: Parameters.DeleteParameters) {

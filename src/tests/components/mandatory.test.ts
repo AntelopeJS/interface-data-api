@@ -24,6 +24,7 @@ import {
 } from "@antelopejs/interface-database-decorators";
 
 import {
+  type CreatedRow,
   editRequest,
   getFunctionName,
   getSchemaInstance,
@@ -169,11 +170,9 @@ async function newWithAllMandatoryFields() {
     totalAmount: validOrderDataset.default.totalAmount,
   });
   expect(response.status).to.equal(200);
-  const result = (await response.json()) as string[];
-  expect(result).to.be.an("array");
-  expect(result).to.have.length(1);
-  expect(result[0]).to.be.a("string");
-  const order = await orderModel.get(result[0]);
+  const created = (await response.json()) as CreatedRow;
+  expect(created._id).to.be.a("string");
+  const order = await orderModel.get(created._id);
   expect(order).to.not.equal(undefined);
   if (order) {
     await validateObject(order, validOrderDataset.default, [

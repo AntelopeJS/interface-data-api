@@ -30,9 +30,11 @@ import {
 import {
   type ComputedFieldData,
   type DataAPIMeta,
+  type FieldFilter,
   type FieldParseResult,
   type FieldValidationResult,
   type FilterValue,
+  FilterValuesOf,
   type ForeignJoinedRef,
   GetDataControllerMeta,
   type WritableAccessFields,
@@ -45,25 +47,41 @@ export namespace Parameters {
     return (<any>reqCtx).dataAPIEntry?.options ?? {};
   }
 
-  /** Extracts request filters and mandatory route filters, with route field keys winning. Returns fresh tuples. */
+  function parseFilter(searchVal: string): FilterValue {
+    const match = searchVal.match(/([^:]+):(.*)/);
+    return match ? [match[2], match[1] as FilterValue[1]] : [searchVal, "eq"];
+  }
+
+  function copyFilter(filter: FieldFilter): FieldFilter {
+    const copies = FilterValuesOf(filter).map((value): FilterValue => [
+      ...value,
+    ]);
+    return copies.length === 1 ? copies[0] : copies;
+  }
+
+  /**
+   * Extracts request filters and mandatory route filters, with route field
+   * keys winning. A field the request filters once (`?filter_status=open`)
+   * gets one {@link FilterValue}; one it filters several times
+   * (`?filter_age=ge:18&filter_age=lt:65`) gets them all, which a row must
+   * all pass. Returns fresh tuples.
+   */
   export function ExtractFilters(
     reqCtx: RequestContext,
     meta: DataAPIMeta,
-  ): Record<string, FilterValue> {
-    const result: Record<string, FilterValue> = {};
+  ): Record<string, FieldFilter> {
+    const result: Record<string, FieldFilter> = {};
     for (const filter of Object.keys(meta.filters)) {
-      const filter_key = `filter_${filter}`;
-      if (reqCtx.url.searchParams.has(filter_key)) {
-        const searchVal = reqCtx.url.searchParams.get(filter_key) ?? "";
-        const match = searchVal.match(/([^:]+):(.*)/);
-        result[filter] = match
-          ? [match[2], match[1] as FilterValue[1]]
-          : [searchVal, "eq"];
+      const values = reqCtx.url.searchParams
+        .getAll(`filter_${filter}`)
+        .map(parseFilter);
+      if (values.length > 0) {
+        result[filter] = values.length === 1 ? values[0] : values;
       }
     }
     const overrides = GetOptionOverrides<ListParameters>(reqCtx);
     for (const [key, value] of Object.entries(overrides.filters ?? {})) {
-      result[key] = [...value];
+      result[key] = copyFilter(value);
     }
     return result;
   }
@@ -114,8 +132,12 @@ export namespace Parameters {
   }
 
   export interface ListParameters {
-    /** Mandatory route filters when supplied through WithOptions; combined with request filters by field key. */
-    filters?: Record<string, FilterValue>;
+    /**
+     * The filters of the request, by field; a row passes every filter of
+     * every field. Mandatory route filters when supplied through
+     * WithOptions, combined with request filters by field key.
+     */
+    filters?: Record<string, FieldFilter>;
 
     offset?: number;
     limit?: number;
@@ -499,7 +521,7 @@ export namespace Query {
   function splitJoinedFields(
     meta: DataAPIMeta,
     sorting?: [string, "asc" | "desc" | undefined],
-    filters?: Record<string, FilterValue>,
+    filters?: Record<string, FieldFilter>,
   ): JoinedFieldSplit {
     const split: JoinedFieldSplit = { filter: new Set(), sort: new Set() };
     const filterNames = Object.keys(meta.filters).filter(
@@ -1017,20 +1039,29 @@ export namespace Query {
     request: Table<T>,
     reqCtx: RequestContext,
     sorting?: [string, "asc" | "desc" | undefined],
-    filters?: Record<string, FilterValue>,
+    filters?: Record<string, FieldFilter>,
     db?: SchemaInstance<any>,
     options?: ListOptions,
   ): [sorted: Stream<T>, total: Datum<number>, deferredJoined: Set<string>] {
     const filterList = Object.entries(meta.filters).filter(
       ([name]) => filters && name in filters,
     );
-    const indexFilter = filterList.find(
-      ([name]) => filters?.[name][1] === "eq" && meta.fields[name]?.indexable,
-    )?.[0];
+    // The index serves one equality; a field filtered several times is
+    // filtered row by row, each of its filters in turn.
+    const indexFilter = filterList.find(([name]) => {
+      const values = filters ? FilterValuesOf(filters[name]) : [];
+      return (
+        values.length === 1 &&
+        values[0][1] === "eq" &&
+        meta.fields[name]?.indexable
+      );
+    })?.[0];
     const index = indexFilter
       ? meta.fields[indexFilter].dbName || indexFilter
       : undefined;
-    const indexedFilter = indexFilter ? filters?.[indexFilter] : undefined;
+    const indexedFilter = indexFilter
+      ? FilterValuesOf(filters?.[indexFilter] ?? [])[0]
+      : undefined;
 
     let tmpRequest: Stream<T> = index
       ? request.getAll(indexedFilter?.[0] ?? "", index)
@@ -1068,20 +1099,22 @@ export namespace Query {
     if (filterList.length > 0) {
       // TODO: rework for modifier-affected fields (unlockrequest)
       tmpRequest = filterList.reduce((req, [name, filter]) => {
-        const filterValue = filters?.[name];
-        if (!filterValue) return req;
-        return name === indexFilter
-          ? req
-          : req.filter((row) =>
+        const fieldFilter = filters?.[name];
+        if (!fieldFilter || name === indexFilter) return req;
+        return FilterValuesOf(fieldFilter).reduce(
+          (filtered, [value, mode]) =>
+            filtered.filter((row) =>
               filter(
                 Object.assign(reqCtx, { this: obj }),
                 Validation.UnlockRequest(obj, meta, row, name),
                 name,
-                filterValue[0],
-                filterValue[1],
+                value,
+                mode,
                 row as ValueProxy<Record<string, any>>,
               ),
-            );
+            ),
+          req,
+        );
       }, tmpRequest);
     }
     const total = tmpRequest.count();
@@ -1112,6 +1145,83 @@ export namespace Query {
     return listResultTuple(tmpRequest, total, meta, joinedSplit, db, options);
   }
 
+  /** How {@link ListPage} reads one page of a {@link List} stream. */
+  export interface ListPageOptions {
+    offset: number;
+    limit: number;
+    /**
+     * The filters {@link List} applied: the computed fields they read are
+     * already merged.
+     */
+    filters?: Record<string, FieldFilter>;
+    /** The sort {@link List} applied: a computed sort field is merged. */
+    sortKey?: string;
+    /** The fields the page answers; every field when unset. */
+    pluck?: Set<string>;
+    /** Leave the foreign keys unresolved. */
+    noForeign?: boolean;
+    /**
+     * The joined fields {@link List} left unresolved
+     * ({@link ListOptions.exposeDeferredJoined}).
+     */
+    deferredJoined?: Set<string>;
+  }
+
+  function pageComputedFields(
+    meta: DataAPIMeta,
+    options: ListPageOptions,
+  ): Set<string> {
+    const merged = new Set(
+      Object.keys(options.filters ?? {}).filter((name) => name in meta.filters),
+    );
+    if (options.sortKey) merged.add(options.sortKey);
+    const names = Object.entries(meta.fields)
+      .filter(
+        ([name, field]) =>
+          field.computed &&
+          !merged.has(name) &&
+          (!options.pluck || options.pluck.has(name)),
+      )
+      .map(([name]) => name);
+    return new Set(names);
+  }
+
+  function pageJoinedFields(
+    options: ListPageOptions,
+    materializeAll: boolean,
+  ): Set<string> {
+    const deferred = options.deferredJoined ?? new Set<string>();
+    if (materializeAll || !options.pluck) return deferred;
+    const pluck = options.pluck;
+    return new Set(Array.from(deferred).filter((name) => pluck.has(name)));
+  }
+
+  /**
+   * One page of the stream {@link List} built, with the fields it answers:
+   * the deferred joined fields, then the computed fields no filter or sort
+   * merged, then the foreign keys, then the pluck. Computed fields come
+   * before the foreign keys because a lookup replaces a key with the row it
+   * names, and a computed expression reading that key would no longer find
+   * it.
+   */
+  export function ListPage(
+    db: SchemaInstance<any>,
+    meta: DataAPIMeta,
+    query: Stream<any>,
+    options: ListPageOptions,
+  ): Stream<any> {
+    let page = query.slice(options.offset, options.limit);
+    const computed = pageComputedFields(meta, options);
+    // A computed expression may read any joined field, so when one is
+    // materialized every deferred joined group is merged first, whatever
+    // the pluck; the final pluck strips what the page did not ask for.
+    const joined = pageJoinedFields(options, computed.size > 0);
+    if (joined.size > 0) page = Joined(db, meta, page, joined);
+    if (computed.size > 0) page = Computed(db, meta, page, computed);
+    if (!options.noForeign) page = Foreign(db, meta, page, options.pluck);
+    return options.pluck ? page.pluck("_internal", ...options.pluck) : page;
+  }
+
   export function Delete(table: Table<any>, id: string | string[]) {
     return Array.isArray(id)
       ? table.getAll(id).delete()
@@ -1120,7 +1230,8 @@ export namespace Query {
 }
 
 export namespace Validation {
-  type RequestBody = Record<string, any>;
+  /** A request body, parsed. */
+  export type RequestBody = Record<string, any>;
   type MissingFieldCheck = (body: RequestBody, name: string) => boolean;
 
   function isClearingValue(value: unknown): boolean {
@@ -1194,13 +1305,25 @@ export namespace Validation {
     return parsed;
   }
 
-  /** Parses a request body, rejecting with 400 anything but a JSON object. */
-  export function ParseBody(body: Buffer): RequestBody {
-    let data: unknown;
-    try {
-      data = JSON.parse(body.toString());
-    } catch {
-      assert(false, 400, "Invalid JSON body.");
+  /**
+   * A request body the `new` and `edit` routes write: the raw request, or
+   * the object a wrapping route already parsed (and may have amended, to
+   * stamp or drop a field), which the route then writes as handed.
+   */
+  export type WrittenBody = Buffer | RequestBody;
+
+  /**
+   * Parses a request body, rejecting with 400 anything but a JSON object. A
+   * body already parsed is checked, not parsed again.
+   */
+  export function ParseBody(body: WrittenBody): RequestBody {
+    let data: unknown = body;
+    if (Buffer.isBuffer(body)) {
+      try {
+        data = JSON.parse(body.toString());
+      } catch {
+        assert(false, 400, "Invalid JSON body.");
+      }
     }
     assert(
       typeof data === "object" && data !== null && !Array.isArray(data),

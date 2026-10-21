@@ -23,6 +23,7 @@ import {
 } from "@antelopejs/interface-database-decorators";
 
 import {
+  type CreatedRow,
   editRequest,
   getSchemaInstance,
   newRequest,
@@ -228,11 +229,9 @@ function createCorrectValidator(
     if (id) {
       product_fetched = await productModel.get(id);
     } else {
-      const result = (await response.json()) as string[];
-      expect(result).to.be.an("array");
-      expect(result).to.have.length(1);
-      expect(result[0]).to.be.an("string");
-      product_fetched = await productModel.get(result[0]);
+      const created = (await response.json()) as CreatedRow;
+      expect(created._id).to.be.a("string");
+      product_fetched = await productModel.get(created._id);
     }
     expect(product_fetched).to.not.equal(undefined);
     if (product_fetched) {

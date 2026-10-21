@@ -24,6 +24,7 @@ import {
 } from "@antelopejs/interface-database-decorators";
 
 import {
+  type CreatedRow,
   editRequest,
   getFunctionName,
   getSchemaInstance,
@@ -128,7 +129,7 @@ async function writesParsedValueOnNew() {
     startsAt,
   });
   expect(response.status).to.equal(200);
-  const [id] = (await response.json()) as string[];
+  const { _id: id } = (await response.json()) as CreatedRow;
 
   const event = await eventModel.get(id);
   expect(event?.startsAt).to.be.instanceOf(Date);
@@ -162,7 +163,7 @@ async function writesAsyncParsedValue() {
     code: "  launch-26 ",
   });
   expect(response.status).to.equal(200);
-  const [id] = (await response.json()) as string[];
+  const { _id: id } = (await response.json()) as CreatedRow;
 
   const event = await eventModel.get(id);
   expect(event?.code).to.equal("LAUNCH-26");
