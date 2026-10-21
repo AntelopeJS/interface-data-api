@@ -131,6 +131,8 @@ This exposes `GET /tasks/get?id=`, `GET /tasks/list`, `POST /tasks/new`, `PUT /t
   endpoint or preset parameter options.
 - `@Access` accepts per-action overrides, e.g. `@Access(AccessMode.ReadOnly, { edit: AccessMode.ReadWrite })`.
   `GetEffectiveMode(field, action)` reads the mode a field has in one action.
+- A custom list route reads its page with `Query.ListPage(db, meta, query, { offset, limit, filters,
+  sortKey, pluck, noForeign, deferredJoined })`: joined, then computed, then foreign, then pluck.
 - `new` answers the created row as `get` reads it, with its `_id`; `edit` answers the stored row after
   the update. Both accept a body already parsed (`Validation.WrittenBody`), so a wrapping route can
   amend it before the write.
