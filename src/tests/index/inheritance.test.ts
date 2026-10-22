@@ -21,6 +21,7 @@ import {
 } from "@antelopejs/interface-database-decorators";
 
 import {
+  type CreatedRow,
   deleteRequest,
   editRequest,
   getRequest,
@@ -116,7 +117,7 @@ describe("Derived data controllers", () => {
   it("inherits the parent model reference for new, edit and delete", async () => {
     const created = await newRequest(DERIVED_LOCATION, { title: "Created" });
     expect(created.status).to.equal(OK);
-    const [id] = (await created.json()) as string[];
+    const { _id: id } = (await created.json()) as CreatedRow;
     expect(await noteModel.get(id)).to.have.property("title", "Created");
 
     const edited = await editRequest(

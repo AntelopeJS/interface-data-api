@@ -193,6 +193,23 @@ export interface FieldData {
   indexable?: boolean;
 }
 
+/** The action whose access is a field's own `mode`, overrides aside. */
+const DEFAULT_ACTION = "_default";
+
+/**
+ * The access a field has in one data API action (`get`, `list`, `new`,
+ * `edit`…): its {@link FieldData.modeOverrides} entry for that action, else
+ * its {@link FieldData.mode}. Without an action, or for `_default`, the
+ * field's own mode.
+ */
+export function GetEffectiveMode(
+  field: Pick<FieldData, "mode" | "modeOverrides">,
+  action?: string,
+): AccessMode | undefined {
+  if (!action || action === DEFAULT_ACTION) return field.mode;
+  return field.modeOverrides?.[action] ?? field.mode;
+}
+
 /**
  * In-database computed field expression.
  *
@@ -225,6 +242,19 @@ export interface ComputedFieldData extends ComputedOptions {
 
 type Comparison = "eq" | "ne" | "gt" | "ge" | "lt" | "le";
 export type FilterValue = [value: string, mode: Comparison];
+
+/**
+ * The filters of one field in a list request: one {@link FilterValue}, or
+ * several a row must all pass (`?filter_age=ge:18&filter_age=lt:65`).
+ */
+export type FieldFilter = FilterValue | FilterValue[];
+
+/** The filters of one field as a list, whether it holds one or several. */
+export function FilterValuesOf(filter: FieldFilter): FilterValue[] {
+  return Array.isArray(filter[0])
+    ? (filter as FilterValue[])
+    : [filter as FilterValue];
+}
 
 /**
  * Filter callback.
@@ -446,7 +476,7 @@ export class DataAPIMeta {
       delete this.writable[key];
     }
 
-    const actions = new Set<string>(["_default"]);
+    const actions = new Set<string>([DEFAULT_ACTION]);
     for (const field of Object.values(this.fields)) {
       if (field.modeOverrides) {
         for (const action of Object.keys(field.modeOverrides)) {
@@ -462,10 +492,7 @@ export class DataAPIMeta {
 
     for (const [key, field] of Object.entries(this.fields)) {
       for (const action of actions) {
-        const effectiveMode =
-          action === "_default"
-            ? field.mode
-            : (field.modeOverrides?.[action] ?? field.mode);
+        const effectiveMode = GetEffectiveMode(field, action);
         if (!effectiveMode) {
           continue;
         }

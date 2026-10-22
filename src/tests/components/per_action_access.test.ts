@@ -9,6 +9,7 @@ import {
 import {
   Access,
   AccessMode,
+  GetEffectiveMode,
   Listable,
   ModelReference,
 } from "@antelopejs/interface-data-api/metadata";
@@ -23,6 +24,7 @@ import {
 } from "@antelopejs/interface-database-decorators";
 
 import {
+  type CreatedRow,
   editRequest,
   getFunctionName,
   getRequest,
@@ -67,6 +69,16 @@ describe("Per-Action Access Control", () => {
     await writableInNewReadOnlyInEdit());
   it("read-only globally but read-write in new", async () =>
     await readOnlyGloballyReadWriteInNew());
+  it("reads a field's effective mode per action", () => {
+    const field = {
+      mode: AccessMode.ReadWrite,
+      modeOverrides: { edit: AccessMode.ReadOnly },
+    };
+    expect(GetEffectiveMode(field, "edit")).to.equal(AccessMode.ReadOnly);
+    expect(GetEffectiveMode(field, "new")).to.equal(AccessMode.ReadWrite);
+    expect(GetEffectiveMode(field, "_default")).to.equal(AccessMode.ReadWrite);
+    expect(GetEffectiveMode(field)).to.equal(AccessMode.ReadWrite);
+  });
 
   after(async () => {});
 });
@@ -132,8 +144,8 @@ async function readOnlyGloballyReadWriteInNew() {
 
   const newResponse = await newRequest(getFunctionName(), defaultUserDataset);
   expect(newResponse.status).to.equal(200);
-  const newIds = (await newResponse.json()) as string[];
-  const newUser = await userModel.get(newIds[0]);
+  const created = (await newResponse.json()) as CreatedRow;
+  const newUser = await userModel.get(created._id);
   expect(newUser?.age).to.equal(30);
 
   await editRequest(getFunctionName(), { age: 99 }, { id });

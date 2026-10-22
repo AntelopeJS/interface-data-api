@@ -26,6 +26,7 @@ import {
 
 import { URL_BASE } from "../constants";
 import {
+  type CreatedRow,
   editRequest,
   getFunctionName,
   getRequest,
@@ -175,7 +176,7 @@ async function _createLocalizedArticle(testName: string) {
     locale: allLocales,
   });
   expect(response.status).to.equal(200);
-  const [id] = (await response.json()) as string[];
+  const { _id: id } = (await response.json()) as CreatedRow;
   return id;
 }
 
@@ -283,7 +284,7 @@ async function runsEverySetterOnNew() {
     reference: "ART-003",
   });
   expect(response.status).to.equal(200);
-  const [id] = (await response.json()) as string[];
+  const { _id: id } = (await response.json()) as CreatedRow;
 
   const article = await articleModel.get(id);
   expect(article?.slug).to.equal(defaultSlug);

@@ -69,7 +69,8 @@ export async function request(
   uri: string,
   method: string,
   payload?: unknown,
-  queryParams?: Record<string, string>,
+  // Pairs repeat a key (`filter_x=a&filter_x=b`).
+  queryParams?: Record<string, string> | [string, string][],
 ) {
   return await fetch(
     `${URL_BASE}/${functionName}/${uri}?${new URLSearchParams(queryParams).toString()}`,
@@ -156,4 +157,10 @@ export async function validateObjectList<T extends { _id: string }>(
       await validateObject(object, expectedObject, fieldsToCheck);
     }
   }
+}
+
+/** What the `new` route answers: the created row, with its key. */
+export interface CreatedRow {
+  _id: string;
+  [field: string]: unknown;
 }

@@ -1,6 +1,6 @@
 import path from "node:path";
 import { expect } from "chai";
-import { Controller } from "@antelopejs/interface-api";
+import { Controller, type RequestContext } from "@antelopejs/interface-api";
 import { Schema } from "@antelopejs/interface-database";
 import {
   DataController,
@@ -13,6 +13,10 @@ import {
   Listable,
   ModelReference,
 } from "@antelopejs/interface-data-api/metadata";
+import {
+  type Parameters,
+  Validation,
+} from "@antelopejs/interface-data-api/components";
 import {
   BasicDataModel,
   Field,
@@ -88,6 +92,8 @@ describe("Routes", () => {
   it("using route list", async () => await usingRouteList());
   it("using route new", async () => await usingRouteNew());
   it("using route edit", async () => await usingRouteEdit());
+  it("writes a body a wrapping route parsed and amended", async () =>
+    await writesParsedBodyAsHanded());
   it("using route delete", async () => await usingRouteDelete());
 
   after(async () => {});
@@ -271,8 +277,16 @@ async function usingRouteNew() {
     getFunctionName(),
     validUserDataset.default,
   );
-  const result = (await response.json()) as string[];
-  await validateUserUsingModel(userModel, result[0], validUserDataset.default);
+  // The created row, as the get route answers it: its key and its fields.
+  const created = (await response.json()) as Record<string, unknown>;
+  expect(created._id).to.be.a("string");
+  expect(created.name).to.equal(validUserDataset.default.name);
+  expect(created.email).to.equal(validUserDataset.default.email);
+  await validateUserUsingModel(
+    userModel,
+    created._id as string,
+    validUserDataset.default,
+  );
 }
 
 async function usingRouteEdit() {
@@ -284,8 +298,79 @@ async function usingRouteEdit() {
     },
   );
 
-  await editRequest(getFunctionName(), validUserDataset.alternative, { id });
+  const response = await editRequest(
+    getFunctionName(),
+    validUserDataset.alternative,
+    { id },
+  );
+  // The stored row after the edit, as the get route answers it.
+  const stored = (await response.json()) as Record<string, unknown>;
+  expect(stored._id).to.equal(id);
+  expect(stored.name).to.equal(validUserDataset.alternative.name);
+  expect(stored.email).to.equal(validUserDataset.alternative.email);
   await validateUserUsingModel(userModel, id, validUserDataset.alternative);
+}
+
+async function writesParsedBodyAsHanded() {
+  const stampedName = "Stamped by the wrapper";
+  const amendBody = (body: Validation.WrittenBody) => {
+    const parsed = Validation.ParseBody(body);
+    parsed.name = stampedName;
+    return parsed;
+  };
+  const { id, userModel } = await _createDataController(
+    getFunctionName(),
+    validUserDataset.default,
+    {
+      new: {
+        ...DefaultRoutes.New,
+        func: function (
+          this: unknown,
+          ctx: RequestContext,
+          params: Parameters.NewParameters,
+          body: Buffer,
+        ) {
+          return DefaultRoutes.New.func.call(
+            this,
+            ctx,
+            params,
+            amendBody(body),
+          );
+        },
+      },
+      edit: {
+        ...DefaultRoutes.Edit,
+        func: function (
+          this: unknown,
+          ctx: RequestContext,
+          params: Parameters.EditParameters,
+          body: Buffer,
+        ) {
+          return DefaultRoutes.Edit.func.call(
+            this,
+            ctx,
+            params,
+            amendBody(body),
+          );
+        },
+      },
+    },
+  );
+
+  const created = (await (
+    await newRequest(getFunctionName(), validUserDataset.alternative)
+  ).json()) as Record<string, unknown>;
+  expect(created.name).to.equal(stampedName);
+  await validateUserUsingModel(userModel, created._id as string, {
+    ...validUserDataset.alternative,
+    name: stampedName,
+  });
+
+  const edited = (await (
+    await editRequest(getFunctionName(), { age: 51 }, { id })
+  ).json()) as Record<string, unknown>;
+  expect(edited.name).to.equal(stampedName);
+  expect(edited.age).to.equal(51);
 }
 
 async function usingRouteDelete() {

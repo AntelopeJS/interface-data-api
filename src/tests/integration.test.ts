@@ -27,6 +27,7 @@ import {
 } from "@antelopejs/interface-database-decorators";
 
 import {
+  type CreatedRow,
   editRequest,
   getRequest,
   getSchemaInstance,
@@ -673,9 +674,9 @@ async function workflowCustomerManagement() {
 
   const createResponse = await newRequest("customers", newCustomer);
   expect(createResponse.status).to.equal(200);
-  const createdIds = (await createResponse.json()) as string[];
-  expect(createdIds).to.have.length(1);
-  expect(createdIds[0]).to.be.a("string");
+  const created = (await createResponse.json()) as CreatedRow;
+  expect(created._id).to.be.a("string");
+  const createdIds = [created._id];
 
   const getResponse = await getRequest("customers", { id: createdIds[0] });
   expect(getResponse.status).to.equal(200);
@@ -730,8 +731,7 @@ async function workflowProductManagement() {
 
   const createResponse = await newRequest("products", newProduct);
   expect(createResponse.status).to.equal(200);
-  const createdIds = (await createResponse.json()) as string[];
-  expect(createdIds).to.have.length(1);
+  const createdIds = [((await createResponse.json()) as CreatedRow)._id];
 
   const stockUpdate = { ...newProduct, stockQuantity: 25 };
   const updateResponse = await editRequest("products", stockUpdate, {
@@ -781,8 +781,7 @@ async function workflowOrderManagement() {
 
   const orderResponse = await newRequest("orders", orderData);
   expect(orderResponse.status).to.equal(200);
-  const orderIds = (await orderResponse.json()) as string[];
-  expect(orderIds).to.have.length(1);
+  const orderIds = [((await orderResponse.json()) as CreatedRow)._id];
 
   const orderItem1 = {
     orderId: orderIds[0],

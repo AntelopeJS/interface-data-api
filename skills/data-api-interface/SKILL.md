@@ -121,6 +121,8 @@ This exposes `GET /tasks/get?id=`, `GET /tasks/list`, `POST /tasks/new`, `PUT /t
 - Filters come from `filter_<name>=<mode>:<value>` query params (plain value means `eq`); modes are
   `eq|ne|gt|ge|lt|le` (the default filter compares the raw query-string value — pass a custom filter
   function to cast for numeric ranges). Only fields declared with `@Filter()` are filterable.
+  Repeating a field's filter (`filter_age=ge:18&filter_age=lt:65`) keeps the rows passing them all;
+  the route then receives a list of tuples for it (`FieldFilter`, read with `FilterValuesOf`).
 - `@Joined` and `@Computed` fields are materialized in-database, so `@Sortable` and `@Filter()` work
   efficiently on them — but those decorators must still be applied explicitly. Such fields are
   forced read-only and to non-indexed sorting.
@@ -128,6 +130,13 @@ This exposes `GET /tasks/get?id=`, `GET /tasks/list`, `POST /tasks/new`, `PUT /t
   of `DefaultRoutes.All`; use `DefaultRoutes.WithOptions(route, options, endpoint)` to rename an
   endpoint or preset parameter options.
 - `@Access` accepts per-action overrides, e.g. `@Access(AccessMode.ReadOnly, { edit: AccessMode.ReadWrite })`.
+  `GetEffectiveMode(field, action)` reads the mode a field has in one action.
+- A custom list route reads its page with `Query.ListPage(db, meta, query, options)` (`offset`,
+  `limit`, `filters`, `sortKey`, `pluck`, `noForeign`, `deferredJoined`): joined, then computed, then
+  foreign, then pluck.
+- `new` answers the created row as `get` reads it, with its `_id`; `edit` answers the stored row after
+  the update. Both accept a body already parsed (`Validation.WrittenBody`), so a wrapping route can
+  amend it before the write.
 - `edit` is a partial update: a field absent from the body is left unchanged, `null` clears it, and
   setters only run for the fields present. `@Mandatory("edit")` rejects a field cleared by the body
   (`null`, `""`, `[]`), not an absent one. `new` still writes every writable field and runs every setter.
