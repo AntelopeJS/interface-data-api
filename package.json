@@ -1,6 +1,6 @@
 {
   "name": "@antelopejs/interface-data-api",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "AntelopeJS interface that generates CRUD REST endpoints from database tables, with access rules, validation and pagination",
   "keywords": [
     "antelopejs",

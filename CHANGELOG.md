@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.3.0
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.2.2...v0.3.0)
+
+### 🚀 Enhancements
+
+- **routes:** ⚠️  Computed before foreign, AND filters, row responses and parsed bodies ([#43](https://github.com/AntelopeJS/interface-data-api/pull/43))
+
+### 📖 Documentation
+
+- Improve task-based onboarding and contract guidance ([#40](https://github.com/AntelopeJS/interface-data-api/pull/40))
+- Clarify learning paths and illustrate real outcomes ([#42](https://github.com/AntelopeJS/interface-data-api/pull/42))
+
+#### ⚠️ Breaking Changes
+
+- **routes:** ⚠️  Computed before foreign, AND filters, row responses and parsed bodies ([#43](https://github.com/AntelopeJS/interface-data-api/pull/43))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v0.2.2
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.2.1...v0.2.2)
