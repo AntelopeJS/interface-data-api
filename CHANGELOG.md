@@ -4,6 +4,11 @@
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.3.0...v0.4.0)
 
+### Upgrade notes
+
+- **Breaking:** `Validation.MandatoryFields` now answers `400 { code: "missing_mandatory_fields", fields: [...] }` instead of the text `Missing mandatory fields: …`, and `Validation.ValidateTypes` answers `400 { code: "invalid_field_types", fields: [...] }` instead of `Invalid field type(s): …` ([#45](https://github.com/AntelopeJS/interface-data-api/pull/45)). There is no English `message` alongside. Clients must read `code` and `fields`; the constants `Validation.MISSING_MANDATORY_FIELDS`, `Validation.INVALID_FIELD_TYPES` and the type `Validation.FieldsErrorBody` are exported from `components`. `@antelopejs/dms` 0.11 reads this body and requires `>=0.4.0`.
+- `Components.List` sorts a `@Localized` field on the value in the request's locale (else its `fallbackLocale`) instead of the stored per-language record ([#44](https://github.com/AntelopeJS/interface-data-api/pull/44)). Such a sort never takes the indexed path. Requires `@antelopejs/interface-database-decorators` `>=0.1.10 <1.0.0`.
+
 ### 🚀 Enhancements
 
 - **validation:** ⚠️  Structured 400 for mandatory and invalid fields ([#45](https://github.com/AntelopeJS/interface-data-api/pull/45))
