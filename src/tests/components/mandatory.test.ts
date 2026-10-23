@@ -7,6 +7,7 @@ import {
   DefaultRoutes,
   RegisterDataController,
 } from "@antelopejs/interface-data-api";
+import { Validation } from "@antelopejs/interface-data-api/components";
 import {
   Access,
   AccessMode,
@@ -191,8 +192,10 @@ async function newWithMissingMandatoryFields() {
     totalAmount: validOrderDataset.default.totalAmount,
   });
   expect(response.status).to.equal(400);
-  const result = await response.text();
-  expect(result).to.include("Missing mandatory fields: customerEmail");
+  expect(await response.json()).to.deep.equal({
+    code: Validation.MISSING_MANDATORY_FIELDS,
+    fields: ["customerEmail"],
+  });
 }
 
 async function editWithAllMandatoryFields() {
@@ -274,8 +277,10 @@ async function editClearingMandatoryField() {
       { id },
     );
     expect(response.status).to.equal(400);
-    const text = await response.text();
-    expect(text).to.include("Missing mandatory fields: status");
+    expect(await response.json()).to.deep.equal({
+      code: Validation.MISSING_MANDATORY_FIELDS,
+      fields: ["status"],
+    });
   }
 
   const order = await orderModel.get(id);

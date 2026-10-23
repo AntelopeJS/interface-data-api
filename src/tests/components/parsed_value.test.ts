@@ -7,6 +7,7 @@ import {
   DefaultRoutes,
   RegisterDataController,
 } from "@antelopejs/interface-data-api";
+import { Validation } from "@antelopejs/interface-data-api/components";
 import {
   Access,
   AccessMode,
@@ -177,5 +178,8 @@ async function rejectsFailedParse() {
     startsAt: "not-a-date",
   });
   expect(response.status).to.equal(400);
-  expect(await response.text()).to.include("Invalid field type(s): startsAt");
+  expect(await response.json()).to.deep.equal({
+    code: Validation.INVALID_FIELD_TYPES,
+    fields: ["startsAt"],
+  });
 }

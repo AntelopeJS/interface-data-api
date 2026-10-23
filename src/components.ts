@@ -6,6 +6,7 @@ import {
 } from "@antelopejs/interface-database-decorators/common";
 import { MakeParameterAndPropertyDecorator } from "@antelopejs/interface-core/decorators";
 import {
+  HTTPResult,
   type RequestContext,
   SetParameterProvider,
 } from "@antelopejs/interface-api";
@@ -1249,11 +1250,32 @@ export namespace Validation {
     edit: isClearedByBody,
   };
 
+  /** The `code` of a 400 naming the mandatory fields a body lacks. */
+  export const MISSING_MANDATORY_FIELDS = "missing_mandatory_fields";
+  /** The `code` of a 400 naming the fields whose validator refused the value. */
+  export const INVALID_FIELD_TYPES = "invalid_field_types";
+
+  /**
+   * The body of a 400 refusing some fields of a request body: what went
+   * wrong (`code`) and the fields concerned, for the client to word it and
+   * show it under each one.
+   */
+  export interface FieldsErrorBody {
+    code: typeof MISSING_MANDATORY_FIELDS | typeof INVALID_FIELD_TYPES;
+    fields: string[];
+  }
+
+  function rejectFields(code: FieldsErrorBody["code"], fields: string[]) {
+    if (fields.length === 0) return;
+    throw new HTTPResult(400, { code, fields } satisfies FieldsErrorBody);
+  }
+
   /**
    * Rejects with 400 the request bodies missing a field mandatory for `type`.
    * On `edit`, a mandatory field is missing when the body clears it (`null`,
    * `""` or `[]`); a field absent from the body keeps its stored value. On any
-   * other action, it is missing when absent from the body.
+   * other action, it is missing when absent from the body. The body of the
+   * 400 is a {@link FieldsErrorBody} with {@link MISSING_MANDATORY_FIELDS}.
    */
   export function MandatoryFields(meta: DataAPIMeta, obj: any, type: string) {
     const isMissing = MISSING_MANDATORY_FIELD_CHECKS[type] ?? isAbsentFromBody;
@@ -1262,11 +1284,7 @@ export namespace Validation {
         ([name, field]) => field.mandatory?.has(type) && isMissing(obj, name),
       )
       .map(([name]) => name);
-    assert(
-      missing.length === 0,
-      400,
-      `Missing mandatory fields: ${missing.join(", ")}`,
-    );
+    rejectFields(MISSING_MANDATORY_FIELDS, missing);
   }
 
   function toParseResult(
@@ -1279,7 +1297,8 @@ export namespace Validation {
 
   /**
    * Runs the validator of each field present in `obj` and rejects with 400
-   * when one fails. Returns a copy of `obj` where each validated field holds
+   * when one fails, with a {@link FieldsErrorBody} of
+   * {@link INVALID_FIELD_TYPES}. Returns a copy of `obj` where each validated field holds
    * the value its validator parsed (see {@link FieldValidationResult}).
    */
   export async function ValidateTypes(
@@ -1297,11 +1316,7 @@ export namespace Validation {
         invalid.push(name);
       }
     }
-    assert(
-      invalid.length === 0,
-      400,
-      `Invalid field type(s): ${invalid.join(", ")}`,
-    );
+    rejectFields(INVALID_FIELD_TYPES, invalid);
     return parsed;
   }
 
