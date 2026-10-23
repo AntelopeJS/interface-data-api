@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.4.0
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.3.0...v0.4.0)
+
+### 🚀 Enhancements
+
+- **validation:** ⚠️  Structured 400 for mandatory and invalid fields ([#45](https://github.com/AntelopeJS/interface-data-api/pull/45))
+
+### 🩹 Fixes
+
+- **list:** Sort a localized field in the request's locale ([#44](https://github.com/AntelopeJS/interface-data-api/pull/44))
+
+#### ⚠️ Breaking Changes
+
+- **validation:** ⚠️  Structured 400 for mandatory and invalid fields ([#45](https://github.com/AntelopeJS/interface-data-api/pull/45))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v0.3.0
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.2.2...v0.3.0)
