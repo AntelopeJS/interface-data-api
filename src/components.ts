@@ -22,6 +22,7 @@ import {
   fromDatabase,
   lock,
   ModifiersDynamicMetadata,
+  ModifiersStaticMetadata,
   toPlainData,
   unlock,
   unlockrequest,
@@ -412,7 +413,7 @@ export namespace Query {
       const tmpKey = `__fjoin_${foreignName}_${group.name}`;
       s = s
         .map((row) =>
-          row.merge({
+          (row as ValueProxy<Record<string, any>>).merge({
             [tmpKey]: row.key(foreignName).key(group.localKey),
           }),
         )
@@ -1023,6 +1024,25 @@ export namespace Query {
     exposeDeferredJoined?: boolean;
   }
 
+  /** Where a list sorted on a modifier-held field keeps the value it sorts on. */
+  const MODIFIED_SORT_KEY = "__dataApiSortValue";
+
+  /**
+   * Whether a field is held by a modifier the controller keys (a localized
+   * field read in the request's locale): stored under the modifier, it sorts
+   * on the value the request reads, not on the stored field.
+   */
+  function isHeldByKeyedModifier(meta: DataAPIMeta, field: string): boolean {
+    const keyed = new Set(
+      Array.from(meta.modifierKeys.keys(), (modifier) => modifier.name),
+    );
+    return (
+      getMetadata(meta.tableClass, ModifiersStaticMetadata).fields[field]?.some(
+        ({ id }) => keyed.has(id),
+      ) ?? false
+    );
+  }
+
   /**
    * Builds the filtered and sorted stream of a list request along with its
    * total count. Joined fields that no filter or sort references are not
@@ -1093,7 +1113,9 @@ export namespace Query {
 
     const sortField = sorting?.[0];
     const shouldSort = sortField ? meta.fields[sortField]?.sortable : undefined;
-    if (shouldSort?.indexed && sortField) {
+    const isModifiedSort =
+      !!shouldSort && !!sortField && isHeldByKeyedModifier(meta, sortField);
+    if (shouldSort?.indexed && sortField && !isModifiedSort) {
       tmpRequest = tmpRequest.orderBy(sortField, sorting?.[1] ?? "asc");
     }
     if (filterList.length > 0) {
@@ -1139,7 +1161,22 @@ export namespace Query {
         new Set([sortField]),
       ) as Stream<T>;
     }
-    if (shouldSort && !shouldSort.indexed && sortField) {
+    if (isModifiedSort && sortField) {
+      // Sorts on the value in the request's locale, else its fallback.
+      tmpRequest = (tmpRequest as unknown as Stream<Record<string, any>>)
+        .map((row) =>
+          row.merge({
+            [MODIFIED_SORT_KEY]: Validation.UnlockRequest(
+              obj,
+              meta,
+              row,
+              sortField,
+            ),
+          }),
+        )
+        .orderBy(MODIFIED_SORT_KEY, sorting?.[1] ?? "asc")
+        .without(MODIFIED_SORT_KEY) as unknown as Stream<T>;
+    } else if (shouldSort && !shouldSort.indexed && sortField) {
       tmpRequest = tmpRequest.orderBy(sortField, sorting?.[1] ?? "asc");
     }
     return listResultTuple(tmpRequest, total, meta, joinedSplit, db, options);
