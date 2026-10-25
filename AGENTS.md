@@ -4,7 +4,7 @@
 
 ## Layout
 
-- `src/index.ts` holds `DataController`, `RegisterDataController` and `DefaultRoutes`. `src/components.ts` holds the field decorators and the route building blocks; `src/metadata.ts` holds `DataAPIMeta`. Each is a published subpath (`/components`, `/metadata`).
+- `src/index.ts` holds `DataController`, `RegisterDataController` and `DefaultRoutes`. `src/metadata.ts` holds `DataAPIMeta` and the field decorators (`Access`, `Listable`, `Foreign`, `Computed`, `Filter`, …). `src/components.ts` holds the route building blocks (`Parameters`, `Query`, `Validation`). Both are published subpaths (`/metadata`, `/components`).
 - Tests live in `src/tests` and compile to `dist/tests`. `pnpm test` builds, then `ajs module test .` loads `src/antelope.test.ts`, which installs `@antelopejs/mongodb` and `@antelopejs/api` at pinned versions into `.antelope/cache` and starts an in-memory MongoDB. The first run needs network access.
 
 ## Versioning
@@ -13,7 +13,7 @@ The AntelopeJS interfaces are peer dependencies with ranges below `1.0.0`, and t
 
 ## Checks
 
-`pnpm run checks` runs the whole test suite. It does not run the documentation check: CI runs the `AntelopeJS/tooling-configs` docs action on `README.md` and `docs/`, and type-checks the docs snippets through `docs/tsconfig.json`, which resolves the package name to `src`.
+`pnpm run checks` runs the whole test suite. It does not run the documentation check, which only CI runs through the `AntelopeJS/tooling-configs` docs action on `README.md` and `docs/`. That action type-checks the docs snippets through `docs/tsconfig.json`, which resolves the package name to `src`; run `pnpm exec tsc -p docs/tsconfig.json` to check them locally. It also matches the README peer table, marked `docs-compat`, against `peerDependencies`.
 
 ## Shipped files
 
