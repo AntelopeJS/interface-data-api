@@ -1,0 +1,27 @@
+{
+  "rules": {
+    "antelopejs/no-comments": 60,
+    "antelopejs/require-assertion": 113,
+    "anti-slop/no-chained-type-assertions": 16,
+    "anti-slop/no-known-value-widening": 10,
+    "anti-slop/no-runtime-typeof": 38,
+    "anti-slop/no-shape-in-symbol-names": 13,
+    "anti-slop/no-unknown-parameters": 21,
+    "anti-slop/no-unknown-returns": 4,
+    "anti-slop/no-unsafe-dictionary-type": 54,
+    "anti-slop/require-safety-comment-for-type-assertion": 205,
+    "eslint/complexity": 1,
+    "eslint/max-depth": 1,
+    "eslint/max-params": 6,
+    "typescript/no-misused-spread": 4,
+    "typescript/no-redundant-type-constituents": 1,
+    "typescript/unbound-method": 5
+  },
+  "oversizeFiles": {
+    ".github/social-card.png": 253602,
+    "src/components.ts": 49274,
+    "src/metadata.ts": 29852,
+    "src/tests/components/listable.test.ts": 15876,
+    "src/tests/integration.test.ts": 26222
+  }
+}
