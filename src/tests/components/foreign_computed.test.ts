@@ -1,7 +1,7 @@
 import path from "node:path";
 import { expect } from "chai";
 import { Controller } from "@antelopejs/interface-api";
-import { Schema, type ValueProxy } from "@antelopejs/interface-database";
+import { Schema } from "@antelopejs/interface-database";
 import {
   DataController,
   DefaultRoutes,
@@ -26,6 +26,7 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
+import { readJson } from "../internal/http";
 import {
   getFunctionName,
   getRequest,
@@ -79,11 +80,11 @@ interface ListResponse {
 
 describe("Foreign and Computed fields on the same key", () => {
   it("lists the computed value read from the key and the resolved relation", async () =>
-    await listsComputedFromForeignKey());
+    await expectListsComputedFromForeignKey());
   it("gets the computed value read from the key and the resolved relation", async () =>
-    await getsComputedFromForeignKey());
+    await expectGetsComputedFromForeignKey());
   it("combines several filters on one field with AND", async () =>
-    await combinesFiltersOnOneField());
+    await expectCombinesFiltersOnOneField());
 });
 
 async function _createDataController(testName: string) {
@@ -109,7 +110,7 @@ async function _createDataController(testName: string) {
     @Listable()
     @Access(AccessMode.ReadWrite)
     @Filter((_context, proxy, _key, value, mode) =>
-      (proxy as ValueProxy<number>)[mode](parseFloat(value)),
+      proxy[mode](parseFloat(value)),
     )
     declare age: number;
 
@@ -118,14 +119,10 @@ async function _createDataController(testName: string) {
     @Access(AccessMode.ReadWrite)
     declare team: string;
 
-    // Reads the key the foreign lookup replaces with the team row.
     @Listable()
     @Computed(
       (row, db) =>
-        db
-          .table(memberTableName)
-          .getAll(row.key("team") as unknown as string, "team")
-          .count(),
+        db.table(memberTableName).getAll(row.key("team"), "team").count(),
       { default: 0 },
     )
     declare teammates: number;
@@ -166,10 +163,10 @@ async function _list(
 ): Promise<ListResponse> {
   const response = await request(testName, "list", "GET", undefined, query);
   expect(response.status, await response.clone().text()).to.equal(200);
-  return (await response.json()) as ListResponse;
+  return await readJson<ListResponse>(response);
 }
 
-async function listsComputedFromForeignKey() {
+async function expectListsComputedFromForeignKey() {
   const { teamIds } = await _createDataController(getFunctionName());
 
   const data = await _list(getFunctionName(), [["limit", "10"]]);
@@ -183,17 +180,17 @@ async function listsComputedFromForeignKey() {
   });
 }
 
-async function getsComputedFromForeignKey() {
+async function expectGetsComputedFromForeignKey() {
   const { teamIds, memberIds } = await _createDataController(getFunctionName());
 
   const response = await getRequest(getFunctionName(), { id: memberIds[3] });
   expect(response.status).to.equal(200);
-  const member = (await response.json()) as MemberListed;
+  const member = await readJson<MemberListed>(response);
   expect(member.teammates).to.equal(1);
   expect(member.team).to.deep.equal({ _id: teamIds[1], name: "Blue" });
 }
 
-async function combinesFiltersOnOneField() {
+async function expectCombinesFiltersOnOneField() {
   await _createDataController(getFunctionName());
 
   const range = await _list(getFunctionName(), [

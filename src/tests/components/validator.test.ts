@@ -22,11 +22,12 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
+import { readJson } from "../internal/http";
 import {
-  type CreatedRow,
   editRequest,
   getSchemaInstance,
   newRequest,
+  type CreatedRow,
   validateObject,
 } from "../utils";
 
@@ -64,7 +65,7 @@ class Product extends Table {
 }
 class ProductModel extends BasicDataModel(Product, productTableName) {}
 
-const validProductData: Record<string, Partial<Product>> = {
+const validProductData = {
   default: {
     name: "Valid Product",
     price: 29.99,
@@ -81,31 +82,29 @@ const validProductData: Record<string, Partial<Product>> = {
     status: "active",
     tags: ["electronics", "gadgets"],
   },
-};
+} satisfies Record<string, Partial<Product>>;
 
 describe("Field Validator", () => {
   it("validate correct parameters on new", async () =>
-    await validateCorrectParametersOnNew());
+    await expectCorrectParametersOnNew());
   it("validate incorrect date parameter on new", async () =>
-    await validateIncorrectDateParameterOnNew());
+    await expectIncorrectDateParameterOnNew());
   it("validate incorrect regex parameter on new", async () =>
-    await validateIncorrectEmailParameterOnNew());
+    await expectIncorrectEmailParameterOnNew());
   it("validate incorrect string parameter on new", async () =>
-    await validateIncorrectStringParameterOnNew());
+    await expectIncorrectStringParameterOnNew());
   it("validate incorrect number parameter on new", async () =>
-    await validateIncorrectNumberParameterOnNew());
+    await expectIncorrectNumberParameterOnNew());
   it("validate correct parameters on edit", async () =>
-    await validateCorrectParametersOnEdit());
+    await expectCorrectParametersOnEdit());
   it("validate incorrect date parameter on edit", async () =>
-    await validateIncorrectDateParameterOnEdit());
+    await expectIncorrectDateParameterOnEdit());
   it("validate incorrect regex parameter on edit", async () =>
-    await validateIncorrectEmailParameterOnEdit());
+    await expectIncorrectEmailParameterOnEdit());
   it("validate incorrect string parameter on edit", async () =>
-    await validateIncorrectStringParameterOnEdit());
+    await expectIncorrectStringParameterOnEdit());
   it("validate incorrect number parameter on edit", async () =>
-    await validateIncorrectNumberParameterOnEdit());
-
-  after(async () => {});
+    await expectIncorrectNumberParameterOnEdit());
 });
 
 async function _createDataController(
@@ -149,7 +148,7 @@ async function _createDataController(
 
     @Access(AccessMode.ReadWrite)
     @Validator((value) =>
-      ["active", "inactive", "pending"].includes(value as string),
+      ["active", "inactive", "pending"].some((status) => status === value),
     )
     declare status: string;
 
@@ -171,6 +170,12 @@ async function _createDataController(
   return { productModel };
 }
 
+interface IncorrectScenario {
+  route: Parameters<typeof _createDataController>[1];
+  testDataset: Partial<Product>;
+  createDataset?: Partial<Product>;
+}
+
 function createIncorrectValidator(
   testName: string,
   fieldName: string,
@@ -180,14 +185,16 @@ function createIncorrectValidator(
     data: any,
     id?: Record<string, string>,
   ) => Promise<Response>,
-  route: any,
-  testDataset: Partial<Product>,
-  createDataset?: Partial<Product>,
+  scenario: IncorrectScenario,
 ) {
   return async () => {
-    const { id } = await _createDataController(testName, route, createDataset);
+    const { id } = await _createDataController(
+      testName,
+      scenario.route,
+      scenario.createDataset,
+    );
 
-    const invalidData = { ...testDataset, [fieldName]: invalidValue };
+    const invalidData = { ...scenario.testDataset, [fieldName]: invalidValue };
     const response = await requestFunction(
       testName,
       invalidData,
@@ -229,7 +236,7 @@ function createCorrectValidator(
     if (id) {
       product_fetched = await productModel.get(id);
     } else {
-      const created = (await response.json()) as CreatedRow;
+      const created = await readJson<CreatedRow>(response);
       expect(created._id).to.be.a("string");
       product_fetched = await productModel.get(created._id);
     }
@@ -257,9 +264,11 @@ function createIncorrectValidatorEdit(
     fieldName,
     invalidValue,
     requestFunction,
-    { edit: DefaultRoutes.Edit },
-    validProductData.alternative,
-    validProductData.default,
+    {
+      route: { edit: DefaultRoutes.Edit },
+      testDataset: validProductData.alternative,
+      createDataset: validProductData.default,
+    },
   );
 }
 
@@ -274,68 +283,70 @@ function createIncorrectValidatorNew(
     fieldName,
     invalidValue,
     requestFunction,
-    { new: DefaultRoutes.New },
-    validProductData.default,
+    {
+      route: { new: DefaultRoutes.New },
+      testDataset: validProductData.default,
+    },
   );
 }
 
-const validateCorrectParametersOnNew = createCorrectValidator(
+const expectCorrectParametersOnNew = createCorrectValidator(
   "CorrectParametersOnNew",
   newRequest,
   { new: DefaultRoutes.New },
   validProductData.default,
 );
-const validateIncorrectDateParameterOnNew = createIncorrectValidatorNew(
+const expectIncorrectDateParameterOnNew = createIncorrectValidatorNew(
   "DateParameterOnNew",
   "birthDate",
   "invalid",
   newRequest,
 );
-const validateIncorrectEmailParameterOnNew = createIncorrectValidatorNew(
+const expectIncorrectEmailParameterOnNew = createIncorrectValidatorNew(
   "EmailParameterOnNew",
   "email",
   "invalid",
   newRequest,
 );
-const validateIncorrectStringParameterOnNew = createIncorrectValidatorNew(
+const expectIncorrectStringParameterOnNew = createIncorrectValidatorNew(
   "StringParameterOnNew",
   "name",
   "ab",
   newRequest,
 );
-const validateIncorrectNumberParameterOnNew = createIncorrectValidatorNew(
+const expectIncorrectNumberParameterOnNew = createIncorrectValidatorNew(
   "NumberParameterOnNew",
   "price",
   -10,
   newRequest,
 );
 
-const validateCorrectParametersOnEdit = createCorrectValidator(
+const expectCorrectParametersOnEdit = createCorrectValidator(
   "CorrectParametersOnEdit",
   editRequest,
   { edit: DefaultRoutes.Edit },
   validProductData.alternative,
   validProductData.default,
 );
-const validateIncorrectDateParameterOnEdit = createIncorrectValidatorEdit(
+const expectIncorrectDateParameterOnEdit = createIncorrectValidatorEdit(
   "DateParameterOnEdit",
   "birthDate",
   "invalid-date",
   editRequest,
 );
-const validateIncorrectEmailParameterOnEdit = createIncorrectValidatorEdit(
+const expectIncorrectEmailParameterOnEdit = createIncorrectValidatorEdit(
   "EmailParameterOnEdit",
   "email",
   "invalid-email@a",
   editRequest,
 );
-const validateIncorrectStringParameterOnEdit = createIncorrectValidatorEdit(
+const expectIncorrectStringParameterOnEdit = createIncorrectValidatorEdit(
   "StringParameterOnEdit",
   "name",
   "ab",
   editRequest,
 );
-const validateIncorrectNumberParameterOnEdit = createIncorrectValidatorEdit(
+const expectIncorrectNumberParameterOnEdit = createIncorrectValidatorEdit(
   "NumberParameterOnEdit",
   "price",
   -10,

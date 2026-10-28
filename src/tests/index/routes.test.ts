@@ -27,6 +27,7 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
+import { readJson } from "../internal/http";
 import {
   deleteRequest,
   editRequest,
@@ -62,7 +63,7 @@ class User extends Table {
 }
 class UserModel extends BasicDataModel(User, userTableName) {}
 
-const validUserDataset: Record<string, Partial<User>> = {
+const validUserDataset = {
   default: {
     name: "Bob",
     email: "bob@email.com",
@@ -75,28 +76,25 @@ const validUserDataset: Record<string, Partial<User>> = {
     age: 25,
     password: "very-secure-qwerty123",
   },
-};
+} satisfies Record<string, Partial<User>>;
 
 describe("Routes", () => {
   beforeEach(async () => {
     try {
       await Schema.get(schemaName)?.instance().table(userTableName).delete();
-    } catch {
-      // Instance may not exist yet on first run
-    }
+    } catch {}
   });
 
-  it("accessing default routes", async () => requestingDefaultRoutes());
-  it("accessing undefined route", async () => await requestingUndefinedRoute());
-  it("using route get", async () => await usingRouteGet());
-  it("using route list", async () => await usingRouteList());
-  it("using route new", async () => await usingRouteNew());
-  it("using route edit", async () => await usingRouteEdit());
+  it("accessing default routes", async () => expectRequestingDefaultRoutes());
+  it("accessing undefined route", async () =>
+    await expectRequestingUndefinedRoute());
+  it("using route get", async () => await expectUsingRouteGet());
+  it("using route list", async () => await expectUsingRouteList());
+  it("using route new", async () => await expectUsingRouteNew());
+  it("using route edit", async () => await expectUsingRouteEdit());
   it("writes a body a wrapping route parsed and amended", async () =>
-    await writesParsedBodyAsHanded());
-  it("using route delete", async () => await usingRouteDelete());
-
-  after(async () => {});
+    await expectWritesParsedBodyAsHanded());
+  it("using route delete", async () => await expectUsingRouteDelete());
 });
 
 async function _createDataController(
@@ -140,7 +138,7 @@ async function _createDataController(
   return { id: insertResult[0], userModel };
 }
 
-async function requestingDefaultRoutes() {
+async function expectRequestingDefaultRoutes() {
   await _createDataController(getFunctionName(), validUserDataset.default);
 
   const [
@@ -164,7 +162,7 @@ async function requestingDefaultRoutes() {
   expect(delete_response.status).to.not.equal(404);
 }
 
-async function requestingUndefinedRoute() {
+async function expectRequestingUndefinedRoute() {
   await _createDataController(getFunctionName(), validUserDataset.default, {
     get: DefaultRoutes.Get,
     new: DefaultRoutes.New,
@@ -198,7 +196,7 @@ async function validateUserUsingResponse(
   id: string,
   validDataset: Partial<User>,
 ) {
-  const data = (await response.json()) as { results: User[] };
+  const data = await readJson<{ results: User[] }>(response);
   expect(response.status).to.equal(200);
 
   let found: User | undefined;
@@ -223,7 +221,7 @@ async function validateUserUsingModel(
 }
 
 async function validateUser(
-  user: User | Record<string, unknown> | undefined,
+  user: User | undefined,
   validDataset: Partial<User>,
   id?: string,
 ) {
@@ -236,7 +234,7 @@ async function validateUser(
   expect(foundDataset).to.have.property("password", validDataset.password);
 }
 
-async function usingRouteGet() {
+async function expectUsingRouteGet() {
   const { id, userModel } = await _createDataController(
     getFunctionName(),
     validUserDataset.default,
@@ -250,7 +248,7 @@ async function usingRouteGet() {
   await validateUserUsingModel(userModel, id, validUserDataset.default);
 }
 
-async function usingRouteList() {
+async function expectUsingRouteList() {
   const { id } = await _createDataController(
     getFunctionName(),
     validUserDataset.default,
@@ -264,7 +262,7 @@ async function usingRouteList() {
   await validateUserUsingResponse(response, id, validUserDataset.default);
 }
 
-async function usingRouteNew() {
+async function expectUsingRouteNew() {
   const { userModel } = await _createDataController(
     getFunctionName(),
     validUserDataset.default,
@@ -277,19 +275,18 @@ async function usingRouteNew() {
     getFunctionName(),
     validUserDataset.default,
   );
-  // The created row, as the get route answers it: its key and its fields.
-  const created = (await response.json()) as Record<string, unknown>;
+  const created = await readJson<User>(response);
   expect(created._id).to.be.a("string");
   expect(created.name).to.equal(validUserDataset.default.name);
   expect(created.email).to.equal(validUserDataset.default.email);
   await validateUserUsingModel(
     userModel,
-    created._id as string,
+    created._id,
     validUserDataset.default,
   );
 }
 
-async function usingRouteEdit() {
+async function expectUsingRouteEdit() {
   const { id, userModel } = await _createDataController(
     getFunctionName(),
     validUserDataset.default,
@@ -303,15 +300,14 @@ async function usingRouteEdit() {
     validUserDataset.alternative,
     { id },
   );
-  // The stored row after the edit, as the get route answers it.
-  const stored = (await response.json()) as Record<string, unknown>;
+  const stored = await readJson<User>(response);
   expect(stored._id).to.equal(id);
   expect(stored.name).to.equal(validUserDataset.alternative.name);
   expect(stored.email).to.equal(validUserDataset.alternative.email);
   await validateUserUsingModel(userModel, id, validUserDataset.alternative);
 }
 
-async function writesParsedBodyAsHanded() {
+async function expectWritesParsedBodyAsHanded() {
   const stampedName = "Stamped by the wrapper";
   const amendBody = (body: Validation.WrittenBody) => {
     const parsed = Validation.ParseBody(body);
@@ -325,7 +321,7 @@ async function writesParsedBodyAsHanded() {
       new: {
         ...DefaultRoutes.New,
         func: function (
-          this: unknown,
+          this: ThisParameterType<typeof DefaultRoutes.New.func>,
           ctx: RequestContext,
           params: Parameters.NewParameters,
           body: Buffer,
@@ -341,7 +337,7 @@ async function writesParsedBodyAsHanded() {
       edit: {
         ...DefaultRoutes.Edit,
         func: function (
-          this: unknown,
+          this: ThisParameterType<typeof DefaultRoutes.Edit.func>,
           ctx: RequestContext,
           params: Parameters.EditParameters,
           body: Buffer,
@@ -357,23 +353,23 @@ async function writesParsedBodyAsHanded() {
     },
   );
 
-  const created = (await (
-    await newRequest(getFunctionName(), validUserDataset.alternative)
-  ).json()) as Record<string, unknown>;
+  const created = await readJson<User>(
+    await newRequest(getFunctionName(), validUserDataset.alternative),
+  );
   expect(created.name).to.equal(stampedName);
-  await validateUserUsingModel(userModel, created._id as string, {
+  await validateUserUsingModel(userModel, created._id, {
     ...validUserDataset.alternative,
     name: stampedName,
   });
 
-  const edited = (await (
-    await editRequest(getFunctionName(), { age: 51 }, { id })
-  ).json()) as Record<string, unknown>;
+  const edited = await readJson<User>(
+    await editRequest(getFunctionName(), { age: 51 }, { id }),
+  );
   expect(edited.name).to.equal(stampedName);
   expect(edited.age).to.equal(51);
 }
 
-async function usingRouteDelete() {
+async function expectUsingRouteDelete() {
   const { id, userModel } = await _createDataController(
     getFunctionName(),
     validUserDataset.default,

@@ -25,13 +25,14 @@ import {
 } from "@antelopejs/interface-database-decorators";
 
 import { URL_BASE } from "../constants";
+import { readJson } from "../internal/http";
 import {
-  type CreatedRow,
   editRequest,
   getFunctionName,
   getRequest,
   getSchemaInstance,
   newRequest,
+  type CreatedRow,
 } from "../utils";
 
 const currentTestName = path
@@ -87,25 +88,26 @@ const localizedArticle = {
 
 describe("Partial edit", () => {
   it("leaves the fields absent from the body unchanged", async () =>
-    await leavesAbsentFieldsUnchanged());
-  it("clears a field sent as null", async () => await clearsNullField());
+    await expectLeavesAbsentFieldsUnchanged());
+  it("clears a field sent as null", async () => await expectClearsNullField());
   it("skips the setters of fields absent from the body", async () =>
-    await skipsSettersOfAbsentFields());
+    await expectSkipsSettersOfAbsentFields());
   it("runs the setters of fields present in the body", async () =>
-    await runsSettersOfPresentFields());
+    await expectRunsSettersOfPresentFields());
   it("still runs every setter on new", async () =>
-    await runsEverySetterOnNew());
+    await expectRunsEverySetterOnNew());
   it("keeps the other languages of a written localized field", async () =>
-    await keepsOtherLanguagesOfWrittenField());
+    await expectKeepsOtherLanguagesOfWrittenField());
   it("keeps the localized fields absent from the body", async () =>
-    await keepsAbsentLocalizedFields());
-  it("answers 404 for a missing row", async () => await answersNotFound());
+    await expectKeepsAbsentLocalizedFields());
+  it("answers 404 for a missing row", async () =>
+    await expectAnswersNotFound());
   it("answers 400 for a body that is not JSON", async () =>
-    await answersBadRequestForInvalidJson());
+    await expectAnswersBadRequestForInvalidJson());
   it("answers 400 for a body that is not a JSON object", async () =>
-    await answersBadRequestForNonObjectBody());
+    await expectAnswersBadRequestForNonObjectBody());
   it("answers 400 on new for a body that is not a JSON object", async () =>
-    await answersBadRequestForNonObjectBodyOnNew());
+    await expectAnswersBadRequestForNonObjectBodyOnNew());
 });
 
 async function _dropArticleTable() {
@@ -176,14 +178,14 @@ async function _createLocalizedArticle(testName: string) {
     locale: allLocales,
   });
   expect(response.status).to.equal(200);
-  const { _id: id } = (await response.json()) as CreatedRow;
+  const { _id: id } = await readJson<CreatedRow>(response);
   return id;
 }
 
 async function _getLocalized(testName: string, id: string, locale: string) {
   const response = await getRequest(testName, { id, locale });
   expect(response.status).to.equal(200);
-  return (await response.json()) as LocalizedArticle;
+  return await readJson<LocalizedArticle>(response);
 }
 
 async function _rawRequest(
@@ -199,7 +201,7 @@ async function _rawRequest(
   );
 }
 
-async function leavesAbsentFieldsUnchanged() {
+async function expectLeavesAbsentFieldsUnchanged() {
   const { id, articleModel } = await _createDataController(
     getFunctionName(),
     storedArticle,
@@ -222,7 +224,7 @@ async function leavesAbsentFieldsUnchanged() {
   });
 }
 
-async function clearsNullField() {
+async function expectClearsNullField() {
   const { id, articleModel } = await _createDataController(
     getFunctionName(),
     storedArticle,
@@ -241,7 +243,7 @@ async function clearsNullField() {
   expect(article?.reference).to.equal(storedArticle.reference);
 }
 
-async function skipsSettersOfAbsentFields() {
+async function expectSkipsSettersOfAbsentFields() {
   const { id, articleModel } = await _createDataController(
     getFunctionName(),
     storedArticle,
@@ -259,7 +261,7 @@ async function skipsSettersOfAbsentFields() {
   expect(article?.slug).to.equal(storedArticle.slug);
 }
 
-async function runsSettersOfPresentFields() {
+async function expectRunsSettersOfPresentFields() {
   const { id, articleModel } = await _createDataController(
     getFunctionName(),
     storedArticle,
@@ -277,20 +279,20 @@ async function runsSettersOfPresentFields() {
   expect(article?.slug).to.equal("edited-slug");
 }
 
-async function runsEverySetterOnNew() {
+async function expectRunsEverySetterOnNew() {
   const { articleModel } = await _createDataController(getFunctionName());
 
   const response = await newRequest(getFunctionName(), {
     reference: "ART-003",
   });
   expect(response.status).to.equal(200);
-  const { _id: id } = (await response.json()) as CreatedRow;
+  const { _id: id } = await readJson<CreatedRow>(response);
 
   const article = await articleModel.get(id);
   expect(article?.slug).to.equal(defaultSlug);
 }
 
-async function keepsOtherLanguagesOfWrittenField() {
+async function expectKeepsOtherLanguagesOfWrittenField() {
   const id = await _createLocalizedArticle(getFunctionName());
 
   const response = await editRequest(
@@ -310,7 +312,7 @@ async function keepsOtherLanguagesOfWrittenField() {
   });
 }
 
-async function keepsAbsentLocalizedFields() {
+async function expectKeepsAbsentLocalizedFields() {
   const id = await _createLocalizedArticle(getFunctionName());
 
   const response = await editRequest(
@@ -330,7 +332,7 @@ async function keepsAbsentLocalizedFields() {
   });
 }
 
-async function answersNotFound() {
+async function expectAnswersNotFound() {
   await _createDataController(getFunctionName(), storedArticle);
 
   const response = await editRequest(
@@ -341,7 +343,7 @@ async function answersNotFound() {
   expect(response.status).to.equal(404);
 }
 
-async function answersBadRequestForInvalidJson() {
+async function expectAnswersBadRequestForInvalidJson() {
   const { id } = await _createDataController(getFunctionName(), storedArticle);
   if (!id) throw new Error("Expected id from _createDataController");
 
@@ -351,7 +353,7 @@ async function answersBadRequestForInvalidJson() {
   expect(response.status).to.equal(400);
 }
 
-async function answersBadRequestForNonObjectBody() {
+async function expectAnswersBadRequestForNonObjectBody() {
   const { id } = await _createDataController(getFunctionName(), storedArticle);
   if (!id) throw new Error("Expected id from _createDataController");
 
@@ -363,7 +365,7 @@ async function answersBadRequestForNonObjectBody() {
   }
 }
 
-async function answersBadRequestForNonObjectBodyOnNew() {
+async function expectAnswersBadRequestForNonObjectBodyOnNew() {
   await _createDataController(getFunctionName());
 
   for (const body of ["{", "[]", "null"]) {

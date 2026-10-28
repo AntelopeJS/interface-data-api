@@ -1,50 +1,64 @@
 import { GetMetadata } from "@antelopejs/interface-core";
-import type { RequestContext } from "@antelopejs/interface-api";
 import type { ContainerModifier } from "@antelopejs/interface-database-decorators/modifiers/common";
-import type {
-  Query,
-  SchemaInstance,
-  ValueProxy,
-  ValueProxyOrValue,
-} from "@antelopejs/interface-database";
 import {
   DatumStaticMetadata,
   getMetadata,
-  getTablesForSchema,
   type Table,
 } from "@antelopejs/interface-database-decorators";
 import {
   type Class,
   MakeMethodAndPropertyDecorator,
   MakePropertyDecorator,
-  type ParameterDecorator,
 } from "@antelopejs/interface-core/decorators";
 
-export type DataControllerCallback<O = any> = {
-  args: (ParameterDecorator | ParameterDecorator[])[];
-  method: string;
-  func: (ctx: any, opts: O, ...args: any[]) => any;
-};
+import type { DataControllerCallbackWithOptions } from "./internal/controller-types";
+import {
+  createDefaultFilter,
+  type DefaultFilterFunction,
+} from "./internal/default-filter";
+import type {
+  FieldValidator,
+  FieldData,
+  ComputedExpression,
+  ComputedOptions,
+  FilterValue,
+  FieldFilter,
+  FilterFunction,
+  ReadableAccessFields,
+  WritableAccessFields,
+} from "./internal/field-types";
+import {
+  listedNames,
+  merge,
+  rebuildPluck,
+  targetJoinedFields,
+} from "./internal/meta-records";
+import { resolveTableReference } from "./internal/table-reference";
 
-export type DataControllerCallbackWithOptions<O = any> = {
-  endpoint?: string;
-  options?: Partial<O>;
-  callback: DataControllerCallback<O>;
-};
-
-export type ExtractCallback<T> = T extends DataControllerCallbackWithOptions
-  ? T["callback"]["func"]
-  : T extends DataControllerCallback
-    ? T["func"]
-    : never;
-
-export type DataControllerDef = {
-  [name: string]: DataControllerCallback | DataControllerCallbackWithOptions;
-};
-
-export type ExtractDefCallbacks<T extends {}> = {
-  [K in keyof T]: ExtractCallback<T[K]>;
-};
+export type {
+  DataControllerCallback,
+  DataControllerCallbackWithOptions,
+  ExtractCallback,
+  DataControllerDef,
+  ExtractDefCallbacks,
+} from "./internal/controller-types";
+export type {
+  ForeignJoinedRef,
+  FieldParseSuccess,
+  FieldParseFailure,
+  FieldParseResult,
+  FieldValidationResult,
+  FieldValidator,
+  FieldData,
+  ComputedExpression,
+  ComputedOptions,
+  ComputedFieldData,
+  FilterValue,
+  FieldFilter,
+  FilterFunction,
+  ReadableAccessFields,
+  WritableAccessFields,
+} from "./internal/field-types";
 
 /**
  * Field access mode enum.
@@ -53,144 +67,6 @@ export enum AccessMode {
   ReadOnly = 1,
   WriteOnly = 2,
   ReadWrite = 3,
-}
-
-/**
- * A `@Joined` field declared on the target of a relation, captured so the
- * foreign lookup can re-materialize it (joined fields are not physical columns,
- * so a plain pluck of the target table would return them empty).
- */
-export interface ForeignJoinedRef {
-  name: string;
-  table: string;
-  tableClass?: Class<Table>;
-  localKey: string;
-  remoteField: string;
-  remoteIndex: string;
-  schemaName?: string;
-}
-
-/**
- * DataAPI Metadata field information.
- */
-/** Parse outcome accepting the field value, carrying the value to write. */
-export interface FieldParseSuccess {
-  success: true;
-  data: unknown;
-}
-
-/** Parse outcome rejecting the field value. */
-export interface FieldParseFailure {
-  success: false;
-}
-
-/** Parse outcome of a field value, shaped like the result of zod's `safeParse`. */
-export type FieldParseResult = FieldParseSuccess | FieldParseFailure;
-
-/**
- * Outcome of a field validator: `true`/`false` accepts or rejects the raw
- * value, which is then written as received; a {@link FieldParseResult}
- * accepts or rejects it, and on success its `data` is written instead of the
- * raw value.
- */
-export type FieldValidationResult = boolean | FieldParseResult;
-
-/** Field value validator, see {@link FieldValidationResult}. */
-export type FieldValidator = (
-  value: unknown,
-) => FieldValidationResult | Promise<FieldValidationResult>;
-
-export interface FieldData {
-  /**
-   * Field name in-database.
-   */
-  dbName?: string;
-
-  /**
-   * Field access mode.
-   *
-   * @see {@link AccessMode}
-   */
-  mode?: AccessMode;
-
-  /**
-   * Field access mode overrides per DataAPI action.
-   */
-  modeOverrides?: Record<string, AccessMode>;
-
-  /**
-   * DB Fields that should be selected for this field.
-   */
-  listable?: Record<string, string[]>;
-
-  /**
-   * Set of api methods for which the field must be set.
-   */
-  mandatory?: Set<string>;
-
-  /**
-   * Whether the DataAPI can be sorted using this field.
-   */
-  sortable?: { indexed?: boolean };
-
-  /**
-   * Foreign key reference.
-   *
-   * `schemaName` is set when the target lives in another schema than the
-   * controller's table; runtime resolves the foreign lookup against that
-   * schema's default instance instead of the source instance.
-   */
-  foreign?: [
-    table: string,
-    tableClass?: Class<Table>,
-    index?: string,
-    multi?: true,
-    pluck?: string[],
-    schemaName?: string,
-    targetJoined?: ForeignJoinedRef[],
-  ];
-
-  /**
-   * Joined-from-other-table reference.
-   *
-   * Imports a single scalar field from another table at query time and
-   * flattens it into the row, enabling sort/search/filter natively in DB.
-   *
-   * `schemaName` is set when the target lives in another schema than the
-   * controller's table; runtime resolves the join against that schema's
-   * default instance instead of the source instance.
-   */
-  joined?: {
-    table: string;
-    tableClass?: Class<Table>;
-    localKey: string;
-    remoteField: string;
-    remoteIndex: string;
-    schemaName?: string;
-  };
-
-  /**
-   * In-database computed value.
-   *
-   * The expression is merged into each row at query time, enabling sort,
-   * filter, and pagination natively in DB.
-   */
-  computed?: ComputedFieldData;
-
-  /**
-   * Value validator callback.
-   */
-  validator?: FieldValidator;
-
-  /**
-   * Field property descriptor.
-   */
-  desc?: PropertyDescriptor;
-
-  /**
-   * Whether or not an `eq` filter with this field name can use an indexed lookup.
-   */
-  indexable?: boolean;
 }
 
 /** The action whose access is a field's own `mode`, overrides aside. */
@@ -210,142 +86,13 @@ export function GetEffectiveMode(
   return field.modeOverrides?.[action] ?? field.mode;
 }
 
-/**
- * In-database computed field expression.
- *
- * Receives the row proxy and the schema instance of the controller's table.
- * May return a row-local expression (built from `row`) or a per-row subquery
- * (ex: an aggregate over another table).
- */
-export type ComputedExpression = (
-  row: ValueProxy<Record<string, any>>,
-  db: SchemaInstance<any>,
-) => ValueProxyOrValue<unknown> | Query<unknown>;
-
-/**
- * Computed field options.
- */
-export interface ComputedOptions {
-  /**
-   * Fallback merged over the computed value when the expression yields null
-   * (ex: `0` for an aggregate count over an empty set).
-   */
-  default?: unknown;
+function isFilterList(filter: FieldFilter): filter is FilterValue[] {
+  return Array.isArray(filter[0]);
 }
-
-/**
- * Computed field information.
- */
-export interface ComputedFieldData extends ComputedOptions {
-  expr: ComputedExpression;
-}
-
-type Comparison = "eq" | "ne" | "gt" | "ge" | "lt" | "le";
-export type FilterValue = [value: string, mode: Comparison];
-
-/**
- * The filters of one field in a list request: one {@link FilterValue}, or
- * several a row must all pass (`?filter_age=ge:18&filter_age=lt:65`).
- */
-export type FieldFilter = FilterValue | FilterValue[];
 
 /** The filters of one field as a list, whether it holds one or several. */
 export function FilterValuesOf(filter: FieldFilter): FilterValue[] {
-  return Array.isArray(filter[0])
-    ? (filter as FilterValue[])
-    : [filter as FilterValue];
-}
-
-/**
- * Filter callback.
- */
-export type FilterFunction<
-  T extends Record<string, any>,
-  U extends Record<string, any> = Record<string, any>,
-> = (
-  context: RequestContext & { this: T },
-  proxy: ValueProxy<any>,
-  key: string,
-  value: FilterValue[0],
-  mode: FilterValue[1],
-  row: ValueProxy<U>,
-) => ValueProxyOrValue<boolean>;
-
-export interface ReadableAccessFields {
-  getters: [string, FieldData][];
-  props: [string, FieldData][];
-}
-
-interface ResolvedTableReference {
-  tableName: string;
-  tableClass?: Class<Table>;
-  /** `undefined` means same schema as the source DataAPI. */
-  schemaName?: string;
-}
-
-function readTableMetadata(table: Class<Table>): {
-  schemaName?: string;
-  tableName?: string;
-} {
-  const meta = getMetadata(table, DatumStaticMetadata) as
-    | { schemaName?: string; tableName?: string }
-    | undefined;
-  return { schemaName: meta?.schemaName, tableName: meta?.tableName };
-}
-
-function resolveTableReference(
-  sourceSchemaName: string,
-  table: string | Class<Table>,
-  explicitSchema: string | undefined,
-  contextLabel: string,
-): ResolvedTableReference {
-  if (typeof table !== "string") {
-    const inferred = readTableMetadata(table);
-    const schemaName = explicitSchema ?? inferred.schemaName;
-    const tableName = inferred.tableName;
-    if (!schemaName || !tableName) {
-      throw new Error(
-        `Unable to infer table name/schema for ${contextLabel}: pass @RegisterTable on the table class`,
-      );
-    }
-    if (
-      explicitSchema &&
-      inferred.schemaName &&
-      explicitSchema !== inferred.schemaName
-    ) {
-      throw new Error(
-        `Schema mismatch for ${contextLabel}: class registers in "${inferred.schemaName}" but option specifies "${explicitSchema}"`,
-      );
-    }
-    return {
-      tableName,
-      tableClass: table,
-      schemaName: schemaName === sourceSchemaName ? undefined : schemaName,
-    };
-  }
-
-  const targetSchema = explicitSchema ?? sourceSchemaName;
-  const databaseSchema = getTablesForSchema(targetSchema);
-  if (!databaseSchema) {
-    throw new Error(`Schema "${targetSchema}" not found for ${contextLabel}`);
-  }
-  const tableClass = databaseSchema[table];
-  const isOtherSchema = targetSchema !== sourceSchemaName;
-  if (isOtherSchema && !tableClass) {
-    throw new Error(
-      `Table "${table}" is not registered in schema "${targetSchema}" for ${contextLabel}: register its class with @RegisterTable before declaring the field`,
-    );
-  }
-  return {
-    tableName: table,
-    tableClass,
-    schemaName: isOtherSchema ? targetSchema : undefined,
-  };
-}
-
-export interface WritableAccessFields {
-  setters: [string, FieldData][];
-  props: [string, FieldData][];
+  return isFilterList(filter) ? filter : [filter];
 }
 
 /**
@@ -415,15 +162,6 @@ export class DataAPIMeta {
   constructor(public readonly target: Class) {}
 
   public inherit(parent: DataAPIMeta) {
-    const merge = (src: Record<string, any>, dst: Record<string, any>) => {
-      for (const key in src) {
-        if (!(key in dst)) {
-          dst[key] = src[key];
-        } else if (Array.isArray(dst[key])) {
-          dst[key].push(...src[key]);
-        }
-      }
-    };
     merge(parent.filters, this.filters);
     merge(parent.fields, this.fields);
     for (const [key, list] of Object.entries(parent.pluck)) {
@@ -451,21 +189,7 @@ export class DataAPIMeta {
   }
 
   private recomputeListable() {
-    for (const set of Object.values(this.pluck)) {
-      set.clear();
-    }
-    for (const [_, field] of Object.entries(this.fields)) {
-      if (field.listable) {
-        for (const [mode, names] of Object.entries(field.listable)) {
-          if (!(mode in this.pluck)) {
-            this.pluck[mode] = new Set();
-          }
-          for (const name of names) {
-            this.pluck[mode].add(name);
-          }
-        }
-      }
-    }
+    rebuildPluck(this.pluck, this.fields);
   }
 
   private recomputeAccess() {
@@ -540,16 +264,7 @@ export class DataAPIMeta {
     mode = "list",
   ) {
     const field = this.field(name);
-    const baseNames =
-      typeof requiredFields === "boolean"
-        ? requiredFields
-          ? [name]
-          : []
-        : requiredFields;
-    const names =
-      baseNames.length > 0 && field.joined
-        ? Array.from(new Set([...baseNames, name, field.joined.localKey]))
-        : baseNames;
+    const names = listedNames(name, requiredFields, field);
     if (!field.listable) {
       field.listable = {};
     }
@@ -678,6 +393,9 @@ export class DataAPIMeta {
    * @param table Other table
    * @param index Other table index
    * @param multi Index is a multi index
+   * @param targetMeta Metadata of the target's data controller. Its `@Joined`
+   *   fields that `pluck` names, or all of them when `pluck` is unset, are
+   *   resolved on the relation unless it is `multi`.
    */
   public setForeign(
     name: string,
@@ -695,38 +413,9 @@ export class DataAPIMeta {
       `foreign field "${name}"`,
     );
 
-    // Capture the target's `@Joined` fields so the foreign lookup can
-    // re-materialize them. A joined field is not a physical column, so a plain
-    // pluck of the target table returns it empty; we resolve it with a second
-    // lookup at query time (see `Query.Foreign`). Only joined fields that are
-    // actually requested (present in `pluck`) are captured. Their `localKey`
-    // is deliberately NOT added to the stored pluck: `foreign[4]` also drives
-    // response field filtering (`Validation.ClearInternal`), so adding the join
-    // key here would leak it into the API output. `Query.Foreign` extends the
-    // lookup pluck with the join keys at query time instead.
-    let targetJoined: ForeignJoinedRef[] | undefined;
-    if (targetMeta) {
-      const pluckSet = pluck ? new Set(pluck) : undefined;
-      const groups: ForeignJoinedRef[] = [];
-      for (const [fieldName, field] of Object.entries(targetMeta.fields)) {
-        if (!field.joined || (pluckSet && !pluckSet.has(fieldName))) {
-          continue;
-        }
-        const j = field.joined;
-        groups.push({
-          name: fieldName,
-          table: j.table,
-          tableClass: j.tableClass,
-          localKey: j.localKey,
-          remoteField: j.remoteField,
-          remoteIndex: j.remoteIndex,
-          schemaName: j.schemaName,
-        });
-      }
-      if (groups.length > 0) {
-        targetJoined = groups;
-      }
-    }
+    const targetJoined = targetMeta
+      ? targetJoinedFields(targetMeta.fields, pluck)
+      : undefined;
 
     this.field(name).foreign = [
       resolved.tableName,
@@ -962,6 +651,11 @@ export const Computed = MakePropertyDecorator(
   },
 );
 
+type ForeignArguments =
+  Parameters<DataAPIMeta["setForeign"]> extends [string, ...infer Rest]
+    ? Rest
+    : never;
+
 /**
  * Declares a field to be a foreign key.
  *
@@ -974,12 +668,7 @@ export const Foreign = MakeMethodAndPropertyDecorator(
     target,
     key,
     desc,
-    table: string | Class<Table>,
-    index?: string,
-    multi?: boolean,
-    pluck?: string[],
-    schema?: string,
-    targetMeta?: DataAPIMeta,
+    ...[table, index, multi, pluck, schema, targetMeta]: ForeignArguments
   ) => {
     GetMetadata(target.constructor, DataAPIMeta)
       .setDescriptor(key as string, desc)
@@ -1007,38 +696,6 @@ export const Validator = MakeMethodAndPropertyDecorator(
       .setValidator(key as string, validator);
   },
 );
-
-type ProxyFilterOperator = (
-  proxy: ValueProxy<string>,
-  value: string,
-) => ValueProxyOrValue<boolean>;
-type DefaultFilterOperators = Record<Comparison, ProxyFilterOperator>;
-type DefaultFilterFunction = FilterFunction<
-  Record<string, any>,
-  Record<string, any>
->;
-
-const DEFAULT_FILTER_OPERATORS: DefaultFilterOperators = {
-  eq: (proxy, value) => proxy.eq(value),
-  ne: (proxy, value) => proxy.ne(value),
-  gt: (proxy, value) => proxy.gt(value),
-  ge: (proxy, value) => proxy.ge(value),
-  lt: (proxy, value) => proxy.lt(value),
-  le: (proxy, value) => proxy.le(value),
-};
-
-function applyDefaultFilterMode(
-  proxy: ValueProxy<string>,
-  value: string,
-  mode: FilterValue[1],
-): ValueProxyOrValue<boolean> {
-  return DEFAULT_FILTER_OPERATORS[mode](proxy, value);
-}
-
-function createDefaultFilter(): DefaultFilterFunction {
-  return (_context, proxy, _key, value, mode) =>
-    applyDefaultFilterMode(proxy as ValueProxy<string>, value, mode);
-}
 
 const FilterDecoratorFactory = MakePropertyDecorator(
   (target, key, func?: DefaultFilterFunction, useIndex?: boolean) => {

@@ -11,7 +11,7 @@ import { Validation } from "@antelopejs/interface-data-api/components";
 import {
   Access,
   AccessMode,
-  type FieldValidationResult,
+  type FieldValidator,
   ModelReference,
   Validator,
 } from "@antelopejs/interface-data-api/metadata";
@@ -24,12 +24,13 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
+import { readJson } from "../internal/http";
 import {
-  type CreatedRow,
   editRequest,
   getFunctionName,
   getSchemaInstance,
   newRequest,
+  type CreatedRow,
 } from "../utils";
 
 const currentTestName = path
@@ -55,29 +56,29 @@ class Event extends Table {
 }
 class EventModel extends BasicDataModel(Event, eventTableName) {}
 
-function parseDate(value: unknown): FieldValidationResult {
+const parseDate: FieldValidator = (value) => {
   if (typeof value !== "string" || Number.isNaN(Date.parse(value))) {
     return { success: false };
   }
   return { success: true, data: new Date(value) };
-}
+};
 
-async function normalizeCode(value: unknown): Promise<FieldValidationResult> {
+const normalizeCode: FieldValidator = async (value) => {
   if (typeof value !== "string") {
     return { success: false };
   }
   return { success: true, data: value.trim().toUpperCase() };
-}
+};
 
 describe("Field Validator parsed value", () => {
   it("writes the parsed value on new", async () =>
-    await writesParsedValueOnNew());
+    await expectWritesParsedValueOnNew());
   it("writes the parsed value on edit", async () =>
-    await writesParsedValueOnEdit());
+    await expectWritesParsedValueOnEdit());
   it("writes the value of an asynchronous parse", async () =>
-    await writesAsyncParsedValue());
+    await expectWritesAsyncParsedValue());
   it("rejects a failed parse with the invalid field message", async () =>
-    await rejectsFailedParse());
+    await expectRejectsFailedParse());
 });
 
 async function _dropEventTable() {
@@ -122,7 +123,7 @@ async function _createDataController(testName: string, event?: Partial<Event>) {
   return { eventModel };
 }
 
-async function writesParsedValueOnNew() {
+async function expectWritesParsedValueOnNew() {
   const { eventModel } = await _createDataController(getFunctionName());
 
   const response = await newRequest(getFunctionName(), {
@@ -130,14 +131,14 @@ async function writesParsedValueOnNew() {
     startsAt,
   });
   expect(response.status).to.equal(200);
-  const { _id: id } = (await response.json()) as CreatedRow;
+  const { _id: id } = await readJson<CreatedRow>(response);
 
   const event = await eventModel.get(id);
   expect(event?.startsAt).to.be.instanceOf(Date);
   expect(event?.startsAt.toISOString()).to.equal(startsAt);
 }
 
-async function writesParsedValueOnEdit() {
+async function expectWritesParsedValueOnEdit() {
   const { id, eventModel } = await _createDataController(getFunctionName(), {
     name: "Launch",
     startsAt: new Date(startsAt),
@@ -156,7 +157,7 @@ async function writesParsedValueOnEdit() {
   expect(event?.startsAt.toISOString()).to.equal(editedStartsAt);
 }
 
-async function writesAsyncParsedValue() {
+async function expectWritesAsyncParsedValue() {
   const { eventModel } = await _createDataController(getFunctionName());
 
   const response = await newRequest(getFunctionName(), {
@@ -164,13 +165,13 @@ async function writesAsyncParsedValue() {
     code: "  launch-26 ",
   });
   expect(response.status).to.equal(200);
-  const { _id: id } = (await response.json()) as CreatedRow;
+  const { _id: id } = await readJson<CreatedRow>(response);
 
   const event = await eventModel.get(id);
   expect(event?.code).to.equal("LAUNCH-26");
 }
 
-async function rejectsFailedParse() {
+async function expectRejectsFailedParse() {
   await _createDataController(getFunctionName());
 
   const response = await newRequest(getFunctionName(), {

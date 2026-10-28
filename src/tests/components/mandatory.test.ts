@@ -24,13 +24,14 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
+import { readJson } from "../internal/http";
 import {
-  type CreatedRow,
   editRequest,
   getFunctionName,
   getSchemaInstance,
   newRequest,
   request,
+  type CreatedRow,
   validateObject,
 } from "../utils";
 
@@ -65,7 +66,7 @@ class Order extends Table {
 }
 class OrderModel extends BasicDataModel(Order, orderTableName) {}
 
-const validOrderDataset: Record<string, Partial<Order>> = {
+const validOrderDataset = {
   default: {
     customerName: "Bob",
     customerEmail: "bob@example.com",
@@ -82,23 +83,21 @@ const validOrderDataset: Record<string, Partial<Order>> = {
     notes: "Customer requested express shipping",
     internalReference: "INT-REF-002",
   },
-};
+} satisfies Record<string, Partial<Order>>;
 
 describe("Field Mandatory", () => {
   it("new row with all mandatory fields", async () =>
-    await newWithAllMandatoryFields());
+    await expectNewWithAllMandatoryFields());
   it("new row with missing mandatory fields", async () =>
-    await newWithMissingMandatoryFields());
+    await expectNewWithMissingMandatoryFields());
   it("edit row with all mandatory fields", async () =>
-    await editWithAllMandatoryFields());
+    await expectEditWithAllMandatoryFields());
   it("edit row without a mandatory field keeps its value", async () =>
-    await editWithoutMandatoryFieldKeepsValue());
+    await expectEditWithoutMandatoryFieldKeepsValue());
   it("edit row clearing a mandatory field", async () =>
-    await editClearingMandatoryField());
+    await expectEditClearingMandatoryField());
   it("skip mandatory validation when noMandatory is true", async () =>
-    await skipMandatoryValidationWhenNoMandatory());
-
-  after(async () => {});
+    await expectSkipMandatoryValidationWhenNoMandatory());
 });
 
 async function _dropOrderTable() {
@@ -158,7 +157,7 @@ async function _createDataController(
   return { orderModel };
 }
 
-async function newWithAllMandatoryFields() {
+async function expectNewWithAllMandatoryFields() {
   const { orderModel } = await _createDataController(
     getFunctionName(),
     { new: DefaultRoutes.New },
@@ -171,7 +170,7 @@ async function newWithAllMandatoryFields() {
     totalAmount: validOrderDataset.default.totalAmount,
   });
   expect(response.status).to.equal(200);
-  const created = (await response.json()) as CreatedRow;
+  const created = await readJson<CreatedRow>(response);
   expect(created._id).to.be.a("string");
   const order = await orderModel.get(created._id);
   expect(order).to.not.equal(undefined);
@@ -184,7 +183,7 @@ async function newWithAllMandatoryFields() {
   }
 }
 
-async function newWithMissingMandatoryFields() {
+async function expectNewWithMissingMandatoryFields() {
   await _createDataController(getFunctionName(), { new: DefaultRoutes.New });
 
   const response = await newRequest(getFunctionName(), {
@@ -198,7 +197,7 @@ async function newWithMissingMandatoryFields() {
   });
 }
 
-async function editWithAllMandatoryFields() {
+async function expectEditWithAllMandatoryFields() {
   const { id, orderModel } = await _createDataController(
     getFunctionName(),
     { edit: DefaultRoutes.Edit },
@@ -240,7 +239,7 @@ async function editWithAllMandatoryFields() {
   }
 }
 
-async function editWithoutMandatoryFieldKeepsValue() {
+async function expectEditWithoutMandatoryFieldKeepsValue() {
   const { id, orderModel } = await _createDataController(
     getFunctionName(),
     { edit: DefaultRoutes.Edit },
@@ -262,7 +261,7 @@ async function editWithoutMandatoryFieldKeepsValue() {
   expect(order).to.have.property("status", validOrderDataset.default.status);
 }
 
-async function editClearingMandatoryField() {
+async function expectEditClearingMandatoryField() {
   const { id, orderModel } = await _createDataController(
     getFunctionName(),
     { edit: DefaultRoutes.Edit },
@@ -287,7 +286,7 @@ async function editClearingMandatoryField() {
   expect(order).to.have.property("status", validOrderDataset.default.status);
 }
 
-async function skipMandatoryValidationWhenNoMandatory() {
+async function expectSkipMandatoryValidationWhenNoMandatory() {
   const { id, orderModel } = await _createDataController(
     getFunctionName(),
     {

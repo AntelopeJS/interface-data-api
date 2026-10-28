@@ -27,6 +27,7 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
+import { readJson } from "../internal/http";
 import {
   getFunctionName,
   getRequest,
@@ -86,13 +87,13 @@ const orphanAuthorId = "orphan-author-id";
 
 describe("Modifier key with foreign fields", () => {
   it("gets row with resolved foreign reference", async () =>
-    await getsRowWithResolvedForeignReference());
+    await expectGetsRowWithResolvedForeignReference());
   it("gets row with null foreign reference", async () =>
-    await getsRowWithNullForeignReference());
+    await expectGetsRowWithNullForeignReference());
   it("gets row with dangling foreign reference", async () =>
-    await getsRowWithDanglingForeignReference());
+    await expectGetsRowWithDanglingForeignReference());
   it("lists rows containing null foreign references", async () =>
-    await listsRowsContainingNullForeignReferences());
+    await expectListsRowsContainingNullForeignReferences());
 });
 
 async function _createDataController(testName: string) {
@@ -157,7 +158,7 @@ async function _dropTables() {
   }
 }
 
-async function getsRowWithResolvedForeignReference() {
+async function expectGetsRowWithResolvedForeignReference() {
   const { postIds } = await _createDataController(getFunctionName());
 
   const response = await getRequest(getFunctionName(), {
@@ -165,12 +166,12 @@ async function getsRowWithResolvedForeignReference() {
     locale,
   });
   expect(response.status).to.equal(200);
-  const post = (await response.json()) as PostListed;
+  const post = await readJson<PostListed>(response);
   expect(post.authorId).to.not.equal(null);
   expect(post.authorId?.name).to.equal("Alice Carter");
 }
 
-async function getsRowWithNullForeignReference() {
+async function expectGetsRowWithNullForeignReference() {
   const { postIds } = await _createDataController(getFunctionName());
 
   const response = await getRequest(getFunctionName(), {
@@ -178,11 +179,11 @@ async function getsRowWithNullForeignReference() {
     locale,
   });
   expect(response.status).to.equal(200);
-  const post = (await response.json()) as PostListed;
+  const post = await readJson<PostListed>(response);
   expect(post.authorId).to.equal(null);
 }
 
-async function getsRowWithDanglingForeignReference() {
+async function expectGetsRowWithDanglingForeignReference() {
   const { postIds } = await _createDataController(getFunctionName());
 
   const response = await getRequest(getFunctionName(), {
@@ -190,16 +191,16 @@ async function getsRowWithDanglingForeignReference() {
     locale,
   });
   expect(response.status).to.equal(200);
-  const post = (await response.json()) as PostListed;
+  const post = await readJson<PostListed>(response);
   expect(post.authorId).to.equal(null);
 }
 
-async function listsRowsContainingNullForeignReferences() {
+async function expectListsRowsContainingNullForeignReferences() {
   await _createDataController(getFunctionName());
 
   const response = await listRequest(getFunctionName(), { locale });
   expect(response.status).to.equal(200);
-  const data = (await response.json()) as { results: PostListed[] };
+  const data = await readJson<{ results: PostListed[] }>(response);
   expect(data.results).to.have.lengthOf(3);
 
   const nullAuthorPosts = data.results.filter((post) => post.authorId == null);

@@ -26,6 +26,7 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
+import { readJson } from "../internal/http";
 import { getFunctionName, listRequest, newRequest } from "../utils";
 
 const currentTestName = path
@@ -52,8 +53,6 @@ interface FruitListed {
   name: string;
 }
 
-// The French order differs from the English one, and two rows have no
-// French name: one lacks it, the other holds "" (both read the English one).
 const fruits = [
   { code: "apple", name: { en: "Apple", fr: "Pomme" } },
   { code: "banana", name: { en: "Banana", fr: "Banane" } },
@@ -63,9 +62,9 @@ const fruits = [
 
 describe("Localized sort", () => {
   it("sorts a localized field in the request's locale", async () =>
-    await sortsInRequestLocale());
+    await expectSortsInRequestLocale());
   it("sorts a missing or empty locale on the fallback value", async () =>
-    await sortsMissingLocaleOnFallback());
+    await expectSortsMissingLocaleOnFallback());
 });
 
 async function _createFruits(testName: string) {
@@ -113,11 +112,11 @@ async function _sortedCodes(
     sortDirection,
   });
   expect(response.status).to.equal(200);
-  const data = (await response.json()) as { results: FruitListed[] };
+  const data = await readJson<{ results: FruitListed[] }>(response);
   return data.results.map((fruit) => fruit.code);
 }
 
-async function sortsInRequestLocale() {
+async function expectSortsInRequestLocale() {
   const testName = getFunctionName();
   await _createFruits(testName);
 
@@ -135,7 +134,7 @@ async function sortsInRequestLocale() {
   ]);
 }
 
-async function sortsMissingLocaleOnFallback() {
+async function expectSortsMissingLocaleOnFallback() {
   const testName = getFunctionName();
   await _createFruits(testName);
 

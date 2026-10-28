@@ -23,13 +23,14 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
+import { readJson } from "../internal/http";
 import {
-  type CreatedRow,
   editRequest,
   getFunctionName,
   getRequest,
   getSchemaInstance,
   newRequest,
+  type CreatedRow,
 } from "../utils";
 
 const currentTestName = path
@@ -66,9 +67,9 @@ const defaultUserDataset: Partial<User> = {
 
 describe("Per-Action Access Control", () => {
   it("writable in new but read-only in edit", async () =>
-    await writableInNewReadOnlyInEdit());
+    await expectWritableInNewReadOnlyInEdit());
   it("read-only globally but read-write in new", async () =>
-    await readOnlyGloballyReadWriteInNew());
+    await expectReadOnlyGloballyReadWriteInNew());
   it("reads a field's effective mode per action", () => {
     const field = {
       mode: AccessMode.ReadWrite,
@@ -79,8 +80,6 @@ describe("Per-Action Access Control", () => {
     expect(GetEffectiveMode(field, "_default")).to.equal(AccessMode.ReadWrite);
     expect(GetEffectiveMode(field)).to.equal(AccessMode.ReadWrite);
   });
-
-  after(async () => {});
 });
 
 async function _createDataController(testName: string, user: Partial<User>) {
@@ -120,7 +119,7 @@ async function _createDataController(testName: string, user: Partial<User>) {
   return { id: insertResult[0], userModel };
 }
 
-async function writableInNewReadOnlyInEdit() {
+async function expectWritableInNewReadOnlyInEdit() {
   const { id, userModel } = await _createDataController(
     getFunctionName(),
     defaultUserDataset,
@@ -128,7 +127,7 @@ async function writableInNewReadOnlyInEdit() {
 
   const getResponse = await getRequest(getFunctionName(), { id });
   expect(getResponse.status).to.equal(200);
-  const data = (await getResponse.json()) as User;
+  const data = await readJson<User>(getResponse);
   expect(data.role).to.equal("admin");
 
   await editRequest(getFunctionName(), { role: "user" }, { id });
@@ -136,7 +135,7 @@ async function writableInNewReadOnlyInEdit() {
   expect(user?.role).to.equal("admin");
 }
 
-async function readOnlyGloballyReadWriteInNew() {
+async function expectReadOnlyGloballyReadWriteInNew() {
   const { id, userModel } = await _createDataController(
     getFunctionName(),
     defaultUserDataset,
@@ -144,7 +143,7 @@ async function readOnlyGloballyReadWriteInNew() {
 
   const newResponse = await newRequest(getFunctionName(), defaultUserDataset);
   expect(newResponse.status).to.equal(200);
-  const created = (await newResponse.json()) as CreatedRow;
+  const created = await readJson<CreatedRow>(newResponse);
   const newUser = await userModel.get(created._id);
   expect(newUser?.age).to.equal(30);
 
@@ -154,6 +153,6 @@ async function readOnlyGloballyReadWriteInNew() {
 
   const getResponse = await getRequest(getFunctionName(), { id });
   expect(getResponse.status).to.equal(200);
-  const getData = (await getResponse.json()) as User;
+  const getData = await readJson<User>(getResponse);
   expect(getData.age).to.equal(30);
 }

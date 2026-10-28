@@ -1,12 +1,7 @@
 import path from "node:path";
 import { expect } from "chai";
-import type { RequestContext } from "@antelopejs/interface-api";
 import { Controller } from "@antelopejs/interface-api";
-import {
-  Schema,
-  type Stream,
-  type ValueProxy,
-} from "@antelopejs/interface-database";
+import { Schema } from "@antelopejs/interface-database";
 import {
   Field,
   RegisterSchema,
@@ -18,6 +13,7 @@ import * as DataApi from "../../index";
 import * as Components from "../../components";
 import * as Metadata from "../../metadata";
 import { CreateOtherInstance } from "../helpers/other-instance";
+import { createRequestContext } from "../internal/http";
 
 type ComponentsModule = typeof Components;
 type MetadataModule = typeof Metadata;
@@ -45,7 +41,7 @@ const OtherStagedSchema = otherInstance(
 
 const clientSchema = "cross-instance-client";
 const coreSchema = "cross-instance-core";
-const requestContext = { url: new URL("http://localhost/") } as RequestContext;
+const requestContext = createRequestContext();
 
 @RegisterTable("users", coreSchema)
 class User extends Table {
@@ -94,9 +90,7 @@ class CustomerAPI extends DataApi.DataController(
   declare ownerName: string;
 
   @Metadata.Listable()
-  @Metadata.Computed((row) =>
-    (row.key("name") as ValueProxy<string>).concat("!"),
-  )
+  @Metadata.Computed((row) => row.key("name").concat("!"))
   declare label: string;
 }
 
@@ -168,8 +162,8 @@ async function OtherInstanceListsTest() {
     { city: ["Paris", "eq"] },
     db,
   );
-  const listed = OtherComponents.Query.Foreign(db, meta, sorted as Stream<any>);
-  const rows = (await listed.run()) as ListedCustomer[];
+  const listed = OtherComponents.Query.Foreign(db, meta, sorted);
+  const rows: ListedCustomer[] = await listed.run();
   expect(await total.run()).to.equal(2);
   expect(
     rows.map(({ name, owner, ownerName }) => [name, owner?.name, ownerName]),
@@ -186,7 +180,7 @@ async function OtherInstanceDecoratesStreamTest() {
   const stream = Customer.table().orderBy("name");
   const withForeign = OtherComponents.Query.Foreign(db, meta, stream);
   const decorated = OtherComponents.Query.Computed(db, meta, withForeign);
-  const rows = (await decorated.run()) as ListedCustomer[];
+  const rows: ListedCustomer[] = await decorated.run();
   expect(
     rows.map(({ name, owner, label }) => [name, owner?.name, label]),
   ).to.deep.equal([

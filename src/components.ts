@@ -1,64 +1,51 @@
 import { assert } from "@antelopejs/interface-api-util";
 import type { DataModel } from "@antelopejs/interface-database-decorators/model";
-import {
-  type Constructible,
-  getMetadata,
-} from "@antelopejs/interface-database-decorators/common";
+import { getMetadata } from "@antelopejs/interface-database-decorators/common";
 import { MakeParameterAndPropertyDecorator } from "@antelopejs/interface-core/decorators";
 import {
+  type computeParameter,
   HTTPResult,
   type RequestContext,
   SetParameterProvider,
 } from "@antelopejs/interface-api";
-import {
-  type Datum,
-  IsStream,
-  type SchemaInstance,
+import type {
+  Datum,
+  SchemaInstance,
   Stream,
-  type Table,
-  type ValueProxy,
+  Table,
+  ValueProxy,
 } from "@antelopejs/interface-database";
-import type { TableClass } from "@antelopejs/interface-database-decorators/table";
+import "@antelopejs/interface-database";
 import {
-  fromDatabase,
   lock,
   ModifiersDynamicMetadata,
-  ModifiersStaticMetadata,
-  toPlainData,
-  unlock,
-  unlockrequest,
 } from "@antelopejs/interface-database-decorators/modifiers/common";
 
 import {
-  type ComputedFieldData,
   type DataAPIMeta,
   type FieldFilter,
   type FieldParseResult,
   type FieldValidationResult,
-  type FilterValue,
-  FilterValuesOf,
-  type ForeignJoinedRef,
+  type FieldValidator,
   GetDataControllerMeta,
-  type WritableAccessFields,
 } from "./metadata";
+import * as computed from "./internal/computed";
+import { copyFilter, parseFilter } from "./internal/filters";
+import * as foreign from "./internal/foreign";
+import * as joined from "./internal/joined";
+import * as list from "./internal/list";
+import * as properties from "./internal/properties";
+import * as tables from "./internal/tables";
+import * as validation from "./internal/validation";
 
 export namespace Parameters {
+  /** The controller a parameter provider computes its parameter for. */
+  type Owner = Parameters<typeof computeParameter>[2];
+
   export function GetOptionOverrides<T extends Record<string, any>>(
     reqCtx: RequestContext,
   ): T {
     return (<any>reqCtx).dataAPIEntry?.options ?? {};
-  }
-
-  function parseFilter(searchVal: string): FilterValue {
-    const match = searchVal.match(/([^:]+):(.*)/);
-    return match ? [match[2], match[1] as FilterValue[1]] : [searchVal, "eq"];
-  }
-
-  function copyFilter(filter: FieldFilter): FieldFilter {
-    const copies = FilterValuesOf(filter).map((value): FilterValue => [
-      ...value,
-    ]);
-    return copies.length === 1 ? copies[0] : copies;
   }
 
   /**
@@ -68,10 +55,7 @@ export namespace Parameters {
    * (`?filter_age=ge:18&filter_age=lt:65`) gets them all, which a row must
    * all pass. Returns fresh tuples.
    */
-  export function ExtractFilters(
-    reqCtx: RequestContext,
-    meta: DataAPIMeta,
-  ): Record<string, FieldFilter> {
+  export function ExtractFilters(reqCtx: RequestContext, meta: DataAPIMeta) {
     const result: Record<string, FieldFilter> = {};
     for (const filter of Object.keys(meta.filters)) {
       const values = reqCtx.url.searchParams
@@ -155,7 +139,7 @@ export namespace Parameters {
   }
 
   export const List = MakeParameterAndPropertyDecorator((target, key, param) =>
-    SetParameterProvider(target, key, param, function (this: unknown, context) {
+    SetParameterProvider(target, key, param, function (this: Owner, context) {
       const meta = GetDataControllerMeta(this);
       const params = ExtractGeneric<ListParameters>(context, meta, {
         filters: ExtractFilters,
@@ -185,7 +169,7 @@ export namespace Parameters {
   }
 
   export const Get = MakeParameterAndPropertyDecorator((target, key, param) =>
-    SetParameterProvider(target, key, param, function (this: unknown, context) {
+    SetParameterProvider(target, key, param, function (this: Owner, context) {
       const params = ExtractGeneric<GetParameters>(
         context,
         GetDataControllerMeta(this),
@@ -205,7 +189,7 @@ export namespace Parameters {
   }
 
   export const New = MakeParameterAndPropertyDecorator((target, key, param) =>
-    SetParameterProvider(target, key, param, function (this: unknown, context) {
+    SetParameterProvider(target, key, param, function (this: Owner, context) {
       const params = ExtractGeneric<NewParameters>(
         context,
         GetDataControllerMeta(this),
@@ -223,7 +207,7 @@ export namespace Parameters {
   }
 
   export const Edit = MakeParameterAndPropertyDecorator((target, key, param) =>
-    SetParameterProvider(target, key, param, function (this: unknown, context) {
+    SetParameterProvider(target, key, param, function (this: Owner, context) {
       const params = ExtractGeneric<EditParameters>(
         context,
         GetDataControllerMeta(this),
@@ -244,28 +228,23 @@ export namespace Parameters {
 
   export const Delete = MakeParameterAndPropertyDecorator(
     (target, key, param) =>
-      SetParameterProvider(
-        target,
-        key,
-        param,
-        function (this: unknown, context) {
-          const params = ExtractGeneric<DeleteParameters>(
-            context,
-            GetDataControllerMeta(this),
-            {
-              id: "multi:string",
-            },
-          );
+      SetParameterProvider(target, key, param, function (this: Owner, context) {
+        const params = ExtractGeneric<DeleteParameters>(
+          context,
+          GetDataControllerMeta(this),
+          {
+            id: "multi:string",
+          },
+        );
 
-          assert(
-            params.id && Array.isArray(params.id) && params.id.length > 0,
-            400,
-            "Missing id.",
-          );
+        assert(
+          params.id && Array.isArray(params.id) && params.id.length > 0,
+          400,
+          "Missing id.",
+        );
 
-          return params;
-        },
-      ),
+        return params;
+      }),
   );
 }
 
@@ -296,460 +275,7 @@ export namespace Query {
     query: Stream<any> | Datum<any>,
     pluck?: Set<string>,
   ): Stream<any> | Datum<any> {
-    /**/
-    if (IsStream(query)) {
-      for (const [name, field] of Object.entries(meta.fields)) {
-        if (!field.foreign || (pluck && !pluck.has(name))) {
-          continue;
-        }
-        const [
-          table,
-          tableClass,
-          index,
-          multi,
-          pluckField,
-          schemaName,
-          targetJoined,
-        ] = field.foreign;
-        const other = targetTable(db, { table, tableClass, schemaName });
-        const hasTargetJoined = !multi && !!targetJoined?.length;
-        if (pluckField) {
-          // The join keys of the target's @Joined fields must be fetched too
-          // (so the second lookup can resolve them), but they are NOT stored in
-          // `foreign[4]`, so they get stripped from the response by
-          // `ClearInternal` afterwards.
-          const lookupPluck = hasTargetJoined
-            ? Array.from(
-                new Set([
-                  ...pluckField,
-                  ...targetJoined.map((g) => g.localKey),
-                ]),
-              )
-            : pluckField;
-          query = query.lookup(
-            other.pluck("_internal", ...lookupPluck) as Table<any>,
-            name,
-            index || "_id",
-          );
-        } else {
-          query = query.lookup(other, name, index || "_id");
-        }
-        if (hasTargetJoined) {
-          query = applyForeignJoinedStream(db, query, name, targetJoined);
-        }
-      }
-      return query;
-    } else {
-      const oldForeign = (obj: ValueProxy<Record<string, any>>) => {
-        const changedFields: Record<string, any> = {};
-        for (const [name, field] of Object.entries(meta.fields)) {
-          if (!field.foreign || (pluck && !pluck.has(name))) {
-            continue;
-          }
-          const [
-            table,
-            tableClass,
-            index,
-            multi,
-            pluckField,
-            schemaName,
-            targetJoined,
-          ] = field.foreign;
-          const remote = targetTable(db, { table, tableClass, schemaName });
-          if (multi) {
-            changedFields[name] = (obj.key(name) as ValueProxy<string[]>)
-              .default([])
-              .map((val) => {
-                let foreignObject: Datum<any> = Get(remote, val, index);
-                if (pluckField) {
-                  foreignObject = foreignObject.pluck(
-                    "_internal",
-                    ...pluckField,
-                  );
-                }
-                return foreignObject.default(null);
-              });
-          } else {
-            let foreignObject: Datum<any> = Get(
-              remote,
-              obj.key(name) as ValueProxy<string>,
-              index,
-            );
-            if (targetJoined && targetJoined.length > 0) {
-              foreignObject = applyForeignJoinedDatum(
-                db,
-                foreignObject,
-                targetJoined,
-              );
-            }
-            changedFields[name] = foreignObject.default(null);
-          }
-        }
-        return obj.merge(changedFields);
-      };
-      return query.do(oldForeign);
-    }
-  }
-
-  /**
-   * Re-materializes the `@Joined` fields of a relation target on the looked-up
-   * sub-object (Stream/list path). The base `Foreign` lookup only plucks the
-   * target's physical columns, so a joined label would come back empty; here we
-   * resolve each joined field with a second lookup keyed on the target's
-   * (already plucked) local key, then merge it back into the relation object.
-   */
-  function applyForeignJoinedStream(
-    db: SchemaInstance<any>,
-    stream: Stream<any>,
-    foreignName: string,
-    groups: ForeignJoinedRef[],
-  ): Stream<any> {
-    let s = stream;
-    for (const group of groups) {
-      const remoteTable = targetTable(db, group).pluck(
-        "_internal",
-        group.remoteIndex,
-        group.remoteField,
-      ) as Table<any>;
-      const tmpKey = `__fjoin_${foreignName}_${group.name}`;
-      s = s
-        .map((row) =>
-          (row as ValueProxy<Record<string, any>>).merge({
-            [tmpKey]: row.key(foreignName).key(group.localKey),
-          }),
-        )
-        .lookup(remoteTable, tmpKey, group.remoteIndex)
-        .map((row) =>
-          row.merge({
-            // For an orphan foreign key this yields `{ [joined]: null }`; it is
-            // normalized back to a null relation in `ClearInternal` (the DSL has
-            // no value-level conditional to do it here).
-            [foreignName]: row.key(foreignName).merge({
-              [group.name]: row
-                .key(tmpKey)
-                .default({})
-                .key(group.remoteField)
-                .default(null),
-            }),
-          }),
-        )
-        .without(tmpKey) as Stream<any>;
-    }
-    return s;
-  }
-
-  /**
-   * Datum/get counterpart of {@link applyForeignJoinedStream}: resolves each of
-   * the target's `@Joined` fields with a secondary `Get` and merges it into the
-   * relation object.
-   */
-  function applyForeignJoinedDatum(
-    db: SchemaInstance<any>,
-    datum: Datum<any>,
-    groups: ForeignJoinedRef[],
-  ): Datum<any> {
-    let d = datum;
-    for (const group of groups) {
-      // Use the raw table here (not a plucked stream): `Get` relies on
-      // `getAll`/`get`, which exist on Selection/Table but not on a Stream.
-      const remoteTable = targetTable(db, group);
-      d = d.do((row) =>
-        row.merge({
-          [group.name]: Get(
-            remoteTable,
-            row.key(group.localKey) as ValueProxy<string>,
-            group.remoteIndex,
-          )
-            .key(group.remoteField)
-            .default(null),
-        }),
-      ) as Datum<any>;
-    }
-    return d;
-  }
-
-  interface JoinedGroup extends TableTargetReference {
-    localKey: string;
-    remoteIndex: string;
-    schemaName?: string;
-    fields: Array<{ name: string; remoteField: string }>;
-  }
-
-  function collectJoinedGroups(meta: DataAPIMeta): JoinedGroup[] {
-    const groups = new Map<string, JoinedGroup>();
-    for (const [name, field] of Object.entries(meta.fields)) {
-      if (!field.joined) continue;
-      const j = field.joined;
-      const groupKey = `${j.schemaName ?? ""}|${j.table}|${j.localKey}|${j.remoteIndex}`;
-      let group = groups.get(groupKey);
-      if (!group) {
-        group = {
-          table: j.table,
-          tableClass: j.tableClass,
-          localKey: j.localKey,
-          remoteIndex: j.remoteIndex,
-          schemaName: j.schemaName,
-          fields: [],
-        };
-        groups.set(groupKey, group);
-      }
-      group.fields.push({ name, remoteField: j.remoteField });
-    }
-    return Array.from(groups.values());
-  }
-
-  interface JoinedFieldSplit {
-    filter: Set<string>;
-    sort: Set<string>;
-  }
-
-  function addAll(target: Set<string>, names: string[]) {
-    for (const name of names) {
-      target.add(name);
-    }
-  }
-
-  /**
-   * Splits the joined fields of `meta` between those {@link List} must
-   * materialize before the filter and count (`filter`) and those it only
-   * needs after the count (`sort`). Joined fields referenced by neither are
-   * left out so the list route can defer their lookups to the returned page.
-   *
-   * Computed expressions may read joined fields, so materializing a computed
-   * field pulls every remaining joined group in with it. Groups whose local
-   * key is also a foreign field must resolve before `Foreign` replaces the
-   * key with the looked-up record.
-   */
-  function splitJoinedFields(
-    meta: DataAPIMeta,
-    sorting?: [string, "asc" | "desc" | undefined],
-    filters?: Record<string, FieldFilter>,
-  ): JoinedFieldSplit {
-    const split: JoinedFieldSplit = { filter: new Set(), sort: new Set() };
-    const filterNames = Object.keys(meta.filters).filter(
-      (name) => filters && name in filters,
-    );
-    const hasComputedFilter = filterNames.some(
-      (name) => meta.fields[name]?.computed,
-    );
-    const sortField = sorting?.[0];
-    const hasComputedSort = !!sortField && !!meta.fields[sortField]?.computed;
-    for (const group of collectJoinedGroups(meta)) {
-      const names = group.fields.map((field) => field.name);
-      if (
-        hasComputedFilter ||
-        names.some((name) => filterNames.includes(name))
-      ) {
-        addAll(split.filter, names);
-      } else if (
-        hasComputedSort ||
-        (sortField && names.includes(sortField)) ||
-        meta.fields[group.localKey]?.foreign
-      ) {
-        addAll(split.sort, names);
-      }
-    }
-    return split;
-  }
-
-  /**
-   * Joined field names that {@link List} does not materialize for the given
-   * split. The default list route resolves these after pagination so their
-   * lookups only run on the returned page.
-   */
-  function deferredJoinedFields(
-    meta: DataAPIMeta,
-    split: JoinedFieldSplit,
-  ): Set<string> {
-    return new Set(
-      Object.entries(meta.fields)
-        .filter(
-          ([name, field]) =>
-            field.joined && !split.filter.has(name) && !split.sort.has(name),
-        )
-        .map(([name]) => name),
-    );
-  }
-
-  interface DeferredJoinContext {
-    db: SchemaInstance<any>;
-    meta: DataAPIMeta;
-    names: Set<string>;
-    raw: Stream<any>;
-  }
-
-  /**
-   * Stream returned by {@link List} when the deferred joined fields are not
-   * exposed to the caller: it resolves them itself, so consumers that
-   * destructure `[query, total]` alone still observe every `@Joined` field.
-   * The lookups are appended after `slice`/`nth`, keeping them on the
-   * requested page only; bare `count()` calls and field aggregates on
-   * non-joined fields skip them (left-join lookups never change the row
-   * count nor other fields); `changes()` attaches to the raw stream, since
-   * change feeds cannot carry the lookups. Any other operation may observe
-   * the joined fields, so it materializes them first.
-   */
-  class DeferredJoinedStream extends Stream<any> {
-    declare deferredJoin: DeferredJoinContext;
-  }
-
-  type DeferredJoinedOperation = (
-    this: DeferredJoinedStream,
-    ...args: any[]
-  ) => any;
-
-  function materializeDeferredJoin(stream: DeferredJoinedStream) {
-    const { db, meta, names, raw } = stream.deferredJoin;
-    return Joined(db, meta, raw, names);
-  }
-
-  function pagedDeferredJoinOperation(name: string): DeferredJoinedOperation {
-    return function (this: DeferredJoinedStream, ...args: any[]) {
-      const { db, meta, names, raw } = this.deferredJoin;
-      const paged = (raw as any)[name](...args);
-      return Joined(db, meta, paged, names);
-    };
-  }
-
-  /**
-   * Resolves the joined fields through the stream form of {@link Joined}
-   * rather than its datum form: only the datum form has no way to drop the
-   * temporary key it stages (neither `Datum` nor `ValueProxy` exposes
-   * `without`), so it would leave `__joined_orig_*` on the row.
-   */
-  function nthDeferredJoinOperation(): DeferredJoinedOperation {
-    return function (this: DeferredJoinedStream, n: number) {
-      const { db, meta, names, raw } = this.deferredJoin;
-      return Joined(db, meta, raw.slice(n, 1), names).nth(0);
-    };
-  }
-
-  function rawDeferredJoinOperation(name: string): DeferredJoinedOperation {
-    return function (this: DeferredJoinedStream, ...args: any[]) {
-      return (this.deferredJoin.raw as any)[name](...args);
-    };
-  }
-
-  function fieldAggregateDeferredJoinOperation(
-    name: string,
-    bareCallOnRaw: boolean,
-  ): DeferredJoinedOperation {
-    return function (this: DeferredJoinedStream, field?: string) {
-      const { db, meta, names, raw } = this.deferredJoin;
-      if (!field) {
-        const bareTarget = bareCallOnRaw ? raw : materializeDeferredJoin(this);
-        return (bareTarget as any)[name]();
-      }
-      const target = names.has(field)
-        ? Joined(db, meta, raw, new Set([field]))
-        : raw;
-      return (target as any)[name](field);
-    };
-  }
-
-  function forwardingDeferredJoinOperation(
-    name: string,
-  ): DeferredJoinedOperation {
-    return function (this: DeferredJoinedStream, ...args: any[]) {
-      return (materializeDeferredJoin(this) as any)[name](...args);
-    };
-  }
-
-  const DEFERRED_JOIN_OPERATION_FACTORIES: Record<
-    string,
-    (name: string) => DeferredJoinedOperation
-  > = {
-    slice: pagedDeferredJoinOperation,
-    nth: nthDeferredJoinOperation,
-    changes: rawDeferredJoinOperation,
-    count: (name) => fieldAggregateDeferredJoinOperation(name, true),
-    sum: (name) => fieldAggregateDeferredJoinOperation(name, false),
-    avg: (name) => fieldAggregateDeferredJoinOperation(name, false),
-    min: (name) => fieldAggregateDeferredJoinOperation(name, false),
-    max: (name) => fieldAggregateDeferredJoinOperation(name, false),
-    distinct: (name) => fieldAggregateDeferredJoinOperation(name, false),
-  };
-
-  const DEFERRED_JOIN_INHERITED_OPERATIONS = new Set(["constructor", "cast"]);
-
-  function wireDeferredJoinedStream() {
-    const operationNames = [
-      ...Object.getOwnPropertyNames(Stream.prototype),
-      "run",
-      "cursor",
-      "build",
-    ].filter((name) => !DEFERRED_JOIN_INHERITED_OPERATIONS.has(name));
-    for (const name of operationNames) {
-      const factory =
-        DEFERRED_JOIN_OPERATION_FACTORIES[name] ??
-        forwardingDeferredJoinOperation;
-      (DeferredJoinedStream.prototype as any)[name] = factory(name);
-    }
-  }
-  wireDeferredJoinedStream();
-
-  /**
-   * Wraps `raw` into a {@link DeferredJoinedStream}. The wrapper keeps the
-   * raw stages as its own (an unobservable fallback, since every operation
-   * is overridden) while `build()` serializes the materialized pipeline, so
-   * a wrapper embedded as an argument of another query never leaks rows
-   * without the joined fields.
-   */
-  function wrapDeferredJoined(
-    db: SchemaInstance<any>,
-    meta: DataAPIMeta,
-    names: Set<string>,
-    raw: Stream<any>,
-  ): Stream<any> {
-    const wrapped: DeferredJoinedStream = Object.create(
-      DeferredJoinedStream.prototype,
-    );
-    (wrapped as any).stages = raw.build();
-    wrapped.deferredJoin = { db, meta, names, raw };
-    return wrapped;
-  }
-
-  function listResultTuple<T extends Record<string, any>>(
-    tmpRequest: Stream<T>,
-    total: Datum<number>,
-    meta: DataAPIMeta,
-    joinedSplit: JoinedFieldSplit,
-    db?: SchemaInstance<any>,
-    options?: ListOptions,
-  ): [sorted: Stream<T>, total: Datum<number>, deferredJoined: Set<string>] {
-    const deferredJoined = deferredJoinedFields(meta, joinedSplit);
-    if (options?.exposeDeferredJoined || !db || deferredJoined.size === 0) {
-      return [tmpRequest, total, deferredJoined];
-    }
-    return [
-      wrapDeferredJoined(
-        db,
-        meta,
-        deferredJoined,
-        tmpRequest as Stream<any>,
-      ) as Stream<T>,
-      total,
-      new Set(),
-    ];
-  }
-
-  interface TableTargetReference {
-    table: string;
-    tableClass?: Constructible;
-    schemaName?: string;
-  }
-
-  function targetTable(
-    sourceDb: SchemaInstance<any>,
-    target: TableTargetReference,
-  ): Table<any> {
-    if (!target.schemaName) return sourceDb.table(target.table);
-    assert(
-      target.tableClass,
-      500,
-      `Table "${target.table}" of schema "${target.schemaName}" has no registered table class`,
-    );
-    return (target.tableClass as unknown as TableClass).table();
+    return foreign.Foreign(db, meta, query, pluck);
   }
 
   export function Joined(
@@ -770,109 +296,7 @@ export namespace Query {
     query: Stream<any> | Datum<any>,
     only?: Set<string>,
   ): Stream<any> | Datum<any> {
-    const groups = collectJoinedGroups(meta).filter(
-      (group) => !only || group.fields.some((field) => only.has(field.name)),
-    );
-    if (groups.length === 0) {
-      return query as any;
-    }
-
-    type RowShape = Record<string, unknown>;
-    const emptyRemote: RowShape = {};
-    const tmpKeyFor = (localKey: string) => `__joined_orig_${localKey}`;
-
-    if (IsStream(query)) {
-      let stream: Stream<RowShape> = query as Stream<RowShape>;
-      const tmpKeys: string[] = [];
-      for (const group of groups) {
-        const remoteFields = group.fields.map((f) => f.remoteField);
-        const remoteTable = targetTable(db, group).pluck(
-          "_internal",
-          group.remoteIndex,
-          ...remoteFields,
-        ) as Table<RowShape>;
-        const tmpKey = tmpKeyFor(group.localKey);
-        tmpKeys.push(tmpKey);
-        stream = stream
-          .map((row) => row.merge({ [tmpKey]: row.key(group.localKey) }))
-          .lookup(remoteTable, group.localKey, group.remoteIndex)
-          .map((row) => {
-            const merged: RowShape = {};
-            const remote = row.key(group.localKey).default(emptyRemote);
-            for (const f of group.fields) {
-              merged[f.name] = remote.key(f.remoteField).default(null);
-            }
-            merged[group.localKey] = row.key(tmpKey);
-            return row.merge(merged);
-          }) as Stream<RowShape>;
-      }
-      return stream.without(...tmpKeys) as Stream<RowShape>;
-    }
-
-    let datum: Datum<RowShape> = query as Datum<RowShape>;
-    for (const group of groups) {
-      const remoteFields = group.fields.map((f) => f.remoteField);
-      const remoteTable = targetTable(db, group).pluck(
-        "_internal",
-        group.remoteIndex,
-        ...remoteFields,
-      ) as Table<RowShape>;
-      const tmpKey = tmpKeyFor(group.localKey);
-      datum = datum
-        .do((row) => row.merge({ [tmpKey]: row.key(group.localKey) }))
-        .lookup(remoteTable, group.localKey, group.remoteIndex)
-        .do((row) => {
-          const merged: RowShape = {};
-          const remote = row.key(group.localKey).default(emptyRemote);
-          for (const f of group.fields) {
-            merged[f.name] = remote.key(f.remoteField).default(null);
-          }
-          merged[group.localKey] = row.key(tmpKey);
-          return row.merge(merged);
-        }) as Datum<RowShape>;
-    }
-    return datum;
-  }
-
-  type ComputedEntry = [name: string, computed: ComputedFieldData];
-  type RowMapper = (
-    row: ValueProxy<Record<string, any>>,
-  ) => ValueProxy<Record<string, any>>;
-
-  function collectComputedEntries(
-    meta: DataAPIMeta,
-    only?: Set<string>,
-  ): ComputedEntry[] {
-    return Object.entries(meta.fields)
-      .filter(([name, field]) => field.computed && (!only || only.has(name)))
-      .map(([name, field]) => [name, field.computed as ComputedFieldData]);
-  }
-
-  function buildComputedMappers(
-    db: SchemaInstance<any>,
-    entries: ComputedEntry[],
-  ): RowMapper[] {
-    const mergeExpressions: RowMapper = (row) => {
-      const merged: Record<string, unknown> = {};
-      for (const [name, computed] of entries) {
-        merged[name] = computed.expr(row, db);
-      }
-      return row.merge(merged);
-    };
-    const defaulted = entries.filter(
-      ([, computed]) => computed.default !== undefined,
-    );
-    if (defaulted.length === 0) {
-      return [mergeExpressions];
-    }
-    const applyDefaults: RowMapper = (row) => {
-      const merged: Record<string, unknown> = {};
-      for (const [name, computed] of defaulted) {
-        merged[name] = row.key(name).default(computed.default);
-      }
-      return row.merge(merged);
-    };
-    return [mergeExpressions, applyDefaults];
+    return joined.Joined(db, meta, query, only);
   }
 
   export function Computed(
@@ -893,21 +317,7 @@ export namespace Query {
     query: Stream<any> | Datum<any>,
     only?: Set<string>,
   ): Stream<any> | Datum<any> {
-    const entries = collectComputedEntries(meta, only);
-    if (entries.length === 0) {
-      return query as any;
-    }
-    const mappers = buildComputedMappers(db, entries);
-    if (IsStream(query)) {
-      return mappers.reduce(
-        (stream, mapper) => stream.map(mapper),
-        query as Stream<Record<string, any>>,
-      );
-    }
-    return mappers.reduce(
-      (datum, mapper) => datum.do(mapper),
-      query as Datum<Record<string, any>>,
-    );
+    return computed.Computed(db, meta, query, only);
   }
 
   export async function ReadProperties(
@@ -919,7 +329,7 @@ export namespace Query {
   ) {
     const readable =
       meta.readable[action ?? "_default"] ?? meta.readable._default;
-    const instance: Record<string, any> = { ...obj };
+    const instance = { ...obj };
     const res: Record<string, any> = {};
     for (const [key, field] of readable.props) {
       if (onlyList && !field.listable) {
@@ -940,31 +350,6 @@ export namespace Query {
     return res;
   }
 
-  function writableInBody(
-    writable: WritableAccessFields,
-    bodyData: Record<string, any>,
-  ): WritableAccessFields {
-    return {
-      props: writable.props.filter(([key]) => Object.hasOwn(bodyData, key)),
-      setters: writable.setters.filter(([key]) => Object.hasOwn(bodyData, key)),
-    };
-  }
-
-  function writeTargetDefaults(
-    instance: Record<string, any>,
-    meta: DataAPIMeta,
-    dbData: Record<string, any>,
-  ) {
-    for (const [key, value] of Object.entries(new meta.target())) {
-      if (value !== undefined) {
-        instance[key] = value;
-        if (key in meta.fields) {
-          dbData[meta.fields[key].dbName || key] = value;
-        }
-      }
-    }
-  }
-
   /**
    * Writes the writable fields of `bodyData` into a database row.
    *
@@ -982,27 +367,13 @@ export namespace Query {
     action?: string,
     existingDBData?: Record<string, any>,
   ) {
-    const actionWritable =
-      meta.writable[action ?? "_default"] ?? meta.writable._default;
-    const writable = existingDBData
-      ? writableInBody(actionWritable, bodyData)
-      : actionWritable;
-    const instance: Record<string, any> = { ...obj };
-    const dbData: Record<string, any> = existingDBData || {};
-    Object.setPrototypeOf(dbData, meta.tableClass.prototype);
-    if (!existingDBData) {
-      writeTargetDefaults(instance, meta, dbData);
-    }
-    for (const [key, field] of writable.props) {
-      instance[key] = bodyData[key];
-      dbData[field.dbName || key] = bodyData[key];
-    }
-    instance.table = dbData;
-    Object.setPrototypeOf(instance, meta.target.prototype);
-    for (const [key, field] of writable.setters) {
-      field.desc?.set?.apply(instance, [bodyData[key]]);
-    }
-    return dbData;
+    return properties.WriteProperties(
+      obj,
+      meta,
+      bodyData,
+      action,
+      existingDBData,
+    );
   }
 
   export function Get(
@@ -1010,9 +381,7 @@ export namespace Query {
     id: string | ValueProxy<string>,
     index?: string,
   ) {
-    return index
-      ? table.getAll(id as string, index).nth(0)
-      : table.get(id as string);
+    return tables.Get(table, id, index);
   }
 
   export interface ListOptions {
@@ -1023,25 +392,6 @@ export namespace Query {
      * to restrict the page lookups to the plucked fields.
      */
     exposeDeferredJoined?: boolean;
-  }
-
-  /** Where a list sorted on a modifier-held field keeps the value it sorts on. */
-  const MODIFIED_SORT_KEY = "__dataApiSortValue";
-
-  /**
-   * Whether a field is held by a modifier the controller keys (a localized
-   * field read in the request's locale): stored under the modifier, it sorts
-   * on the value the request reads, not on the stored field.
-   */
-  function isHeldByKeyedModifier(meta: DataAPIMeta, field: string): boolean {
-    const keyed = new Set(
-      Array.from(meta.modifierKeys.keys(), (modifier) => modifier.name),
-    );
-    return (
-      getMetadata(meta.tableClass, ModifiersStaticMetadata).fields[field]?.some(
-        ({ id }) => keyed.has(id),
-      ) ?? false
-    );
   }
 
   /**
@@ -1064,123 +414,12 @@ export namespace Query {
     db?: SchemaInstance<any>,
     options?: ListOptions,
   ): [sorted: Stream<T>, total: Datum<number>, deferredJoined: Set<string>] {
-    const filterList = Object.entries(meta.filters).filter(
-      ([name]) => filters && name in filters,
-    );
-    // The index serves one equality; a field filtered several times is
-    // filtered row by row, each of its filters in turn.
-    const indexFilter = filterList.find(([name]) => {
-      const values = filters ? FilterValuesOf(filters[name]) : [];
-      return (
-        values.length === 1 &&
-        values[0][1] === "eq" &&
-        meta.fields[name]?.indexable
-      );
-    })?.[0];
-    const index = indexFilter
-      ? meta.fields[indexFilter].dbName || indexFilter
-      : undefined;
-    const indexedFilter = indexFilter
-      ? FilterValuesOf(filters?.[indexFilter] ?? [])[0]
-      : undefined;
-
-    let tmpRequest: Stream<T> = index
-      ? request.getAll(indexedFilter?.[0] ?? "", index)
-      : request;
-
-    const joinedSplit = splitJoinedFields(meta, sorting, filters);
-    if (db && joinedSplit.filter.size > 0) {
-      tmpRequest = Joined(
-        db,
-        meta,
-        tmpRequest as Stream<any>,
-        joinedSplit.filter,
-      ) as Stream<T>;
-    }
-
-    const filteredComputed = new Set(
-      filterList
-        .map(([name]) => name)
-        .filter((name) => meta.fields[name]?.computed),
-    );
-    if (db && filteredComputed.size > 0) {
-      tmpRequest = Computed(
-        db,
-        meta,
-        tmpRequest as Stream<any>,
-        filteredComputed,
-      ) as Stream<T>;
-    }
-
-    const sortField = sorting?.[0];
-    const shouldSort = sortField ? meta.fields[sortField]?.sortable : undefined;
-    const isModifiedSort =
-      !!shouldSort && !!sortField && isHeldByKeyedModifier(meta, sortField);
-    if (shouldSort?.indexed && sortField && !isModifiedSort) {
-      tmpRequest = tmpRequest.orderBy(sortField, sorting?.[1] ?? "asc");
-    }
-    if (filterList.length > 0) {
-      // TODO: rework for modifier-affected fields (unlockrequest)
-      tmpRequest = filterList.reduce((req, [name, filter]) => {
-        const fieldFilter = filters?.[name];
-        if (!fieldFilter || name === indexFilter) return req;
-        return FilterValuesOf(fieldFilter).reduce(
-          (filtered, [value, mode]) =>
-            filtered.filter((row) =>
-              filter(
-                Object.assign(reqCtx, { this: obj }),
-                Validation.UnlockRequest(obj, meta, row, name),
-                name,
-                value,
-                mode,
-                row as ValueProxy<Record<string, any>>,
-              ),
-            ),
-          req,
-        );
-      }, tmpRequest);
-    }
-    const total = tmpRequest.count();
-    if (db && joinedSplit.sort.size > 0) {
-      tmpRequest = Joined(
-        db,
-        meta,
-        tmpRequest as Stream<any>,
-        joinedSplit.sort,
-      ) as Stream<T>;
-    }
-    if (
-      db &&
-      sortField &&
-      meta.fields[sortField]?.computed &&
-      !filteredComputed.has(sortField)
-    ) {
-      tmpRequest = Computed(
-        db,
-        meta,
-        tmpRequest as Stream<any>,
-        new Set([sortField]),
-      ) as Stream<T>;
-    }
-    if (isModifiedSort && sortField) {
-      // Sorts on the value in the request's locale, else its fallback.
-      tmpRequest = (tmpRequest as unknown as Stream<Record<string, any>>)
-        .map((row) =>
-          row.merge({
-            [MODIFIED_SORT_KEY]: Validation.UnlockRequest(
-              obj,
-              meta,
-              row,
-              sortField,
-            ),
-          }),
-        )
-        .orderBy(MODIFIED_SORT_KEY, sorting?.[1] ?? "asc")
-        .without(MODIFIED_SORT_KEY) as unknown as Stream<T>;
-    } else if (shouldSort && !shouldSort.indexed && sortField) {
-      tmpRequest = tmpRequest.orderBy(sortField, sorting?.[1] ?? "asc");
-    }
-    return listResultTuple(tmpRequest, total, meta, joinedSplit, db, options);
+    return list.List(obj, meta, request, reqCtx, {
+      sorting,
+      filters,
+      db,
+      options,
+    });
   }
 
   /** How {@link ListPage} reads one page of a {@link List} stream. */
@@ -1205,35 +444,6 @@ export namespace Query {
     deferredJoined?: Set<string>;
   }
 
-  function pageComputedFields(
-    meta: DataAPIMeta,
-    options: ListPageOptions,
-  ): Set<string> {
-    const merged = new Set(
-      Object.keys(options.filters ?? {}).filter((name) => name in meta.filters),
-    );
-    if (options.sortKey) merged.add(options.sortKey);
-    const names = Object.entries(meta.fields)
-      .filter(
-        ([name, field]) =>
-          field.computed &&
-          !merged.has(name) &&
-          (!options.pluck || options.pluck.has(name)),
-      )
-      .map(([name]) => name);
-    return new Set(names);
-  }
-
-  function pageJoinedFields(
-    options: ListPageOptions,
-    materializeAll: boolean,
-  ): Set<string> {
-    const deferred = options.deferredJoined ?? new Set<string>();
-    if (materializeAll || !options.pluck) return deferred;
-    const pluck = options.pluck;
-    return new Set(Array.from(deferred).filter((name) => pluck.has(name)));
-  }
-
   /**
    * One page of the stream {@link List} built, with the fields it answers:
    * the deferred joined fields, then the computed fields no filter or sort
@@ -1248,16 +458,7 @@ export namespace Query {
     query: Stream<any>,
     options: ListPageOptions,
   ): Stream<any> {
-    let page = query.slice(options.offset, options.limit);
-    const computed = pageComputedFields(meta, options);
-    // A computed expression may read any joined field, so when one is
-    // materialized every deferred joined group is merged first, whatever
-    // the pluck; the final pluck strips what the page did not ask for.
-    const joined = pageJoinedFields(options, computed.size > 0);
-    if (joined.size > 0) page = Joined(db, meta, page, joined);
-    if (computed.size > 0) page = Computed(db, meta, page, computed);
-    if (!options.noForeign) page = Foreign(db, meta, page, options.pluck);
-    return options.pluck ? page.pluck("_internal", ...options.pluck) : page;
+    return list.ListPage(db, meta, query, options);
   }
 
   export function Delete(table: Table<any>, id: string | string[]) {
@@ -1270,20 +471,24 @@ export namespace Query {
 export namespace Validation {
   /** A request body, parsed. */
   export type RequestBody = Record<string, any>;
-  type MissingFieldCheck = (body: RequestBody, name: string) => boolean;
 
-  function isClearingValue(value: unknown): boolean {
+  function isClearingValue(value: Parameters<FieldValidator>[0]): boolean {
     if (value === null || value === undefined) return true;
-    if (typeof value === "string") return value.length === 0;
+    if (value === "") return true;
     return Array.isArray(value) && value.length === 0;
   }
 
-  const isAbsentFromBody: MissingFieldCheck = (body, name) => !(name in body);
+  const isAbsentFromBody = (body: RequestBody, name: string) => !(name in body);
 
-  const isClearedByBody: MissingFieldCheck = (body, name) =>
+  const isClearedByBody = (body: RequestBody, name: string) =>
     Object.hasOwn(body, name) && isClearingValue(body[name]);
 
-  const MISSING_MANDATORY_FIELD_CHECKS: Record<string, MissingFieldCheck> = {
+  /** How each action decides that a body lacks a mandatory field. */
+  interface MissingFieldChecks {
+    [action: string]: typeof isAbsentFromBody;
+  }
+
+  const MISSING_MANDATORY_FIELD_CHECKS: MissingFieldChecks = {
     edit: isClearedByBody,
   };
 
@@ -1326,9 +531,9 @@ export namespace Validation {
 
   function toParseResult(
     result: FieldValidationResult,
-    value: unknown,
+    value: Parameters<FieldValidator>[0],
   ): FieldParseResult {
-    if (typeof result !== "boolean") return result;
+    if (result !== true && result !== false) return result;
     return result ? { success: true, data: value } : { success: false };
   }
 
@@ -1342,7 +547,7 @@ export namespace Validation {
     meta: DataAPIMeta,
     obj: RequestBody,
   ): Promise<RequestBody> {
-    const parsed: RequestBody = { ...obj };
+    const parsed = { ...obj };
     const invalid: string[] = [];
     for (const [name, field] of Object.entries(meta.fields)) {
       if (!field.validator || !(name in obj)) continue;
@@ -1369,20 +574,7 @@ export namespace Validation {
    * body already parsed is checked, not parsed again.
    */
   export function ParseBody(body: WrittenBody): RequestBody {
-    let data: unknown = body;
-    if (Buffer.isBuffer(body)) {
-      try {
-        data = JSON.parse(body.toString());
-      } catch {
-        assert(false, 400, "Invalid JSON body.");
-      }
-    }
-    assert(
-      typeof data === "object" && data !== null && !Array.isArray(data),
-      400,
-      "The request body must be a JSON object.",
-    );
-    return data as RequestBody;
+    return validation.ParseBody(body);
   }
 
   /**
@@ -1402,32 +594,7 @@ export namespace Validation {
   }
 
   export function Unlock(obj: any, meta: DataAPIMeta, dbData: any) {
-    for (const [name, field] of Object.entries(meta.fields)) {
-      if (
-        field.foreign &&
-        dbData[name] &&
-        typeof dbData[name] === "object" &&
-        field.foreign[1]
-      ) {
-        const foreignSchema = field.foreign[1];
-        dbData[name] = Array.isArray(dbData[name])
-          ? dbData[name].map((entry) => fromDatabase(entry, foreignSchema))
-          : fromDatabase(dbData[name], field.foreign[1]);
-      }
-    }
-    for (const [modifier, field] of meta.modifierKeys.entries()) {
-      const key = obj[field];
-      unlock(dbData, modifier, undefined, key);
-      for (const [foreign, fieldData] of Object.entries(meta.fields)) {
-        if (
-          fieldData.foreign &&
-          dbData[foreign] &&
-          typeof dbData[foreign] === "object"
-        ) {
-          unlock(dbData[foreign], modifier, undefined, key);
-        }
-      }
-    }
+    validation.Unlock(obj, meta, dbData);
   }
 
   export function UnlockRequest<T extends {}, K extends keyof T>(
@@ -1436,73 +603,13 @@ export namespace Validation {
     row: ValueProxy<T>,
     field: K,
   ): ValueProxy<T[K]> {
-    const modifiers = Array.from(meta.modifierKeys.entries()).map(
-      ([modifier, field]) => ({
-        modifier,
-        args: [obj[field]],
-      }),
-    );
-    return unlockrequest(
-      meta.tableClass as Constructible<T>,
-      row,
-      field,
-      modifiers,
-    );
+    return validation.UnlockRequest(obj, meta, row, field);
   }
 
   export function ClearInternal(
     meta: DataAPIMeta,
     obj: Record<string, any> | Array<Record<string, any>>,
   ) {
-    const results = Array.isArray(obj) ? obj : [obj];
-
-    const foreignFields = Object.entries(meta.fields).filter(
-      ([, field]) => field.foreign,
-    );
-    for (const entry of results) {
-      delete entry._internal;
-      for (const [name, { foreign }] of foreignFields) {
-        if (
-          foreign &&
-          entry[name] &&
-          typeof entry[name] === "object" &&
-          (!Array.isArray(entry[name]) || typeof entry[name][0] === "object")
-        ) {
-          const processForeign = (data: any) => {
-            const plain = toPlainData(data);
-            if (!foreign?.[4]) {
-              return plain;
-            }
-            // An orphan foreign key whose target exposes @Joined fields produces
-            // an object with only those joined fields (all null) and none of the
-            // physical pluck fields. Normalize it back to a null relation, so it
-            // matches the get path and non-joined foreigns (which already null).
-            const targetJoined = foreign[6];
-            if (targetJoined?.length) {
-              const joinedNames = new Set(targetJoined.map((g) => g.name));
-              const physicalKeys = foreign[4].filter(
-                (k) => !joinedNames.has(k),
-              );
-              if (
-                physicalKeys.length > 0 &&
-                physicalKeys.every(
-                  (k) => plain[k] === null || plain[k] === undefined,
-                )
-              ) {
-                return null;
-              }
-            }
-            const plainPlucked: Record<string, unknown> = {};
-            for (const key of foreign[4]) {
-              plainPlucked[key] = plain[key];
-            }
-            return plainPlucked;
-          };
-          entry[name] = Array.isArray(entry[name])
-            ? entry[name].map(processForeign)
-            : processForeign(entry[name]);
-        }
-      }
-    }
+    validation.ClearInternal(meta, obj);
   }
 }

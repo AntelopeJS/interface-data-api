@@ -1,20 +1,21 @@
 import { expect } from "chai";
 import type { RequestContext } from "@antelopejs/interface-api";
 import { Parameters } from "@antelopejs/interface-data-api/components";
-import type { DataAPIMeta } from "@antelopejs/interface-data-api/metadata";
+import { DataAPIMeta } from "@antelopejs/interface-data-api/metadata";
 
-const meta = {
-  filters: { documentType: {}, status: {} },
-} as unknown as DataAPIMeta;
+import { createRequestContext } from "../internal/http";
+
+const meta = new DataAPIMeta(Object)
+  .setFilter("documentType", () => true)
+  .setFilter("status", () => true);
 
 function context(
   query: string,
   options?: Parameters.ListParameters,
 ): RequestContext {
-  return {
-    url: new URL(`http://localhost/?${query}`),
+  return Object.assign(createRequestContext(`http://localhost/?${query}`), {
     dataAPIEntry: { options },
-  } as unknown as RequestContext;
+  });
 }
 
 function extract(ctx: RequestContext) {

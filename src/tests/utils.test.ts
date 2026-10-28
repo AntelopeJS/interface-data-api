@@ -3,31 +3,36 @@ import { expect } from "chai";
 
 import { getFunctionName } from "./utils";
 
-type Callable = (...args: unknown[]) => unknown;
+type NameReader = typeof getFunctionName;
 
 const WRAPPER_DEPTHS = [1, 2, 5, 20];
 
 describe("Test utils", () => {
-  it("returns the name of the calling function", () => returnsTheCallerName());
+  it("returns the name of the calling function", () =>
+    expectReturnsTheCallerName());
   it("skips frames added outside the tests folder", () =>
-    skipsFramesAddedOutsideTheTestsFolder());
+    expectSkipsFramesAddedOutsideTheTestsFolder());
 });
 
-function returnsTheCallerName() {
-  expect(getFunctionName()).to.equal("returnsTheCallerName");
+function expectReturnsTheCallerName() {
+  expect(getFunctionName()).to.equal("expectReturnsTheCallerName");
 }
 
 function nameSeenThroughAsyncContexts(depth: number) {
   const storage = new AsyncLocalStorage<number>();
-  const run = storage.run.bind(storage) as Callable;
-  const nestedRuns = Array.from({ length: depth - 1 }, (_, store) => [
-    run,
-    store,
-  ]).flat();
-  return run(depth, ...nestedRuns, getFunctionName);
+  let read: NameReader = getFunctionName;
+  for (let store = 0; store < depth; store++) {
+    read = storage.run.bind<
+      AsyncLocalStorage<number>,
+      [store: number, callback: NameReader],
+      [],
+      ReturnType<NameReader>
+    >(storage, store, read);
+  }
+  return read();
 }
 
-function skipsFramesAddedOutsideTheTestsFolder() {
+function expectSkipsFramesAddedOutsideTheTestsFolder() {
   for (const depth of WRAPPER_DEPTHS) {
     expect(nameSeenThroughAsyncContexts(depth)).to.equal(
       "nameSeenThroughAsyncContexts",

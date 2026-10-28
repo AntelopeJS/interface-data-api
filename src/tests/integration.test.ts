@@ -1,330 +1,23 @@
-import path from "node:path";
 import { expect } from "chai";
-import { Controller } from "@antelopejs/interface-api";
-import {
-  DataController,
-  DefaultRoutes,
-  RegisterDataController,
-} from "@antelopejs/interface-data-api";
-import {
-  Access,
-  AccessMode,
-  Listable,
-  Mandatory,
-  ModelReference,
-  Sortable,
-  Validator,
-} from "@antelopejs/interface-data-api/metadata";
-import {
-  BasicDataModel,
-  Field,
-  Index,
-  Model,
-  RegisterSchema,
-  RegisterTable,
-  Relation,
-  Table,
-} from "@antelopejs/interface-database-decorators";
 
+import { type ListResponse, readJson } from "./internal/http";
+import "./internal/shop-api";
 import {
-  type CreatedRow,
+  cleanTables,
+  createTestData,
+  Customer,
+  initializeDatabase,
+  Product,
+} from "./internal/shop-schema";
+import {
   editRequest,
   getRequest,
-  getSchemaInstance,
   listRequest,
   newRequest,
   request,
+  type CreatedRow,
   validateObject,
 } from "./utils";
-
-const currentTestName = path
-  .basename(__filename)
-  .replace(/\.test\.(ts|js)$/, "");
-const customerTableName = `customers-${currentTestName}`;
-const productTableName = `products-${currentTestName}`;
-const orderTableName = `orders-${currentTestName}`;
-const orderItemTableName = `order_items-${currentTestName}`;
-const schemaName = "default";
-
-@RegisterTable(customerTableName, schemaName)
-class Customer extends Table {
-  declare _id: string;
-
-  @Index()
-  @Field("string")
-  declare email: string;
-
-  @Field("string")
-  declare firstName: string;
-
-  @Field("string")
-  declare lastName: string;
-
-  @Field("string")
-  declare phone: string;
-
-  @Field("string")
-  declare address: string;
-
-  @Field("string")
-  declare city: string;
-
-  @Field("string")
-  declare postalCode: string;
-
-  @Field("string")
-  declare country: string;
-
-  @Field("date")
-  declare registrationDate: Date;
-
-  @Field("boolean")
-  declare isActive: boolean;
-
-  @Field("number")
-  declare loyaltyPoints: number;
-
-  @Field(["string"])
-  declare preferences: string[];
-}
-
-@RegisterTable(productTableName, schemaName)
-class Product extends Table {
-  declare _id: string;
-
-  @Index()
-  @Field("string")
-  declare sku: string;
-
-  @Field("string")
-  declare name: string;
-
-  @Field("string")
-  declare description: string;
-
-  @Field("number")
-  declare price: number;
-
-  @Field("number")
-  declare costPrice: number;
-
-  @Field("number")
-  declare stockQuantity: number;
-
-  @Field("string")
-  declare category: string;
-
-  @Field("string")
-  declare brand: string;
-
-  @Field(["string"])
-  declare tags: string[];
-
-  @Field(["string"])
-  declare images: string[];
-
-  @Field("boolean")
-  declare isActive: boolean;
-
-  @Field("date")
-  declare createdAt: Date;
-
-  @Field("date")
-  declare updatedAt: Date;
-}
-
-@RegisterTable(orderTableName, schemaName)
-class Order extends Table {
-  declare _id: string;
-
-  @Index()
-  @Field("string")
-  declare orderNumber: string;
-
-  @Index()
-  @Field("string")
-  @Relation({ to: () => Customer })
-  declare customerId: string;
-
-  @Field("string")
-  declare status: string;
-
-  @Field("number")
-  declare totalAmount: number;
-
-  @Field("number")
-  declare shippingCost: number;
-
-  @Field("number")
-  declare taxAmount: number;
-
-  @Field("number")
-  declare discountAmount: number;
-
-  @Field("number")
-  declare finalAmount: number;
-
-  @Field("string")
-  declare shippingAddress: string;
-
-  @Field("string")
-  declare billingAddress: string;
-
-  @Field("string")
-  declare paymentMethod: string;
-
-  @Field("string")
-  declare notes: string;
-
-  @Field("date")
-  declare createdAt: Date;
-
-  @Field("date")
-  declare updatedAt: Date;
-}
-
-@RegisterTable(orderItemTableName, schemaName)
-class OrderItem extends Table {
-  declare _id: string;
-
-  @Index()
-  @Field("string")
-  @Relation({ to: () => Order })
-  declare orderId: string;
-
-  @Index()
-  @Field("string")
-  @Relation({ to: () => Product })
-  declare productId: string;
-
-  @Field("number")
-  declare quantity: number;
-
-  @Field("number")
-  declare unitPrice: number;
-
-  @Field("number")
-  declare totalPrice: number;
-
-  @Field("number")
-  declare finalPrice: number;
-
-  @Field("number")
-  declare discount: number;
-}
-
-class CustomerModel extends BasicDataModel(Customer, customerTableName) {}
-class ProductModel extends BasicDataModel(Product, productTableName) {}
-class OrderModel extends BasicDataModel(Order, orderTableName) {}
-class OrderItemModel extends BasicDataModel(OrderItem, orderItemTableName) {}
-
-const testCustomers: Partial<Customer>[] = [
-  {
-    firstName: "Bob",
-    lastName: "Bobberson",
-    email: "bob.bobberson@email.com",
-    phone: "+1234567890",
-    address: "123 Poutine Square",
-    city: "Quebec City",
-    postalCode: "G1K 1K1",
-    country: "Canada",
-    registrationDate: new Date("2023-01-15"),
-    isActive: true,
-    loyaltyPoints: 150,
-    preferences: ["electronics", "books"],
-  },
-  {
-    firstName: "Alice",
-    lastName: "Alison",
-    email: "alice.alison@email.com",
-    phone: "+33123456789",
-    address: "456 Baguette Street",
-    city: "Lyon",
-    postalCode: "69001",
-    country: "France",
-    registrationDate: new Date("2023-03-20"),
-    isActive: true,
-    loyaltyPoints: 75,
-    preferences: ["fashion", "home"],
-  },
-  {
-    firstName: "John",
-    lastName: "Doe",
-    email: "john.doe@email.com",
-    phone: "+32123456789",
-    address: "789 Fries Avenue",
-    city: "Brussels",
-    postalCode: "1000",
-    country: "Belgium",
-    registrationDate: new Date("2023-06-10"),
-    isActive: false,
-    loyaltyPoints: 0,
-    preferences: ["sports"],
-  },
-];
-
-const testProducts: Partial<Product>[] = [
-  {
-    sku: "LAPTOP-001",
-    name: "Gaming Laptop",
-    description: "High performance gaming laptop",
-    price: 1299.99,
-    costPrice: 899.99,
-    stockQuantity: 15,
-    category: "electronics",
-    brand: "TechCorp",
-    tags: ["gaming", "laptop", "high-performance"],
-    images: ["laptop1.jpg", "laptop2.jpg"],
-    isActive: true,
-    createdAt: new Date("2023-01-01"),
-    updatedAt: new Date("2023-12-01"),
-  },
-  {
-    sku: "PHONE-002",
-    name: "Premium Smartphone",
-    description: "Professional camera smartphone",
-    price: 899.99,
-    costPrice: 599.99,
-    stockQuantity: 25,
-    category: "electronics",
-    brand: "MobileTech",
-    tags: ["smartphone", "camera", "premium"],
-    images: ["phone1.jpg", "phone2.jpg"],
-    isActive: true,
-    createdAt: new Date("2023-02-15"),
-    updatedAt: new Date("2023-11-15"),
-  },
-  {
-    sku: "BOOK-003",
-    name: "The Soldering Bible",
-    description: "Complete guide to soldering components",
-    price: 49.99,
-    costPrice: 25.99,
-    stockQuantity: 50,
-    category: "books",
-    brand: "TechBooks",
-    tags: ["soldering", "electronics", "education"],
-    images: ["book1.jpg"],
-    isActive: true,
-    createdAt: new Date("2023-03-01"),
-    updatedAt: new Date("2023-10-01"),
-  },
-  {
-    sku: "SHIRT-004",
-    name: "Organic Cotton T-shirt",
-    description: "Comfortable organic cotton t-shirt",
-    price: 29.99,
-    costPrice: 15.99,
-    stockQuantity: 100,
-    category: "fashion",
-    brand: "EcoFashion",
-    tags: ["cotton", "organic", "comfortable"],
-    images: ["shirt1.jpg", "shirt2.jpg"],
-    isActive: true,
-    createdAt: new Date("2023-04-10"),
-    updatedAt: new Date("2023-09-10"),
-  },
-];
 
 describe("Integration tests", () => {
   before(async () => {
@@ -336,326 +29,22 @@ describe("Integration tests", () => {
   });
 
   it("workflow complete of customer management", async () =>
-    await workflowCustomerManagement());
+    await expectCustomerWorkflow());
   it("workflow complete of product management", async () =>
-    await workflowProductManagement());
+    await expectProductWorkflow());
   it("workflow complete of order management", async () =>
-    await workflowOrderManagement());
+    await expectOrderWorkflow());
   it("stock management and automatic update", async () =>
-    await stockManagementAndAutomaticUpdate());
+    await expectStockUpdates());
   it("advanced search and filtering", async () =>
-    await advancedSearchAndFiltering());
+    await expectSearchAndFilters());
   it("client preferences management and recommendations", async () =>
-    await clientPreferencesManagement());
+    await expectClientPreferences());
   it("error management and complex validation", async () =>
-    await errorManagementAndComplexValidation());
-
-  after(async () => {});
+    await expectErrorsAndValidation());
 });
 
-@RegisterDataController()
-class _CustomerAPI extends DataController(
-  Customer,
-  DefaultRoutes.All,
-  Controller("/customers"),
-) {
-  @ModelReference()
-  @Model(CustomerModel)
-  declare customerModel: CustomerModel;
-
-  @Listable()
-  @Access(AccessMode.ReadOnly)
-  declare _id: string;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  @Mandatory("new", "edit")
-  @Validator((value) => typeof value === "string" && value.length >= 2)
-  declare firstName: string;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  @Mandatory("new", "edit")
-  @Validator((value) => typeof value === "string" && value.length >= 2)
-  declare lastName: string;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  @Mandatory("new", "edit")
-  @Validator((value) => {
-    if (typeof value !== "string") return false;
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(value);
-  })
-  declare email: string;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  @Validator((value) => typeof value === "string" && value.length >= 10)
-  declare phone: string;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  declare address: string;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  declare city: string;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  declare postalCode: string;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  declare country: string;
-
-  @Listable()
-  @Access(AccessMode.ReadOnly)
-  @Sortable({ noIndex: true })
-  declare registrationDate: Date;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  declare isActive: boolean;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  @Sortable({ noIndex: true })
-  declare loyaltyPoints: number;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  declare preferences: string[];
-}
-
-@RegisterDataController()
-class _ProductAPI extends DataController(
-  Product,
-  DefaultRoutes.All,
-  Controller("/products"),
-) {
-  @ModelReference()
-  @Model(ProductModel)
-  declare productModel: ProductModel;
-
-  @Listable()
-  @Access(AccessMode.ReadOnly)
-  declare _id: string;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  @Mandatory("new", "edit")
-  @Validator((value) => typeof value === "string" && value.length >= 3)
-  declare sku: string;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  @Mandatory("new", "edit")
-  @Validator((value) => typeof value === "string" && value.length >= 3)
-  declare name: string;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  declare description: string;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  @Mandatory("new", "edit")
-  @Validator((value) => typeof value === "number" && value >= 0)
-  @Sortable({ noIndex: true })
-  declare price: number;
-
-  @Access(AccessMode.WriteOnly)
-  @Validator((value: unknown) => typeof value === "number" && value >= 0)
-  @Sortable({ noIndex: true })
-  declare costPrice: number;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  @Mandatory("new", "edit")
-  @Validator((value: unknown) => typeof value === "number" && value >= 0)
-  @Sortable({ noIndex: true })
-  declare stockQuantity: number;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  @Mandatory("new", "edit")
-  declare category: string;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  declare brand: string;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  declare tags: string[];
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  declare images: string[];
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  declare isActive: boolean;
-
-  @Listable()
-  @Access(AccessMode.ReadOnly)
-  @Sortable({ noIndex: true })
-  declare createdAt: Date;
-
-  @Listable()
-  @Access(AccessMode.ReadOnly)
-  @Sortable({ noIndex: true })
-  declare updatedAt: Date;
-}
-
-@RegisterDataController()
-class _OrderAPI extends DataController(
-  Order,
-  DefaultRoutes.All,
-  Controller("/orders"),
-) {
-  @ModelReference()
-  @Model(OrderModel)
-  declare orderModel: OrderModel;
-
-  @Listable()
-  @Access(AccessMode.ReadOnly)
-  declare _id: string;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  @Mandatory("new", "edit")
-  declare orderNumber: string;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  @Mandatory("new", "edit")
-  declare customerId: string;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  @Mandatory("new", "edit")
-  @Validator((value: unknown) =>
-    ["pending", "processing", "shipped", "delivered", "cancelled"].includes(
-      value as string,
-    ),
-  )
-  declare status: string;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  @Sortable({ noIndex: true })
-  declare totalAmount: number;
-
-  @Access(AccessMode.ReadWrite)
-  declare shippingCost: number;
-
-  @Access(AccessMode.ReadWrite)
-  declare taxAmount: number;
-
-  @Access(AccessMode.ReadWrite)
-  declare discountAmount: number;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  @Sortable({ noIndex: true })
-  declare finalAmount: number;
-
-  @Access(AccessMode.ReadWrite)
-  declare shippingAddress: string;
-
-  @Access(AccessMode.ReadWrite)
-  declare billingAddress: string;
-
-  @Access(AccessMode.ReadWrite)
-  declare paymentMethod: string;
-
-  @Access(AccessMode.ReadWrite)
-  declare notes: string;
-
-  @Listable()
-  @Access(AccessMode.ReadOnly)
-  @Sortable({ noIndex: true })
-  declare createdAt: Date;
-
-  @Listable()
-  @Access(AccessMode.ReadOnly)
-  @Sortable({ noIndex: true })
-  declare updatedAt: Date;
-}
-
-@RegisterDataController()
-class _OrderItemAPI extends DataController(
-  OrderItem,
-  DefaultRoutes.All,
-  Controller("/order-items"),
-) {
-  @ModelReference()
-  @Model(OrderItemModel)
-  declare orderItemModel: OrderItemModel;
-
-  @Listable()
-  @Access(AccessMode.ReadOnly)
-  declare _id: string;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  @Mandatory("new", "edit")
-  declare orderId: string;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  @Mandatory("new", "edit")
-  declare productId: string;
-
-  @Listable()
-  @Access(AccessMode.ReadWrite)
-  @Mandatory("new", "edit")
-  @Validator((value: unknown) => typeof value === "number" && value > 0)
-  declare quantity: number;
-
-  @Listable()
-  @Access(AccessMode.ReadOnly)
-  declare unitPrice: number;
-
-  @Access(AccessMode.ReadWrite)
-  declare discount: number;
-}
-
-async function initializeDatabase() {
-  await RegisterSchema(schemaName);
-}
-
-async function cleanTables() {
-  const db = getSchemaInstance(schemaName);
-  await Promise.all([
-    db.table(customerTableName).delete(),
-    db.table(productTableName).delete(),
-    db.table(orderTableName).delete(),
-    db.table(orderItemTableName).delete(),
-  ]);
-}
-
-async function createTestData() {
-  const db = getSchemaInstance(schemaName);
-  const customerModel = new CustomerModel(db);
-  const productModel = new ProductModel(db);
-  const orderModel = new OrderModel(db);
-  const customerResults = await customerModel.insert(testCustomers);
-  const productResults = await productModel.insert(testProducts);
-
-  return {
-    customerIds: customerResults,
-    productIds: productResults,
-    customerModel,
-    productModel,
-    orderModel,
-  };
-}
-
-async function workflowCustomerManagement() {
+async function expectCustomerWorkflow() {
   const { customerModel } = await createTestData();
 
   const newCustomer = {
@@ -674,13 +63,13 @@ async function workflowCustomerManagement() {
 
   const createResponse = await newRequest("customers", newCustomer);
   expect(createResponse.status).to.equal(200);
-  const created = (await createResponse.json()) as CreatedRow;
+  const created = await readJson<CreatedRow>(createResponse);
   expect(created._id).to.be.a("string");
   const createdIds = [created._id];
 
   const getResponse = await getRequest("customers", { id: createdIds[0] });
   expect(getResponse.status).to.equal(200);
-  const customer = (await getResponse.json()) as Customer;
+  const customer = await readJson<Customer>(getResponse);
   await validateObject(customer, newCustomer, [
     "firstName",
     "lastName",
@@ -708,11 +97,11 @@ async function workflowCustomerManagement() {
     limit: "2",
   });
   expect(listResponse.status).to.equal(200);
-  const listData = (await listResponse.json()) as { results: Customer[] };
+  const listData = await readJson<{ results: Customer[] }>(listResponse);
   expect(listData.results).to.have.length(2);
 }
 
-async function workflowProductManagement() {
+async function expectProductWorkflow() {
   const { productModel } = await createTestData();
 
   const newProduct = {
@@ -731,7 +120,7 @@ async function workflowProductManagement() {
 
   const createResponse = await newRequest("products", newProduct);
   expect(createResponse.status).to.equal(200);
-  const createdIds = [((await createResponse.json()) as CreatedRow)._id];
+  const createdIds = [(await readJson<CreatedRow>(createResponse))._id];
 
   const stockUpdate = { ...newProduct, stockQuantity: 25 };
   const updateResponse = await editRequest("products", stockUpdate, {
@@ -748,20 +137,18 @@ async function workflowProductManagement() {
     limit: "3",
   });
   expect(listResponse.status).to.equal(200);
-  const listData = (await listResponse.json()) as { results: Product[] };
+  const listData = await readJson<{ results: Product[] }>(listResponse);
   expect(listData.results).to.have.length(3);
 
   const categoryResponse = await listRequest("products", {
     category: "electronics",
   });
   expect(categoryResponse.status).to.equal(200);
-  const categoryData = (await categoryResponse.json()) as {
-    results: Product[];
-  };
+  const categoryData = await readJson<ListResponse<Product>>(categoryResponse);
   expect(categoryData.results.length).to.be.greaterThan(0);
 }
 
-async function workflowOrderManagement() {
+async function expectOrderWorkflow() {
   const { customerIds, productIds, orderModel } = await createTestData();
 
   const orderData = {
@@ -781,7 +168,7 @@ async function workflowOrderManagement() {
 
   const orderResponse = await newRequest("orders", orderData);
   expect(orderResponse.status).to.equal(200);
-  const orderIds = [((await orderResponse.json()) as CreatedRow)._id];
+  const orderIds = [(await readJson<CreatedRow>(orderResponse))._id];
 
   const orderItem1 = {
     orderId: orderIds[0],
@@ -836,7 +223,7 @@ async function workflowOrderManagement() {
   expect(finalOrder?.status).to.equal("processing");
 }
 
-async function stockManagementAndAutomaticUpdate() {
+async function expectStockUpdates() {
   const { productIds, productModel } = await createTestData();
 
   const initialProduct = await productModel.get(productIds[0]);
@@ -867,7 +254,7 @@ async function stockManagementAndAutomaticUpdate() {
   expect(restockedProduct?.stockQuantity).to.equal(initialStock + 10);
 }
 
-async function advancedSearchAndFiltering() {
+async function expectSearchAndFilters() {
   await createTestData();
 
   const categoryResponse = await listRequest("products", {
@@ -876,9 +263,7 @@ async function advancedSearchAndFiltering() {
     sortDirection: "desc",
   });
   expect(categoryResponse.status).to.equal(200);
-  const categoryData = (await categoryResponse.json()) as {
-    results: Product[];
-  };
+  const categoryData = await readJson<ListResponse<Product>>(categoryResponse);
   expect(categoryData.results.length).to.be.greaterThan(0);
 
   const activeCustomersResponse = await listRequest("customers", {
@@ -887,9 +272,9 @@ async function advancedSearchAndFiltering() {
     sortDirection: "desc",
   });
   expect(activeCustomersResponse.status).to.equal(200);
-  const activeCustomersData = (await activeCustomersResponse.json()) as {
-    results: Customer[];
-  };
+  const activeCustomersData = await readJson<ListResponse<Customer>>(
+    activeCustomersResponse,
+  );
   expect(activeCustomersData.results.length).to.be.greaterThan(0);
 
   const paginatedResponse = await listRequest("products", {
@@ -897,10 +282,8 @@ async function advancedSearchAndFiltering() {
     offset: "1",
   });
   expect(paginatedResponse.status).to.equal(200);
-  const paginatedData = (await paginatedResponse.json()) as {
-    results: Product[];
-    total: number;
-  };
+  const paginatedData =
+    await readJson<ListResponse<Product>>(paginatedResponse);
   expect(paginatedData.results).to.have.length(2);
   expect(paginatedData.total).to.be.greaterThan(2);
 
@@ -912,7 +295,7 @@ async function advancedSearchAndFiltering() {
   expect(pendingOrdersResponse.status).to.equal(200);
 }
 
-async function clientPreferencesManagement() {
+async function expectClientPreferences() {
   const { customerIds, customerModel } = await createTestData();
 
   const customer = await customerModel.get(customerIds[0]);
@@ -932,9 +315,8 @@ async function clientPreferencesManagement() {
     sortDirection: "asc",
   });
   expect(electronicsResponse.status).to.equal(200);
-  const electronicsData = (await electronicsResponse.json()) as {
-    results: Product[];
-  };
+  const electronicsData =
+    await readJson<ListResponse<Product>>(electronicsResponse);
   expect(electronicsData.results.length).to.be.greaterThan(0);
 
   const loyaltyUpdate = { ...updatedCustomer, loyaltyPoints: 200 };
@@ -947,7 +329,7 @@ async function clientPreferencesManagement() {
   expect(customerWithLoyalty?.loyaltyPoints).to.equal(200);
 }
 
-async function errorManagementAndComplexValidation() {
+async function expectErrorsAndValidation() {
   const invalidCustomer = {
     firstName: "Test",
     lastName: "User",

@@ -2,7 +2,7 @@ import path from "node:path";
 import { expect } from "chai";
 import { Controller } from "@antelopejs/interface-api";
 import { GetMetadata } from "@antelopejs/interface-core";
-import { Schema, type ValueProxy } from "@antelopejs/interface-database";
+import { Schema } from "@antelopejs/interface-database";
 import {
   DataController,
   DefaultRoutes,
@@ -29,6 +29,7 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
+import { readJson } from "../internal/http";
 import {
   editRequest,
   getFunctionName,
@@ -89,21 +90,21 @@ const groupsDataset: Partial<Group>[] = [
 
 describe("Field Computed", () => {
   it("stores computed metadata with forced read-only and non-indexed sort", async () =>
-    await storesComputedMetadata());
+    await expectStoresComputedMetadata());
   it("lists rows with computed values", async () =>
-    await listsRowsWithComputedValues());
+    await expectListsRowsWithComputedValues());
   it("gets row with computed values", async () =>
-    await getsRowWithComputedValues());
+    await expectGetsRowWithComputedValues());
   it("sorts by computed aggregate ascending", async () =>
-    await sortsByComputedAggregateAscending());
+    await expectSortsByComputedAggregateAscending());
   it("sorts by computed aggregate descending", async () =>
-    await sortsByComputedAggregateDescending());
+    await expectSortsByComputedAggregateDescending());
   it("paginates in-DB while sorting by computed aggregate", async () =>
-    await paginatesWhileSortingByComputedAggregate());
+    await expectPaginatesWhileSortingByComputedAggregate());
   it("filters by computed aggregate", async () =>
-    await filtersByComputedAggregate());
+    await expectFiltersByComputedAggregate());
   it("ignores computed fields on edit body", async () =>
-    await ignoresComputedFieldsOnEdit());
+    await expectIgnoresComputedFieldsOnEdit());
 });
 
 async function _createDataController(testName: string) {
@@ -133,20 +134,15 @@ async function _createDataController(testName: string) {
     @Listable()
     @Computed(
       (row, db) =>
-        db
-          .table(deviceTableName)
-          .getAll(row.key("_id") as unknown as string, "group_id")
-          .count(),
+        db.table(deviceTableName).getAll(row.key("_id"), "group_id").count(),
       { default: 0 },
     )
     @Sortable()
-    @Filter((_context, proxy, _key, value) =>
-      (proxy as ValueProxy<number>).eq(parseFloat(value)),
-    )
+    @Filter((_context, proxy, _key, value) => proxy.eq(parseFloat(value)))
     declare devices_count: number;
 
     @Listable()
-    @Computed((row) => (row.key("name") as ValueProxy<string>).concat("!"))
+    @Computed((row) => row.key("name").concat("!"))
     declare display_name: string;
   }
 
@@ -188,10 +184,10 @@ async function _listGroups(
     const text = await response.text();
     throw new Error(`list failed (${response.status}): ${text}`);
   }
-  return (await response.json()) as ListResponse;
+  return await readJson<ListResponse>(response);
 }
 
-async function storesComputedMetadata() {
+async function expectStoresComputedMetadata() {
   const { controller } = await _createDataController(getFunctionName());
 
   const meta = GetMetadata(controller, DataAPIMeta, true);
@@ -208,7 +204,7 @@ async function storesComputedMetadata() {
   expect(meta.fields.display_name.mode).to.equal(AccessMode.ReadOnly);
 }
 
-async function listsRowsWithComputedValues() {
+async function expectListsRowsWithComputedValues() {
   await _createDataController(getFunctionName());
 
   const data = await _listGroups(getFunctionName());
@@ -222,7 +218,7 @@ async function listsRowsWithComputedValues() {
   expect(byName.Gamma.display_name).to.equal("Gamma!");
 }
 
-async function getsRowWithComputedValues() {
+async function expectGetsRowWithComputedValues() {
   const { groupIds } = await _createDataController(getFunctionName());
 
   const response = await getRequest(getFunctionName(), { id: groupIds[0] });
@@ -230,13 +226,13 @@ async function getsRowWithComputedValues() {
     const text = await response.text();
     throw new Error(`get failed (${response.status}): ${text}`);
   }
-  const group = (await response.json()) as GroupListed;
+  const group = await readJson<GroupListed>(response);
   expect(group.name).to.equal("Alpha");
   expect(group.devices_count).to.equal(3);
   expect(group.display_name).to.equal("Alpha!");
 }
 
-async function sortsByComputedAggregateAscending() {
+async function expectSortsByComputedAggregateAscending() {
   await _createDataController(getFunctionName());
 
   const data = await _listGroups(getFunctionName(), {
@@ -250,7 +246,7 @@ async function sortsByComputedAggregateAscending() {
   ]);
 }
 
-async function sortsByComputedAggregateDescending() {
+async function expectSortsByComputedAggregateDescending() {
   await _createDataController(getFunctionName());
 
   const data = await _listGroups(getFunctionName(), {
@@ -264,7 +260,7 @@ async function sortsByComputedAggregateDescending() {
   ]);
 }
 
-async function paginatesWhileSortingByComputedAggregate() {
+async function expectPaginatesWhileSortingByComputedAggregate() {
   await _createDataController(getFunctionName());
 
   const page1 = await _listGroups(getFunctionName(), {
@@ -286,7 +282,7 @@ async function paginatesWhileSortingByComputedAggregate() {
   expect(page2.total).to.equal(3);
 }
 
-async function filtersByComputedAggregate() {
+async function expectFiltersByComputedAggregate() {
   await _createDataController(getFunctionName());
 
   const data = await _listGroups(getFunctionName(), {
@@ -296,7 +292,7 @@ async function filtersByComputedAggregate() {
   expect(data.total).to.equal(1);
 }
 
-async function ignoresComputedFieldsOnEdit() {
+async function expectIgnoresComputedFieldsOnEdit() {
   const { groupIds, groupModel } =
     await _createDataController(getFunctionName());
 
@@ -310,9 +306,9 @@ async function ignoresComputedFieldsOnEdit() {
   });
   expect(response.status).to.equal(200);
 
-  const updatedGroup = (await groupModel.get(groupIds[0])) as unknown as
-    | Record<string, unknown>
-    | undefined;
+  const updatedGroup: Partial<GroupListed> | undefined = await groupModel.get(
+    groupIds[0],
+  );
   expect(updatedGroup?.name).to.equal("Alpha Prime");
   expect(updatedGroup?.devices_count).to.equal(undefined);
   expect(updatedGroup?.display_name).to.equal(undefined);
