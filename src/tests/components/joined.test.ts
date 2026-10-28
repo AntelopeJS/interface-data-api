@@ -89,22 +89,22 @@ const orphanAuthorId = "orphan-author-id";
 
 describe("Field Joined", () => {
   it("lists rows with joined fields flattened", async () =>
-    await listsRowsWithJoinedFieldsFlattened());
+    await expectListsRowsWithJoinedFieldsFlattened());
   it("gets row with joined fields flattened", async () =>
-    await getsRowWithJoinedFieldsFlattened());
+    await expectGetsRowWithJoinedFieldsFlattened());
   it("sorts by joined field ascending", async () =>
-    await sortsByJoinedFieldAscending());
+    await expectSortsByJoinedFieldAscending());
   it("sorts by joined field descending", async () =>
-    await sortsByJoinedFieldDescending());
-  it("filters by joined field", async () => await filtersByJoinedField());
+    await expectSortsByJoinedFieldDescending());
+  it("filters by joined field", async () => await expectFiltersByJoinedField());
   it("keeps joined fields on paginated rows when unused by sort and filter", async () =>
-    await keepsJoinedFieldsOnPaginatedRows());
+    await expectKeepsJoinedFieldsOnPaginatedRows());
   it("resolves computed fields reading a non-plucked joined field", async () =>
-    await resolvesComputedFieldReadingNonPluckedJoinedField());
+    await expectResolvesComputedFieldReadingNonPluckedJoinedField());
   it("returns null for orphan foreign key", async () =>
-    await returnsNullForOrphanForeignKey());
+    await expectReturnsNullForOrphanForeignKey());
   it("ignores joined field on edit body", async () =>
-    await ignoresJoinedFieldOnEdit());
+    await expectIgnoresJoinedFieldOnEdit());
 });
 
 async function _createDataController(testName: string) {
@@ -237,7 +237,7 @@ async function _dropTables() {
   }
 }
 
-async function listsRowsWithJoinedFieldsFlattened() {
+async function expectListsRowsWithJoinedFieldsFlattened() {
   await _createDataController(getFunctionName());
 
   const response = await listRequest(getFunctionName(), {});
@@ -256,7 +256,7 @@ async function listsRowsWithJoinedFieldsFlattened() {
   expect(betaStories?.email).to.equal("bob@example.com");
 }
 
-async function getsRowWithJoinedFieldsFlattened() {
+async function expectGetsRowWithJoinedFieldsFlattened() {
   const { bookIds } = await _createDataController(getFunctionName());
 
   const response = await getRequest(getFunctionName(), { id: bookIds[0] });
@@ -271,7 +271,7 @@ async function getsRowWithJoinedFieldsFlattened() {
   expect(typeof book.authorId).to.equal("string");
 }
 
-async function sortsByJoinedFieldAscending() {
+async function expectSortsByJoinedFieldAscending() {
   await _createDataController(getFunctionName());
 
   const response = await listRequest(getFunctionName(), {
@@ -287,7 +287,7 @@ async function sortsByJoinedFieldAscending() {
   expect(namesInOrder).to.deep.equal(sorted);
 }
 
-async function sortsByJoinedFieldDescending() {
+async function expectSortsByJoinedFieldDescending() {
   await _createDataController(getFunctionName());
 
   const response = await listRequest(getFunctionName(), {
@@ -303,7 +303,7 @@ async function sortsByJoinedFieldDescending() {
   expect(namesInOrder).to.deep.equal(sorted);
 }
 
-async function filtersByJoinedField() {
+async function expectFiltersByJoinedField() {
   await _createDataController(getFunctionName());
 
   const response = await listRequest(getFunctionName(), {
@@ -320,7 +320,7 @@ async function filtersByJoinedField() {
   }
 }
 
-async function keepsJoinedFieldsOnPaginatedRows() {
+async function expectKeepsJoinedFieldsOnPaginatedRows() {
   await _createDataController(getFunctionName());
 
   const response = await listRequest(getFunctionName(), {
@@ -349,7 +349,7 @@ async function keepsJoinedFieldsOnPaginatedRows() {
   ]);
 }
 
-async function resolvesComputedFieldReadingNonPluckedJoinedField() {
+async function expectResolvesComputedFieldReadingNonPluckedJoinedField() {
   await _createComputedJoinedController(getFunctionName());
 
   const response = await listRequest(getFunctionName(), {});
@@ -368,7 +368,7 @@ async function resolvesComputedFieldReadingNonPluckedJoinedField() {
   expect(alphaRising?.name).to.equal(undefined);
 }
 
-async function returnsNullForOrphanForeignKey() {
+async function expectReturnsNullForOrphanForeignKey() {
   await _createDataController(getFunctionName());
 
   const response = await listRequest(getFunctionName(), {});
@@ -381,7 +381,7 @@ async function returnsNullForOrphanForeignKey() {
   expect(orphan?.authorId).to.equal(orphanAuthorId);
 }
 
-async function ignoresJoinedFieldOnEdit() {
+async function expectIgnoresJoinedFieldOnEdit() {
   const { bookIds, bookModel, authorIds, authorModel } =
     await _createDataController(getFunctionName());
 

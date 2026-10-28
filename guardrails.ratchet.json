@@ -1,7 +1,6 @@
 {
   "rules": {
     "antelopejs/no-comments": 60,
-    "antelopejs/require-assertion": 113,
     "anti-slop/no-chained-type-assertions": 16,
     "anti-slop/no-known-value-widening": 10,
     "anti-slop/no-runtime-typeof": 38,
@@ -20,7 +19,7 @@
   "oversizeFiles": {
     "src/components.ts": 49274,
     "src/metadata.ts": 29852,
-    "src/tests/components/listable.test.ts": 15876,
-    "src/tests/integration.test.ts": 26222
+    "src/tests/components/listable.test.ts": 15874,
+    "src/tests/integration.test.ts": 26132
   }
 }

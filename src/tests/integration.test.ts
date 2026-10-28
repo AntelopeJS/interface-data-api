@@ -336,19 +336,19 @@ describe("Integration tests", () => {
   });
 
   it("workflow complete of customer management", async () =>
-    await workflowCustomerManagement());
+    await expectCustomerWorkflow());
   it("workflow complete of product management", async () =>
-    await workflowProductManagement());
+    await expectProductWorkflow());
   it("workflow complete of order management", async () =>
-    await workflowOrderManagement());
+    await expectOrderWorkflow());
   it("stock management and automatic update", async () =>
-    await stockManagementAndAutomaticUpdate());
+    await expectStockUpdates());
   it("advanced search and filtering", async () =>
-    await advancedSearchAndFiltering());
+    await expectSearchAndFilters());
   it("client preferences management and recommendations", async () =>
-    await clientPreferencesManagement());
+    await expectClientPreferences());
   it("error management and complex validation", async () =>
-    await errorManagementAndComplexValidation());
+    await expectErrorsAndValidation());
 
   after(async () => {});
 });
@@ -655,7 +655,7 @@ async function createTestData() {
   };
 }
 
-async function workflowCustomerManagement() {
+async function expectCustomerWorkflow() {
   const { customerModel } = await createTestData();
 
   const newCustomer = {
@@ -712,7 +712,7 @@ async function workflowCustomerManagement() {
   expect(listData.results).to.have.length(2);
 }
 
-async function workflowProductManagement() {
+async function expectProductWorkflow() {
   const { productModel } = await createTestData();
 
   const newProduct = {
@@ -761,7 +761,7 @@ async function workflowProductManagement() {
   expect(categoryData.results.length).to.be.greaterThan(0);
 }
 
-async function workflowOrderManagement() {
+async function expectOrderWorkflow() {
   const { customerIds, productIds, orderModel } = await createTestData();
 
   const orderData = {
@@ -836,7 +836,7 @@ async function workflowOrderManagement() {
   expect(finalOrder?.status).to.equal("processing");
 }
 
-async function stockManagementAndAutomaticUpdate() {
+async function expectStockUpdates() {
   const { productIds, productModel } = await createTestData();
 
   const initialProduct = await productModel.get(productIds[0]);
@@ -867,7 +867,7 @@ async function stockManagementAndAutomaticUpdate() {
   expect(restockedProduct?.stockQuantity).to.equal(initialStock + 10);
 }
 
-async function advancedSearchAndFiltering() {
+async function expectSearchAndFilters() {
   await createTestData();
 
   const categoryResponse = await listRequest("products", {
@@ -912,7 +912,7 @@ async function advancedSearchAndFiltering() {
   expect(pendingOrdersResponse.status).to.equal(200);
 }
 
-async function clientPreferencesManagement() {
+async function expectClientPreferences() {
   const { customerIds, customerModel } = await createTestData();
 
   const customer = await customerModel.get(customerIds[0]);
@@ -947,7 +947,7 @@ async function clientPreferencesManagement() {
   expect(customerWithLoyalty?.loyaltyPoints).to.equal(200);
 }
 
-async function errorManagementAndComplexValidation() {
+async function expectErrorsAndValidation() {
   const invalidCustomer = {
     firstName: "Test",
     lastName: "User",

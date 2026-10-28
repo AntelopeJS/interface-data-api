@@ -86,15 +86,16 @@ describe("Routes", () => {
     }
   });
 
-  it("accessing default routes", async () => requestingDefaultRoutes());
-  it("accessing undefined route", async () => await requestingUndefinedRoute());
-  it("using route get", async () => await usingRouteGet());
-  it("using route list", async () => await usingRouteList());
-  it("using route new", async () => await usingRouteNew());
-  it("using route edit", async () => await usingRouteEdit());
+  it("accessing default routes", async () => expectRequestingDefaultRoutes());
+  it("accessing undefined route", async () =>
+    await expectRequestingUndefinedRoute());
+  it("using route get", async () => await expectUsingRouteGet());
+  it("using route list", async () => await expectUsingRouteList());
+  it("using route new", async () => await expectUsingRouteNew());
+  it("using route edit", async () => await expectUsingRouteEdit());
   it("writes a body a wrapping route parsed and amended", async () =>
-    await writesParsedBodyAsHanded());
-  it("using route delete", async () => await usingRouteDelete());
+    await expectWritesParsedBodyAsHanded());
+  it("using route delete", async () => await expectUsingRouteDelete());
 
   after(async () => {});
 });
@@ -140,7 +141,7 @@ async function _createDataController(
   return { id: insertResult[0], userModel };
 }
 
-async function requestingDefaultRoutes() {
+async function expectRequestingDefaultRoutes() {
   await _createDataController(getFunctionName(), validUserDataset.default);
 
   const [
@@ -164,7 +165,7 @@ async function requestingDefaultRoutes() {
   expect(delete_response.status).to.not.equal(404);
 }
 
-async function requestingUndefinedRoute() {
+async function expectRequestingUndefinedRoute() {
   await _createDataController(getFunctionName(), validUserDataset.default, {
     get: DefaultRoutes.Get,
     new: DefaultRoutes.New,
@@ -236,7 +237,7 @@ async function validateUser(
   expect(foundDataset).to.have.property("password", validDataset.password);
 }
 
-async function usingRouteGet() {
+async function expectUsingRouteGet() {
   const { id, userModel } = await _createDataController(
     getFunctionName(),
     validUserDataset.default,
@@ -250,7 +251,7 @@ async function usingRouteGet() {
   await validateUserUsingModel(userModel, id, validUserDataset.default);
 }
 
-async function usingRouteList() {
+async function expectUsingRouteList() {
   const { id } = await _createDataController(
     getFunctionName(),
     validUserDataset.default,
@@ -264,7 +265,7 @@ async function usingRouteList() {
   await validateUserUsingResponse(response, id, validUserDataset.default);
 }
 
-async function usingRouteNew() {
+async function expectUsingRouteNew() {
   const { userModel } = await _createDataController(
     getFunctionName(),
     validUserDataset.default,
@@ -289,7 +290,7 @@ async function usingRouteNew() {
   );
 }
 
-async function usingRouteEdit() {
+async function expectUsingRouteEdit() {
   const { id, userModel } = await _createDataController(
     getFunctionName(),
     validUserDataset.default,
@@ -311,7 +312,7 @@ async function usingRouteEdit() {
   await validateUserUsingModel(userModel, id, validUserDataset.alternative);
 }
 
-async function writesParsedBodyAsHanded() {
+async function expectWritesParsedBodyAsHanded() {
   const stampedName = "Stamped by the wrapper";
   const amendBody = (body: Validation.WrittenBody) => {
     const parsed = Validation.ParseBody(body);
@@ -373,7 +374,7 @@ async function writesParsedBodyAsHanded() {
   expect(edited.age).to.equal(51);
 }
 
-async function usingRouteDelete() {
+async function expectUsingRouteDelete() {
   const { id, userModel } = await _createDataController(
     getFunctionName(),
     validUserDataset.default,

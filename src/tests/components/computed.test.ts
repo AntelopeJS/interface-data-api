@@ -89,21 +89,21 @@ const groupsDataset: Partial<Group>[] = [
 
 describe("Field Computed", () => {
   it("stores computed metadata with forced read-only and non-indexed sort", async () =>
-    await storesComputedMetadata());
+    await expectStoresComputedMetadata());
   it("lists rows with computed values", async () =>
-    await listsRowsWithComputedValues());
+    await expectListsRowsWithComputedValues());
   it("gets row with computed values", async () =>
-    await getsRowWithComputedValues());
+    await expectGetsRowWithComputedValues());
   it("sorts by computed aggregate ascending", async () =>
-    await sortsByComputedAggregateAscending());
+    await expectSortsByComputedAggregateAscending());
   it("sorts by computed aggregate descending", async () =>
-    await sortsByComputedAggregateDescending());
+    await expectSortsByComputedAggregateDescending());
   it("paginates in-DB while sorting by computed aggregate", async () =>
-    await paginatesWhileSortingByComputedAggregate());
+    await expectPaginatesWhileSortingByComputedAggregate());
   it("filters by computed aggregate", async () =>
-    await filtersByComputedAggregate());
+    await expectFiltersByComputedAggregate());
   it("ignores computed fields on edit body", async () =>
-    await ignoresComputedFieldsOnEdit());
+    await expectIgnoresComputedFieldsOnEdit());
 });
 
 async function _createDataController(testName: string) {
@@ -191,7 +191,7 @@ async function _listGroups(
   return (await response.json()) as ListResponse;
 }
 
-async function storesComputedMetadata() {
+async function expectStoresComputedMetadata() {
   const { controller } = await _createDataController(getFunctionName());
 
   const meta = GetMetadata(controller, DataAPIMeta, true);
@@ -208,7 +208,7 @@ async function storesComputedMetadata() {
   expect(meta.fields.display_name.mode).to.equal(AccessMode.ReadOnly);
 }
 
-async function listsRowsWithComputedValues() {
+async function expectListsRowsWithComputedValues() {
   await _createDataController(getFunctionName());
 
   const data = await _listGroups(getFunctionName());
@@ -222,7 +222,7 @@ async function listsRowsWithComputedValues() {
   expect(byName.Gamma.display_name).to.equal("Gamma!");
 }
 
-async function getsRowWithComputedValues() {
+async function expectGetsRowWithComputedValues() {
   const { groupIds } = await _createDataController(getFunctionName());
 
   const response = await getRequest(getFunctionName(), { id: groupIds[0] });
@@ -236,7 +236,7 @@ async function getsRowWithComputedValues() {
   expect(group.display_name).to.equal("Alpha!");
 }
 
-async function sortsByComputedAggregateAscending() {
+async function expectSortsByComputedAggregateAscending() {
   await _createDataController(getFunctionName());
 
   const data = await _listGroups(getFunctionName(), {
@@ -250,7 +250,7 @@ async function sortsByComputedAggregateAscending() {
   ]);
 }
 
-async function sortsByComputedAggregateDescending() {
+async function expectSortsByComputedAggregateDescending() {
   await _createDataController(getFunctionName());
 
   const data = await _listGroups(getFunctionName(), {
@@ -264,7 +264,7 @@ async function sortsByComputedAggregateDescending() {
   ]);
 }
 
-async function paginatesWhileSortingByComputedAggregate() {
+async function expectPaginatesWhileSortingByComputedAggregate() {
   await _createDataController(getFunctionName());
 
   const page1 = await _listGroups(getFunctionName(), {
@@ -286,7 +286,7 @@ async function paginatesWhileSortingByComputedAggregate() {
   expect(page2.total).to.equal(3);
 }
 
-async function filtersByComputedAggregate() {
+async function expectFiltersByComputedAggregate() {
   await _createDataController(getFunctionName());
 
   const data = await _listGroups(getFunctionName(), {
@@ -296,7 +296,7 @@ async function filtersByComputedAggregate() {
   expect(data.total).to.equal(1);
 }
 
-async function ignoresComputedFieldsOnEdit() {
+async function expectIgnoresComputedFieldsOnEdit() {
   const { groupIds, groupModel } =
     await _createDataController(getFunctionName());
 

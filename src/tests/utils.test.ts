@@ -8,13 +8,14 @@ type Callable = (...args: unknown[]) => unknown;
 const WRAPPER_DEPTHS = [1, 2, 5, 20];
 
 describe("Test utils", () => {
-  it("returns the name of the calling function", () => returnsTheCallerName());
+  it("returns the name of the calling function", () =>
+    expectReturnsTheCallerName());
   it("skips frames added outside the tests folder", () =>
-    skipsFramesAddedOutsideTheTestsFolder());
+    expectSkipsFramesAddedOutsideTheTestsFolder());
 });
 
-function returnsTheCallerName() {
-  expect(getFunctionName()).to.equal("returnsTheCallerName");
+function expectReturnsTheCallerName() {
+  expect(getFunctionName()).to.equal("expectReturnsTheCallerName");
 }
 
 function nameSeenThroughAsyncContexts(depth: number) {
@@ -27,7 +28,7 @@ function nameSeenThroughAsyncContexts(depth: number) {
   return run(depth, ...nestedRuns, getFunctionName);
 }
 
-function skipsFramesAddedOutsideTheTestsFolder() {
+function expectSkipsFramesAddedOutsideTheTestsFolder() {
   for (const depth of WRAPPER_DEPTHS) {
     expect(nameSeenThroughAsyncContexts(depth)).to.equal(
       "nameSeenThroughAsyncContexts",

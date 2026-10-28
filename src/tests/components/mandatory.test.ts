@@ -86,17 +86,17 @@ const validOrderDataset: Record<string, Partial<Order>> = {
 
 describe("Field Mandatory", () => {
   it("new row with all mandatory fields", async () =>
-    await newWithAllMandatoryFields());
+    await expectNewWithAllMandatoryFields());
   it("new row with missing mandatory fields", async () =>
-    await newWithMissingMandatoryFields());
+    await expectNewWithMissingMandatoryFields());
   it("edit row with all mandatory fields", async () =>
-    await editWithAllMandatoryFields());
+    await expectEditWithAllMandatoryFields());
   it("edit row without a mandatory field keeps its value", async () =>
-    await editWithoutMandatoryFieldKeepsValue());
+    await expectEditWithoutMandatoryFieldKeepsValue());
   it("edit row clearing a mandatory field", async () =>
-    await editClearingMandatoryField());
+    await expectEditClearingMandatoryField());
   it("skip mandatory validation when noMandatory is true", async () =>
-    await skipMandatoryValidationWhenNoMandatory());
+    await expectSkipMandatoryValidationWhenNoMandatory());
 
   after(async () => {});
 });
@@ -158,7 +158,7 @@ async function _createDataController(
   return { orderModel };
 }
 
-async function newWithAllMandatoryFields() {
+async function expectNewWithAllMandatoryFields() {
   const { orderModel } = await _createDataController(
     getFunctionName(),
     { new: DefaultRoutes.New },
@@ -184,7 +184,7 @@ async function newWithAllMandatoryFields() {
   }
 }
 
-async function newWithMissingMandatoryFields() {
+async function expectNewWithMissingMandatoryFields() {
   await _createDataController(getFunctionName(), { new: DefaultRoutes.New });
 
   const response = await newRequest(getFunctionName(), {
@@ -198,7 +198,7 @@ async function newWithMissingMandatoryFields() {
   });
 }
 
-async function editWithAllMandatoryFields() {
+async function expectEditWithAllMandatoryFields() {
   const { id, orderModel } = await _createDataController(
     getFunctionName(),
     { edit: DefaultRoutes.Edit },
@@ -240,7 +240,7 @@ async function editWithAllMandatoryFields() {
   }
 }
 
-async function editWithoutMandatoryFieldKeepsValue() {
+async function expectEditWithoutMandatoryFieldKeepsValue() {
   const { id, orderModel } = await _createDataController(
     getFunctionName(),
     { edit: DefaultRoutes.Edit },
@@ -262,7 +262,7 @@ async function editWithoutMandatoryFieldKeepsValue() {
   expect(order).to.have.property("status", validOrderDataset.default.status);
 }
 
-async function editClearingMandatoryField() {
+async function expectEditClearingMandatoryField() {
   const { id, orderModel } = await _createDataController(
     getFunctionName(),
     { edit: DefaultRoutes.Edit },
@@ -287,7 +287,7 @@ async function editClearingMandatoryField() {
   expect(order).to.have.property("status", validOrderDataset.default.status);
 }
 
-async function skipMandatoryValidationWhenNoMandatory() {
+async function expectSkipMandatoryValidationWhenNoMandatory() {
   const { id, orderModel } = await _createDataController(
     getFunctionName(),
     {

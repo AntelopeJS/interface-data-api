@@ -85,25 +85,25 @@ const validProductData: Record<string, Partial<Product>> = {
 
 describe("Field Validator", () => {
   it("validate correct parameters on new", async () =>
-    await validateCorrectParametersOnNew());
+    await expectCorrectParametersOnNew());
   it("validate incorrect date parameter on new", async () =>
-    await validateIncorrectDateParameterOnNew());
+    await expectIncorrectDateParameterOnNew());
   it("validate incorrect regex parameter on new", async () =>
-    await validateIncorrectEmailParameterOnNew());
+    await expectIncorrectEmailParameterOnNew());
   it("validate incorrect string parameter on new", async () =>
-    await validateIncorrectStringParameterOnNew());
+    await expectIncorrectStringParameterOnNew());
   it("validate incorrect number parameter on new", async () =>
-    await validateIncorrectNumberParameterOnNew());
+    await expectIncorrectNumberParameterOnNew());
   it("validate correct parameters on edit", async () =>
-    await validateCorrectParametersOnEdit());
+    await expectCorrectParametersOnEdit());
   it("validate incorrect date parameter on edit", async () =>
-    await validateIncorrectDateParameterOnEdit());
+    await expectIncorrectDateParameterOnEdit());
   it("validate incorrect regex parameter on edit", async () =>
-    await validateIncorrectEmailParameterOnEdit());
+    await expectIncorrectEmailParameterOnEdit());
   it("validate incorrect string parameter on edit", async () =>
-    await validateIncorrectStringParameterOnEdit());
+    await expectIncorrectStringParameterOnEdit());
   it("validate incorrect number parameter on edit", async () =>
-    await validateIncorrectNumberParameterOnEdit());
+    await expectIncorrectNumberParameterOnEdit());
 
   after(async () => {});
 });
@@ -279,63 +279,63 @@ function createIncorrectValidatorNew(
   );
 }
 
-const validateCorrectParametersOnNew = createCorrectValidator(
+const expectCorrectParametersOnNew = createCorrectValidator(
   "CorrectParametersOnNew",
   newRequest,
   { new: DefaultRoutes.New },
   validProductData.default,
 );
-const validateIncorrectDateParameterOnNew = createIncorrectValidatorNew(
+const expectIncorrectDateParameterOnNew = createIncorrectValidatorNew(
   "DateParameterOnNew",
   "birthDate",
   "invalid",
   newRequest,
 );
-const validateIncorrectEmailParameterOnNew = createIncorrectValidatorNew(
+const expectIncorrectEmailParameterOnNew = createIncorrectValidatorNew(
   "EmailParameterOnNew",
   "email",
   "invalid",
   newRequest,
 );
-const validateIncorrectStringParameterOnNew = createIncorrectValidatorNew(
+const expectIncorrectStringParameterOnNew = createIncorrectValidatorNew(
   "StringParameterOnNew",
   "name",
   "ab",
   newRequest,
 );
-const validateIncorrectNumberParameterOnNew = createIncorrectValidatorNew(
+const expectIncorrectNumberParameterOnNew = createIncorrectValidatorNew(
   "NumberParameterOnNew",
   "price",
   -10,
   newRequest,
 );
 
-const validateCorrectParametersOnEdit = createCorrectValidator(
+const expectCorrectParametersOnEdit = createCorrectValidator(
   "CorrectParametersOnEdit",
   editRequest,
   { edit: DefaultRoutes.Edit },
   validProductData.alternative,
   validProductData.default,
 );
-const validateIncorrectDateParameterOnEdit = createIncorrectValidatorEdit(
+const expectIncorrectDateParameterOnEdit = createIncorrectValidatorEdit(
   "DateParameterOnEdit",
   "birthDate",
   "invalid-date",
   editRequest,
 );
-const validateIncorrectEmailParameterOnEdit = createIncorrectValidatorEdit(
+const expectIncorrectEmailParameterOnEdit = createIncorrectValidatorEdit(
   "EmailParameterOnEdit",
   "email",
   "invalid-email@a",
   editRequest,
 );
-const validateIncorrectStringParameterOnEdit = createIncorrectValidatorEdit(
+const expectIncorrectStringParameterOnEdit = createIncorrectValidatorEdit(
   "StringParameterOnEdit",
   "name",
   "ab",
   editRequest,
 );
-const validateIncorrectNumberParameterOnEdit = createIncorrectValidatorEdit(
+const expectIncorrectNumberParameterOnEdit = createIncorrectValidatorEdit(
   "NumberParameterOnEdit",
   "price",
   -10,

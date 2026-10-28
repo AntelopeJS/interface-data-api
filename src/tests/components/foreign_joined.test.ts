@@ -93,13 +93,13 @@ const orphanBookId = "orphan-book-id";
 
 describe("Foreign relation with @Joined target label", () => {
   it("resolves a joined label through a relation in list", async () =>
-    await resolvesJoinedLabelInList());
+    await expectResolvesJoinedLabelInList());
   it("returns null relation for an orphan foreign key", async () =>
-    await returnsNullForOrphanRelation());
+    await expectReturnsNullForOrphanRelation());
   it("resolves a joined label through a relation in get", async () =>
-    await resolvesJoinedLabelInGet());
+    await expectResolvesJoinedLabelInGet());
   it("returns null relation for an orphan foreign key in get", async () =>
-    await returnsNullForOrphanRelationInGet());
+    await expectReturnsNullForOrphanRelationInGet());
 });
 
 async function _setup(testName: string) {
@@ -202,7 +202,7 @@ async function _dropTables() {
   }
 }
 
-async function resolvesJoinedLabelInList() {
+async function expectResolvesJoinedLabelInList() {
   await _setup(getFunctionName());
 
   const response = await listRequest(getFunctionName(), {});
@@ -224,7 +224,7 @@ async function resolvesJoinedLabelInList() {
   expect(beta?.book?.authorName).to.equal("Bob Stone");
 }
 
-async function returnsNullForOrphanRelation() {
+async function expectReturnsNullForOrphanRelation() {
   await _setup(getFunctionName());
 
   const response = await listRequest(getFunctionName(), {});
@@ -239,7 +239,7 @@ async function returnsNullForOrphanRelation() {
   expect(orphan?.book, "orphan relation value").to.equal(null);
 }
 
-async function resolvesJoinedLabelInGet() {
+async function expectResolvesJoinedLabelInGet() {
   const { shelfIds } = await _setup(getFunctionName());
 
   const response = await getRequest(getFunctionName(), { id: shelfIds[0] });
@@ -252,7 +252,7 @@ async function resolvesJoinedLabelInGet() {
   expect(shelf.book?.authorName).to.equal("Alice Carter");
 }
 
-async function returnsNullForOrphanRelationInGet() {
+async function expectReturnsNullForOrphanRelationInGet() {
   const { shelfIds } = await _setup(getFunctionName());
 
   // shelfIds[2] points to an orphan book id.

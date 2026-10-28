@@ -86,13 +86,13 @@ const orphanAuthorId = "orphan-author-id";
 
 describe("Modifier key with foreign fields", () => {
   it("gets row with resolved foreign reference", async () =>
-    await getsRowWithResolvedForeignReference());
+    await expectGetsRowWithResolvedForeignReference());
   it("gets row with null foreign reference", async () =>
-    await getsRowWithNullForeignReference());
+    await expectGetsRowWithNullForeignReference());
   it("gets row with dangling foreign reference", async () =>
-    await getsRowWithDanglingForeignReference());
+    await expectGetsRowWithDanglingForeignReference());
   it("lists rows containing null foreign references", async () =>
-    await listsRowsContainingNullForeignReferences());
+    await expectListsRowsContainingNullForeignReferences());
 });
 
 async function _createDataController(testName: string) {
@@ -157,7 +157,7 @@ async function _dropTables() {
   }
 }
 
-async function getsRowWithResolvedForeignReference() {
+async function expectGetsRowWithResolvedForeignReference() {
   const { postIds } = await _createDataController(getFunctionName());
 
   const response = await getRequest(getFunctionName(), {
@@ -170,7 +170,7 @@ async function getsRowWithResolvedForeignReference() {
   expect(post.authorId?.name).to.equal("Alice Carter");
 }
 
-async function getsRowWithNullForeignReference() {
+async function expectGetsRowWithNullForeignReference() {
   const { postIds } = await _createDataController(getFunctionName());
 
   const response = await getRequest(getFunctionName(), {
@@ -182,7 +182,7 @@ async function getsRowWithNullForeignReference() {
   expect(post.authorId).to.equal(null);
 }
 
-async function getsRowWithDanglingForeignReference() {
+async function expectGetsRowWithDanglingForeignReference() {
   const { postIds } = await _createDataController(getFunctionName());
 
   const response = await getRequest(getFunctionName(), {
@@ -194,7 +194,7 @@ async function getsRowWithDanglingForeignReference() {
   expect(post.authorId).to.equal(null);
 }
 
-async function listsRowsContainingNullForeignReferences() {
+async function expectListsRowsContainingNullForeignReferences() {
   await _createDataController(getFunctionName());
 
   const response = await listRequest(getFunctionName(), { locale });

@@ -99,26 +99,25 @@ const defaultProductDataset: Partial<Product>[] = [
 ];
 
 describe("Field Listable", () => {
-  it("default listing", async () => await defaultListing());
-  it("list only detailed fields", async () => await listDetailedFields());
-  it("list nonexistant pluck mode", async () =>
-    await listNonexistantPluckMode());
-  it("list only 2 rows per page", async () => await listOnly2RowsPerPage());
-  it("list from 2nd page", async () => await listFrom2ndPage());
-  it("list only 2 first pages", async () => await listOnly2FirstPages());
-  it("list only 2nd page", async () => await listOnly2ndPage());
+  it("default listing", async () => await expectDefaultList());
+  it("list only detailed fields", async () => await expectDetailedList());
+  it("list nonexistant pluck mode", async () => await expectUnknownPluckMode());
+  it("list only 2 rows per page", async () => await expectTwoRowPage());
+  it("list from 2nd page", async () => await expectFromPageTwo());
+  it("list only 2 first pages", async () => await expectTwoFirstPages());
+  it("list only 2nd page", async () => await expectPageTwoOnly());
   it("sorting by string (name), ascending", async () =>
-    await sortByNameAscending());
+    await expectNameAscending());
   it("sorting by string (name), descending", async () =>
-    await sortByNameDescending());
+    await expectNameDescending());
   it("sorting by number (price), ascending", async () =>
-    await sortByPriceAscending());
+    await expectPriceAscending());
   it("sorting by number (price), descending", async () =>
-    await sortByPriceDescending());
+    await expectPriceDescending());
   it("sorting by date (addedAt), ascending", async () =>
-    await sortByAddedAtAscending());
+    await expectAddedAtAscending());
   it("sorting by date (addedAt), descending", async () =>
-    await sortByAddedAtDescending());
+    await expectAddedAtDescending());
 
   after(async () => {});
 });
@@ -200,7 +199,7 @@ async function _getDatabaseProducts(ids: string[], productModel: ProductModel) {
   return database_products;
 }
 
-async function defaultListing() {
+async function expectDefaultList() {
   const { ids, productModel } = await _createDataController(
     getFunctionName(),
     { list: DefaultRoutes.List },
@@ -229,7 +228,7 @@ async function defaultListing() {
   }
 }
 
-async function listDetailedFields() {
+async function expectDetailedList() {
   const { ids, productModel } = await _createDataController(
     getFunctionName(),
     {
@@ -268,7 +267,7 @@ async function listDetailedFields() {
   }
 }
 
-async function listNonexistantPluckMode() {
+async function expectUnknownPluckMode() {
   await _createDataController(
     getFunctionName(),
     {
@@ -289,7 +288,7 @@ async function listNonexistantPluckMode() {
   expect(response.status).to.equal(404);
 }
 
-async function listOnly2RowsPerPage() {
+async function expectTwoRowPage() {
   await _createDataController(
     getFunctionName(),
     { list: DefaultRoutes.List },
@@ -312,7 +311,7 @@ async function listOnly2RowsPerPage() {
   expect(data.results[1]._id).to.not.equal(undefined);
 }
 
-async function listFrom2ndPage() {
+async function expectFromPageTwo() {
   await _createDataController(
     getFunctionName(),
     { list: DefaultRoutes.List },
@@ -333,7 +332,7 @@ async function listFrom2ndPage() {
   expect(data.results[0]._id).to.not.equal(undefined);
 }
 
-async function listOnly2FirstPages() {
+async function expectTwoFirstPages() {
   await _createDataController(
     getFunctionName(),
     { list: DefaultRoutes.List },
@@ -353,7 +352,7 @@ async function listOnly2FirstPages() {
   expect(data.results[0]._id).to.not.equal(undefined);
 }
 
-async function listOnly2ndPage() {
+async function expectPageTwoOnly() {
   await _createDataController(
     getFunctionName(),
     { list: DefaultRoutes.List },
@@ -407,7 +406,7 @@ function _getSortedField(
   return filteredField;
 }
 
-async function sortByNameAscending() {
+async function expectNameAscending() {
   await _createDataController(
     getFunctionName(),
     { list: DefaultRoutes.List },
@@ -432,7 +431,7 @@ async function sortByNameAscending() {
   expect(sortedNames).to.deep.equal(expectedNames);
 }
 
-async function sortByNameDescending() {
+async function expectNameDescending() {
   await _createDataController(
     getFunctionName(),
     { list: DefaultRoutes.List },
@@ -457,7 +456,7 @@ async function sortByNameDescending() {
   expect(sortedNames).to.deep.equal(expectedNames);
 }
 
-async function sortByPriceAscending() {
+async function expectPriceAscending() {
   await _createDataController(
     getFunctionName(),
     { list: DefaultRoutes.List },
@@ -482,7 +481,7 @@ async function sortByPriceAscending() {
   expect(sortedPrices).to.deep.equal(expectedPrices);
 }
 
-async function sortByPriceDescending() {
+async function expectPriceDescending() {
   await _createDataController(
     getFunctionName(),
     { list: DefaultRoutes.List },
@@ -511,7 +510,7 @@ async function sortByPriceDescending() {
   expect(sortedPrices).to.deep.equal(expectedPrices);
 }
 
-async function sortByAddedAtAscending() {
+async function expectAddedAtAscending() {
   await _createDataController(
     getFunctionName(),
     { list: DefaultRoutes.List },
@@ -539,7 +538,7 @@ async function sortByAddedAtAscending() {
   expect(sortedDates).to.deep.equal(expectedDates);
 }
 
-async function sortByAddedAtDescending() {
+async function expectAddedAtDescending() {
   await _createDataController(
     getFunctionName(),
     { list: DefaultRoutes.List },

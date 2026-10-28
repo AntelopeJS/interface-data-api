@@ -63,12 +63,18 @@ const defaultUserDataset: Partial<User> = {
 };
 
 describe("Field Access Control", () => {
-  it("read in a read write field", async () => await readInReadWriteField());
-  it("write in a read write field", async () => await writeInReadWriteField());
-  it("read in a write only field", async () => await readInWriteOnlyField());
-  it("write in a read only field", async () => await writeInReadOnlyField());
-  it("read in a read only field", async () => await readInReadOnlyField());
-  it("write in a write only field", async () => await writeInWriteOnlyField());
+  it("read in a read write field", async () =>
+    await expectReadInReadWriteField());
+  it("write in a read write field", async () =>
+    await expectWriteInReadWriteField());
+  it("read in a write only field", async () =>
+    await expectReadInWriteOnlyField());
+  it("write in a read only field", async () =>
+    await expectWriteInReadOnlyField());
+  it("read in a read only field", async () =>
+    await expectReadInReadOnlyField());
+  it("write in a write only field", async () =>
+    await expectWriteInWriteOnlyField());
 
   after(async () => {});
 });
@@ -106,7 +112,7 @@ async function _createDataController(testName: string, user: Partial<User>) {
   return { id: insertResult[0], userModel };
 }
 
-async function readInReadWriteField() {
+async function expectReadInReadWriteField() {
   const { id } = await _createDataController(
     getFunctionName(),
     defaultUserDataset,
@@ -121,7 +127,7 @@ async function readInReadWriteField() {
   expect(data.password).to.equal(undefined);
 }
 
-async function writeInReadWriteField() {
+async function expectWriteInReadWriteField() {
   const { id, userModel } = await _createDataController(
     getFunctionName(),
     defaultUserDataset,
@@ -138,7 +144,7 @@ async function writeInReadWriteField() {
   expect(user?.email).to.equal(replacementEmail);
 }
 
-async function readInWriteOnlyField() {
+async function expectReadInWriteOnlyField() {
   const { id } = await _createDataController(
     getFunctionName(),
     defaultUserDataset,
@@ -150,7 +156,7 @@ async function readInWriteOnlyField() {
   expect(data.password).to.equal(undefined);
 }
 
-async function writeInReadOnlyField() {
+async function expectWriteInReadOnlyField() {
   const { id, userModel } = await _createDataController(
     getFunctionName(),
     defaultUserDataset,
@@ -166,7 +172,7 @@ async function writeInReadOnlyField() {
   expect(user?.age).to.equal(defaultUserDataset.age);
 }
 
-async function readInReadOnlyField() {
+async function expectReadInReadOnlyField() {
   const { id } = await _createDataController(
     getFunctionName(),
     defaultUserDataset,
@@ -178,7 +184,7 @@ async function readInReadOnlyField() {
   expect(data.email).to.equal(defaultUserDataset.email);
 }
 
-async function writeInWriteOnlyField() {
+async function expectWriteInWriteOnlyField() {
   const { id, userModel } = await _createDataController(
     getFunctionName(),
     defaultUserDataset,

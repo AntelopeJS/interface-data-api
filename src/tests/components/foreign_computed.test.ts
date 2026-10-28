@@ -79,11 +79,11 @@ interface ListResponse {
 
 describe("Foreign and Computed fields on the same key", () => {
   it("lists the computed value read from the key and the resolved relation", async () =>
-    await listsComputedFromForeignKey());
+    await expectListsComputedFromForeignKey());
   it("gets the computed value read from the key and the resolved relation", async () =>
-    await getsComputedFromForeignKey());
+    await expectGetsComputedFromForeignKey());
   it("combines several filters on one field with AND", async () =>
-    await combinesFiltersOnOneField());
+    await expectCombinesFiltersOnOneField());
 });
 
 async function _createDataController(testName: string) {
@@ -169,7 +169,7 @@ async function _list(
   return (await response.json()) as ListResponse;
 }
 
-async function listsComputedFromForeignKey() {
+async function expectListsComputedFromForeignKey() {
   const { teamIds } = await _createDataController(getFunctionName());
 
   const data = await _list(getFunctionName(), [["limit", "10"]]);
@@ -183,7 +183,7 @@ async function listsComputedFromForeignKey() {
   });
 }
 
-async function getsComputedFromForeignKey() {
+async function expectGetsComputedFromForeignKey() {
   const { teamIds, memberIds } = await _createDataController(getFunctionName());
 
   const response = await getRequest(getFunctionName(), { id: memberIds[3] });
@@ -193,7 +193,7 @@ async function getsComputedFromForeignKey() {
   expect(member.team).to.deep.equal({ _id: teamIds[1], name: "Blue" });
 }
 
-async function combinesFiltersOnOneField() {
+async function expectCombinesFiltersOnOneField() {
   await _createDataController(getFunctionName());
 
   const range = await _list(getFunctionName(), [

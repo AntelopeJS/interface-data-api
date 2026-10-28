@@ -140,33 +140,33 @@ const reqCtx = {} as RequestContext;
 
 describe("Query.List deferred joined self-resolution", () => {
   it("resolves joined fields on a paged two-element destructure", async () =>
-    await resolvesJoinedFieldsOnPagedTwoElementDestructure());
+    await expectResolvesJoinedFieldsOnPagedTwoElementDestructure());
   it("keeps page lookups after the slice and off the count pipeline", async () =>
-    await keepsLookupsAfterSliceAndOffCountPipeline());
+    await expectKeepsLookupsAfterSliceAndOffCountPipeline());
   it("materializes joined fields for a caller-added filter", async () =>
-    await materializesJoinedFieldsForCallerFilter());
+    await expectMaterializesJoinedFieldsForCallerFilter());
   it("resolves joined fields on a directly awaited stream", async () =>
-    await resolvesJoinedFieldsOnDirectAwait());
+    await expectResolvesJoinedFieldsOnDirectAwait());
   it("resolves joined fields on an nth datum", async () =>
-    await resolvesJoinedFieldsOnNthDatum());
+    await expectResolvesJoinedFieldsOnNthDatum());
   it("orders by a joined field when the caller sorts the stream", async () =>
-    await ordersByJoinedFieldOnCallerSort());
+    await expectOrdersByJoinedFieldOnCallerSort());
   it("materializes the whole joined group when sorting through List", async () =>
-    await materializesJoinedGroupOnListSort());
+    await expectMaterializesJoinedGroupOnListSort());
   it("exposes the deferred set and raw stream only on demand", async () =>
-    await exposesDeferredSetOnDemand());
+    await expectExposesDeferredSetOnDemand());
   it("keeps the change feed on the raw pipeline", async () =>
-    await keepsChangeFeedOnRawPipeline());
+    await expectKeepsChangeFeedOnRawPipeline());
   it("scopes field aggregates to the joined fields they read", async () =>
-    await scopesFieldAggregatesToJoinedFields());
+    await expectScopesFieldAggregatesToJoinedFields());
   it("still pages the lookups after a cast", async () =>
-    await stillPagesLookupsAfterCast());
+    await expectStillPagesLookupsAfterCast());
   it("materializes joined fields when embedded in another query", async () =>
-    await materializesJoinedFieldsWhenEmbedded());
+    await expectMaterializesJoinedFieldsWhenEmbedded());
   it("resolves joined fields on async iteration", async () =>
-    await resolvesJoinedFieldsOnAsyncIteration());
+    await expectResolvesJoinedFieldsOnAsyncIteration());
   it("returns the unresolved names when no database is provided", async () =>
-    await returnsUnresolvedNamesWithoutDatabase());
+    await expectReturnsUnresolvedNamesWithoutDatabase());
 });
 
 async function _seedTables(): Promise<ListHarness> {
@@ -216,7 +216,7 @@ function stageNames(staged: PipelineStaged): string[] {
   return staged.build().map((entry) => entry.stage);
 }
 
-async function resolvesJoinedFieldsOnPagedTwoElementDestructure() {
+async function expectResolvesJoinedFieldsOnPagedTwoElementDestructure() {
   const harness = await _seedTables();
   const [query, queryTotal] = listAsConsumer(harness);
 
@@ -235,7 +235,7 @@ async function resolvesJoinedFieldsOnPagedTwoElementDestructure() {
   expect(lostChapter?.email).to.equal(null);
 }
 
-async function keepsLookupsAfterSliceAndOffCountPipeline() {
+async function expectKeepsLookupsAfterSliceAndOffCountPipeline() {
   const harness = await _seedTables();
   const [query, queryTotal] = listAsConsumer(harness);
 
@@ -253,7 +253,7 @@ async function keepsLookupsAfterSliceAndOffCountPipeline() {
   );
 }
 
-async function materializesJoinedFieldsForCallerFilter() {
+async function expectMaterializesJoinedFieldsForCallerFilter() {
   const harness = await _seedTables();
   let [query] = listAsConsumer(harness);
 
@@ -270,7 +270,7 @@ async function materializesJoinedFieldsForCallerFilter() {
   expect(await query.count()).to.equal(2);
 }
 
-async function resolvesJoinedFieldsOnDirectAwait() {
+async function expectResolvesJoinedFieldsOnDirectAwait() {
   const harness = await _seedTables();
   const [query] = listAsConsumer(harness);
 
@@ -281,7 +281,7 @@ async function resolvesJoinedFieldsOnDirectAwait() {
   expect(betaStories?.email).to.equal("bob@example.com");
 }
 
-async function resolvesJoinedFieldsOnNthDatum() {
+async function expectResolvesJoinedFieldsOnNthDatum() {
   const harness = await _seedTables();
   const [query] = listAsConsumer(harness);
 
@@ -300,7 +300,7 @@ async function resolvesJoinedFieldsOnNthDatum() {
   expect(second.title).to.not.equal(first.title);
 }
 
-async function ordersByJoinedFieldOnCallerSort() {
+async function expectOrdersByJoinedFieldOnCallerSort() {
   const harness = await _seedTables();
   const [query] = listAsConsumer(harness);
 
@@ -314,7 +314,7 @@ async function ordersByJoinedFieldOnCallerSort() {
   expect(names[0]).to.equal("Carol Wilde");
 }
 
-async function materializesJoinedGroupOnListSort() {
+async function expectMaterializesJoinedGroupOnListSort() {
   const harness = await _seedTables();
   const meta = GetDataControllerMeta(harness.thisObj);
   const [query, , deferredJoined] = Query.List(
@@ -334,7 +334,7 @@ async function materializesJoinedGroupOnListSort() {
   expect(gammaTales?.email).to.equal("carol@example.com");
 }
 
-async function keepsChangeFeedOnRawPipeline() {
+async function expectKeepsChangeFeedOnRawPipeline() {
   const harness = await _seedTables();
   const [query] = listAsConsumer(harness);
 
@@ -343,7 +343,7 @@ async function keepsChangeFeedOnRawPipeline() {
   expect(feedStages).to.not.include("lookup");
 }
 
-async function scopesFieldAggregatesToJoinedFields() {
+async function expectScopesFieldAggregatesToJoinedFields() {
   const harness = await _seedTables();
   const [query] = listAsConsumer(harness);
 
@@ -363,7 +363,7 @@ async function scopesFieldAggregatesToJoinedFields() {
   expect(distinctRowStages).to.include("lookup");
 }
 
-async function stillPagesLookupsAfterCast() {
+async function expectStillPagesLookupsAfterCast() {
   const harness = await _seedTables();
   const [query] = listAsConsumer(harness);
 
@@ -377,7 +377,7 @@ async function stillPagesLookupsAfterCast() {
   expect(alphaRising?.name).to.equal("Alice Carter");
 }
 
-async function materializesJoinedFieldsWhenEmbedded() {
+async function expectMaterializesJoinedFieldsWhenEmbedded() {
   const harness = await _seedTables();
   const [query] = listAsConsumer(harness);
 
@@ -392,7 +392,7 @@ async function materializesJoinedFieldsWhenEmbedded() {
   ).to.have.lengthOf(2);
 }
 
-async function resolvesJoinedFieldsOnAsyncIteration() {
+async function expectResolvesJoinedFieldsOnAsyncIteration() {
   const harness = await _seedTables();
   const [query] = listAsConsumer(harness);
 
@@ -407,7 +407,7 @@ async function resolvesJoinedFieldsOnAsyncIteration() {
   expect(names.has("Bob Stone")).to.equal(true);
 }
 
-async function returnsUnresolvedNamesWithoutDatabase() {
+async function expectReturnsUnresolvedNamesWithoutDatabase() {
   const harness = await _seedTables();
   const meta = GetDataControllerMeta(harness.thisObj);
 
@@ -423,7 +423,7 @@ async function returnsUnresolvedNamesWithoutDatabase() {
   expect(pageStages).to.not.include("lookup");
 }
 
-async function exposesDeferredSetOnDemand() {
+async function expectExposesDeferredSetOnDemand() {
   const harness = await _seedTables();
   const meta = GetDataControllerMeta(harness.thisObj);
 

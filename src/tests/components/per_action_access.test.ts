@@ -66,9 +66,9 @@ const defaultUserDataset: Partial<User> = {
 
 describe("Per-Action Access Control", () => {
   it("writable in new but read-only in edit", async () =>
-    await writableInNewReadOnlyInEdit());
+    await expectWritableInNewReadOnlyInEdit());
   it("read-only globally but read-write in new", async () =>
-    await readOnlyGloballyReadWriteInNew());
+    await expectReadOnlyGloballyReadWriteInNew());
   it("reads a field's effective mode per action", () => {
     const field = {
       mode: AccessMode.ReadWrite,
@@ -120,7 +120,7 @@ async function _createDataController(testName: string, user: Partial<User>) {
   return { id: insertResult[0], userModel };
 }
 
-async function writableInNewReadOnlyInEdit() {
+async function expectWritableInNewReadOnlyInEdit() {
   const { id, userModel } = await _createDataController(
     getFunctionName(),
     defaultUserDataset,
@@ -136,7 +136,7 @@ async function writableInNewReadOnlyInEdit() {
   expect(user?.role).to.equal("admin");
 }
 
-async function readOnlyGloballyReadWriteInNew() {
+async function expectReadOnlyGloballyReadWriteInNew() {
   const { id, userModel } = await _createDataController(
     getFunctionName(),
     defaultUserDataset,
