@@ -5,7 +5,8 @@
 ## Layout
 
 - `src/index.ts` holds `DataController`, `RegisterDataController` and `DefaultRoutes`. `src/metadata.ts` holds `DataAPIMeta` and the field decorators (`Access`, `Listable`, `Foreign`, `Computed`, `Filter`, …). `src/components.ts` holds the route building blocks (`Parameters`, `Query`, `Validation`). Both are published subpaths (`/metadata`, `/components`).
-- Tests live in `src/tests` and compile to `dist/tests`. `pnpm test` builds, then `ajs module test .` loads `src/antelope.test.ts`, which installs `@antelopejs/mongodb` and `@antelopejs/api` at pinned versions into `.antelope/cache` and starts an in-memory MongoDB. The first run needs network access.
+- `src/internal` holds the implementation behind those entries. The `./*` export publishes its modules too, so each one is marked `@internal`; a split that adds a module there runs `antelopejs-api-diff` with `--allow-added '**/internal/**'`.
+- Tests live in `src/tests` and compile to `dist/tests`. The same export publishes the non-test files there, so `src/tests/utils.ts` and `src/tests/helpers` keep their declarations, and new test helpers go in `src/tests/internal`. `pnpm test` builds, then `ajs module test .` loads `src/antelope.test.ts`, which installs `@antelopejs/mongodb` and `@antelopejs/api` at pinned versions into `.antelope/cache` and starts an in-memory MongoDB. The first run needs network access.
 
 ## Versioning
 

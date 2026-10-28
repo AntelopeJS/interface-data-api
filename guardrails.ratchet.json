@@ -14,8 +14,6 @@
     "typescript/unbound-method": 5
   },
   "oversizeFiles": {
-    "src/components.ts": 47615,
-    "src/metadata.ts": 29316,
-    "src/tests/integration.test.ts": 26116
+    "src/metadata.ts": 21125
   }
 }
