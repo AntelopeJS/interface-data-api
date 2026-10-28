@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "data-api-interface-crud-endpoints",
+      "area": "framework",
+      "style": "clean",
+      "prompt": "Expose my orders table as REST endpoints for get, list, create, update and delete. Only the status column should be sortable and customer filterable.",
+      "expect": {
+        "skills": ["data-api-interface"],
+        "acceptable": [
+          "api-interface",
+          "database-decorators-interface",
+          "database-interface",
+          "ajs-consume-interface",
+          "antelopejs"
+        ],
+        "mustMention": [
+          "DataController",
+          "RegisterDataController",
+          "Sortable",
+          "Filter"
+        ]
+      }
+    },
+    {
+      "id": "data-api-interface-crud-casual",
+      "area": "framework",
+      "style": "casual",
+      "prompt": "can i get a crud api straight from my table without writing every route",
+      "expect": {
+        "skills": ["data-api-interface"],
+        "acceptable": [
+          "api-interface",
+          "database-decorators-interface",
+          "database-interface",
+          "antelopejs"
+        ],
+        "mustMention": ["DataController", "DefaultRoutes"]
+      }
+    },
+    {
+      "id": "data-api-interface-field-hidden",
+      "area": "framework",
+      "style": "clean",
+      "prompt": "The list endpoint I generated from my table never returns the email field and I cannot write to it either. Why?",
+      "expect": {
+        "skills": ["data-api-interface"],
+        "acceptable": [
+          "api-interface",
+          "database-decorators-interface",
+          "ajs-consume-interface"
+        ],
+        "mustMention": ["Access"]
+      }
+    },
+    {
+      "id": "data-api-interface-sort-400-casual",
+      "area": "framework",
+      "style": "casual",
+      "prompt": "sorting the list by createdAt gives me a 400",
+      "expect": {
+        "skills": ["data-api-interface"],
+        "acceptable": ["api-interface", "database-decorators-interface"],
+        "mustMention": ["Sortable"]
+      }
+    },
+    {
+      "id": "data-api-interface-table-neighbour",
+      "area": "framework",
+      "style": "clean",
+      "prompt": "Add a hashed passphrase and an encrypted supplier code to my chef table class, plus created and updated timestamps.",
+      "expect": {
+        "skills": ["database-decorators-interface"],
+        "acceptable": [
+          "database-interface",
+          "antelopejs",
+          "ajs-consume-interface"
+        ],
+        "avoid": ["data-api-interface"]
+      }
+    }
+  ]
+}
