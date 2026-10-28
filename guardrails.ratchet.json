@@ -18,7 +18,6 @@
     "typescript/unbound-method": 5
   },
   "oversizeFiles": {
-    ".github/social-card.png": 253602,
     "src/components.ts": 49274,
     "src/metadata.ts": 29852,
     "src/tests/components/listable.test.ts": 15876,
