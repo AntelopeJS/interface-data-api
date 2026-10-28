@@ -2,7 +2,7 @@ import path from "node:path";
 import { expect } from "chai";
 import { Controller } from "@antelopejs/interface-api";
 import { GetMetadata } from "@antelopejs/interface-core";
-import { Schema, type ValueProxy } from "@antelopejs/interface-database";
+import { Schema } from "@antelopejs/interface-database";
 import {
   DataController,
   DefaultRoutes,
@@ -29,6 +29,7 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
+import { readJson } from "../internal/http";
 import {
   editRequest,
   getFunctionName,
@@ -133,20 +134,15 @@ async function _createDataController(testName: string) {
     @Listable()
     @Computed(
       (row, db) =>
-        db
-          .table(deviceTableName)
-          .getAll(row.key("_id") as unknown as string, "group_id")
-          .count(),
+        db.table(deviceTableName).getAll(row.key("_id"), "group_id").count(),
       { default: 0 },
     )
     @Sortable()
-    @Filter((_context, proxy, _key, value) =>
-      (proxy as ValueProxy<number>).eq(parseFloat(value)),
-    )
+    @Filter((_context, proxy, _key, value) => proxy.eq(parseFloat(value)))
     declare devices_count: number;
 
     @Listable()
-    @Computed((row) => (row.key("name") as ValueProxy<string>).concat("!"))
+    @Computed((row) => row.key("name").concat("!"))
     declare display_name: string;
   }
 
@@ -188,7 +184,7 @@ async function _listGroups(
     const text = await response.text();
     throw new Error(`list failed (${response.status}): ${text}`);
   }
-  return (await response.json()) as ListResponse;
+  return await readJson<ListResponse>(response);
 }
 
 async function expectStoresComputedMetadata() {
@@ -230,7 +226,7 @@ async function expectGetsRowWithComputedValues() {
     const text = await response.text();
     throw new Error(`get failed (${response.status}): ${text}`);
   }
-  const group = (await response.json()) as GroupListed;
+  const group = await readJson<GroupListed>(response);
   expect(group.name).to.equal("Alpha");
   expect(group.devices_count).to.equal(3);
   expect(group.display_name).to.equal("Alpha!");
@@ -310,9 +306,9 @@ async function expectIgnoresComputedFieldsOnEdit() {
   });
   expect(response.status).to.equal(200);
 
-  const updatedGroup = (await groupModel.get(groupIds[0])) as unknown as
-    | Record<string, unknown>
-    | undefined;
+  const updatedGroup: Partial<GroupListed> | undefined = await groupModel.get(
+    groupIds[0],
+  );
   expect(updatedGroup?.name).to.equal("Alpha Prime");
   expect(updatedGroup?.devices_count).to.equal(undefined);
   expect(updatedGroup?.display_name).to.equal(undefined);

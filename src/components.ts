@@ -6,6 +6,7 @@ import {
 } from "@antelopejs/interface-database-decorators/common";
 import { MakeParameterAndPropertyDecorator } from "@antelopejs/interface-core/decorators";
 import {
+  type computeParameter,
   HTTPResult,
   type RequestContext,
   SetParameterProvider,
@@ -35,6 +36,7 @@ import {
   type FieldFilter,
   type FieldParseResult,
   type FieldValidationResult,
+  type FieldValidator,
   type FilterValue,
   FilterValuesOf,
   type ForeignJoinedRef,
@@ -43,6 +45,9 @@ import {
 } from "./metadata";
 
 export namespace Parameters {
+  /** The controller a parameter provider computes its parameter for. */
+  type Owner = Parameters<typeof computeParameter>[2];
+
   export function GetOptionOverrides<T extends Record<string, any>>(
     reqCtx: RequestContext,
   ): T {
@@ -68,10 +73,7 @@ export namespace Parameters {
    * (`?filter_age=ge:18&filter_age=lt:65`) gets them all, which a row must
    * all pass. Returns fresh tuples.
    */
-  export function ExtractFilters(
-    reqCtx: RequestContext,
-    meta: DataAPIMeta,
-  ): Record<string, FieldFilter> {
+  export function ExtractFilters(reqCtx: RequestContext, meta: DataAPIMeta) {
     const result: Record<string, FieldFilter> = {};
     for (const filter of Object.keys(meta.filters)) {
       const values = reqCtx.url.searchParams
@@ -155,7 +157,7 @@ export namespace Parameters {
   }
 
   export const List = MakeParameterAndPropertyDecorator((target, key, param) =>
-    SetParameterProvider(target, key, param, function (this: unknown, context) {
+    SetParameterProvider(target, key, param, function (this: Owner, context) {
       const meta = GetDataControllerMeta(this);
       const params = ExtractGeneric<ListParameters>(context, meta, {
         filters: ExtractFilters,
@@ -185,7 +187,7 @@ export namespace Parameters {
   }
 
   export const Get = MakeParameterAndPropertyDecorator((target, key, param) =>
-    SetParameterProvider(target, key, param, function (this: unknown, context) {
+    SetParameterProvider(target, key, param, function (this: Owner, context) {
       const params = ExtractGeneric<GetParameters>(
         context,
         GetDataControllerMeta(this),
@@ -205,7 +207,7 @@ export namespace Parameters {
   }
 
   export const New = MakeParameterAndPropertyDecorator((target, key, param) =>
-    SetParameterProvider(target, key, param, function (this: unknown, context) {
+    SetParameterProvider(target, key, param, function (this: Owner, context) {
       const params = ExtractGeneric<NewParameters>(
         context,
         GetDataControllerMeta(this),
@@ -223,7 +225,7 @@ export namespace Parameters {
   }
 
   export const Edit = MakeParameterAndPropertyDecorator((target, key, param) =>
-    SetParameterProvider(target, key, param, function (this: unknown, context) {
+    SetParameterProvider(target, key, param, function (this: Owner, context) {
       const params = ExtractGeneric<EditParameters>(
         context,
         GetDataControllerMeta(this),
@@ -244,32 +246,29 @@ export namespace Parameters {
 
   export const Delete = MakeParameterAndPropertyDecorator(
     (target, key, param) =>
-      SetParameterProvider(
-        target,
-        key,
-        param,
-        function (this: unknown, context) {
-          const params = ExtractGeneric<DeleteParameters>(
-            context,
-            GetDataControllerMeta(this),
-            {
-              id: "multi:string",
-            },
-          );
+      SetParameterProvider(target, key, param, function (this: Owner, context) {
+        const params = ExtractGeneric<DeleteParameters>(
+          context,
+          GetDataControllerMeta(this),
+          {
+            id: "multi:string",
+          },
+        );
 
-          assert(
-            params.id && Array.isArray(params.id) && params.id.length > 0,
-            400,
-            "Missing id.",
-          );
+        assert(
+          params.id && Array.isArray(params.id) && params.id.length > 0,
+          400,
+          "Missing id.",
+        );
 
-          return params;
-        },
-      ),
+        return params;
+      }),
   );
 }
 
 export namespace Query {
+  type TableRow = Parameters<ComputedFieldData["expr"]>[0];
+
   export function GetModel(
     obj: any,
     meta: DataAPIMeta,
@@ -335,8 +334,8 @@ export namespace Query {
       }
       return query;
     } else {
-      const oldForeign = (obj: ValueProxy<Record<string, any>>) => {
-        const changedFields: Record<string, any> = {};
+      const oldForeign = (obj: TableRow) => {
+        const changedFields: Record<string, Datum<any> | ValueProxy<any>> = {};
         for (const [name, field] of Object.entries(meta.fields)) {
           if (!field.foreign || (pluck && !pluck.has(name))) {
             continue;
@@ -365,11 +364,7 @@ export namespace Query {
                 return foreignObject.default(null);
               });
           } else {
-            let foreignObject: Datum<any> = Get(
-              remote,
-              obj.key(name) as ValueProxy<string>,
-              index,
-            );
+            let foreignObject: Datum<any> = Get(remote, obj.key(name), index);
             if (targetJoined && targetJoined.length > 0) {
               foreignObject = applyForeignJoinedDatum(
                 db,
@@ -412,7 +407,7 @@ export namespace Query {
       const tmpKey = `__fjoin_${foreignName}_${group.name}`;
       s = s
         .map((row) =>
-          (row as ValueProxy<Record<string, any>>).merge({
+          row.merge({
             [tmpKey]: row.key(foreignName).key(group.localKey),
           }),
         )
@@ -428,7 +423,7 @@ export namespace Query {
             }),
           }),
         )
-        .without(tmpKey) as Stream<any>;
+        .without(tmpKey);
     }
     return s;
   }
@@ -450,13 +445,13 @@ export namespace Query {
         row.merge({
           [group.name]: Get(
             remoteTable,
-            row.key(group.localKey) as ValueProxy<string>,
+            row.key(group.localKey),
             group.remoteIndex,
           )
             .key(group.remoteField)
             .default(null),
         }),
-      ) as Datum<any>;
+      );
     }
     return d;
   }
@@ -648,10 +643,12 @@ export namespace Query {
     };
   }
 
-  const DEFERRED_JOIN_OPERATION_FACTORIES: Record<
-    string,
-    (name: string) => DeferredJoinedOperation
-  > = {
+  /** The operation a {@link DeferredJoinedStream} installs for a stream method. */
+  interface DeferredJoinOperationFactories {
+    [method: string]: (name: string) => DeferredJoinedOperation;
+  }
+
+  const DEFERRED_JOIN_OPERATION_FACTORIES: DeferredJoinOperationFactories = {
     slice: pagedDeferredJoinOperation,
     nth: nthDeferredJoinOperation,
     changes: rawDeferredJoinOperation,
@@ -715,12 +712,7 @@ export namespace Query {
       return [tmpRequest, total, deferredJoined];
     }
     return [
-      wrapDeferredJoined(
-        db,
-        meta,
-        deferredJoined,
-        tmpRequest as Stream<any>,
-      ) as Stream<T>,
+      wrapDeferredJoined(db, meta, deferredJoined, tmpRequest),
       total,
       new Set(),
     ];
@@ -767,15 +759,14 @@ export namespace Query {
       (group) => !only || group.fields.some((field) => only.has(field.name)),
     );
     if (groups.length === 0) {
-      return query as any;
+      return query;
     }
 
-    type RowShape = Record<string, unknown>;
-    const emptyRemote: RowShape = {};
+    const emptyRemote = {};
     const tmpKeyFor = (localKey: string) => `__joined_orig_${localKey}`;
 
     if (IsStream(query)) {
-      let stream: Stream<RowShape> = query as Stream<RowShape>;
+      let stream = query;
       const tmpKeys: string[] = [];
       for (const group of groups) {
         const remoteFields = group.fields.map((f) => f.remoteField);
@@ -783,62 +774,63 @@ export namespace Query {
           "_internal",
           group.remoteIndex,
           ...remoteFields,
-        ) as Table<RowShape>;
+        ) as Table<any>;
         const tmpKey = tmpKeyFor(group.localKey);
         tmpKeys.push(tmpKey);
         stream = stream
           .map((row) => row.merge({ [tmpKey]: row.key(group.localKey) }))
           .lookup(remoteTable, group.localKey, group.remoteIndex)
           .map((row) => {
-            const merged: RowShape = {};
+            const merged: Record<string, ValueProxy<any>> = {};
             const remote = row.key(group.localKey).default(emptyRemote);
             for (const f of group.fields) {
               merged[f.name] = remote.key(f.remoteField).default(null);
             }
             merged[group.localKey] = row.key(tmpKey);
             return row.merge(merged);
-          }) as Stream<RowShape>;
+          });
       }
-      return stream.without(...tmpKeys) as Stream<RowShape>;
+      return stream.without(...tmpKeys);
     }
 
-    let datum: Datum<RowShape> = query as Datum<RowShape>;
+    let datum = query;
     for (const group of groups) {
       const remoteFields = group.fields.map((f) => f.remoteField);
       const remoteTable = targetTable(db, group).pluck(
         "_internal",
         group.remoteIndex,
         ...remoteFields,
-      ) as Table<RowShape>;
+      ) as Table<any>;
       const tmpKey = tmpKeyFor(group.localKey);
       datum = datum
         .do((row) => row.merge({ [tmpKey]: row.key(group.localKey) }))
         .lookup(remoteTable, group.localKey, group.remoteIndex)
         .do((row) => {
-          const merged: RowShape = {};
+          const merged: Record<string, ValueProxy<any>> = {};
           const remote = row.key(group.localKey).default(emptyRemote);
           for (const f of group.fields) {
             merged[f.name] = remote.key(f.remoteField).default(null);
           }
           merged[group.localKey] = row.key(tmpKey);
           return row.merge(merged);
-        }) as Datum<RowShape>;
+        });
     }
     return datum;
   }
 
   type ComputedEntry = [name: string, computed: ComputedFieldData];
-  type RowMapper = (
-    row: ValueProxy<Record<string, any>>,
-  ) => ValueProxy<Record<string, any>>;
+  type RowMapper = (row: TableRow) => TableRow;
 
   function collectComputedEntries(
     meta: DataAPIMeta,
     only?: Set<string>,
   ): ComputedEntry[] {
-    return Object.entries(meta.fields)
-      .filter(([name, field]) => field.computed && (!only || only.has(name)))
-      .map(([name, field]) => [name, field.computed as ComputedFieldData]);
+    return Object.entries(meta.fields).flatMap(
+      ([name, field]): ComputedEntry[] =>
+        field.computed && (!only || only.has(name))
+          ? [[name, field.computed]]
+          : [],
+    );
   }
 
   function buildComputedMappers(
@@ -846,7 +838,7 @@ export namespace Query {
     entries: ComputedEntry[],
   ): RowMapper[] {
     const mergeExpressions: RowMapper = (row) => {
-      const merged: Record<string, unknown> = {};
+      const merged: Record<string, ReturnType<ComputedFieldData["expr"]>> = {};
       for (const [name, computed] of entries) {
         merged[name] = computed.expr(row, db);
       }
@@ -859,7 +851,7 @@ export namespace Query {
       return [mergeExpressions];
     }
     const applyDefaults: RowMapper = (row) => {
-      const merged: Record<string, unknown> = {};
+      const merged: Record<string, ValueProxy<any>> = {};
       for (const [name, computed] of defaulted) {
         merged[name] = row.key(name).default(computed.default);
       }
@@ -888,19 +880,13 @@ export namespace Query {
   ): Stream<any> | Datum<any> {
     const entries = collectComputedEntries(meta, only);
     if (entries.length === 0) {
-      return query as any;
+      return query;
     }
     const mappers = buildComputedMappers(db, entries);
     if (IsStream(query)) {
-      return mappers.reduce(
-        (stream, mapper) => stream.map(mapper),
-        query as Stream<Record<string, any>>,
-      );
+      return mappers.reduce((stream, mapper) => stream.map(mapper), query);
     }
-    return mappers.reduce(
-      (datum, mapper) => datum.do(mapper),
-      query as Datum<Record<string, any>>,
-    );
+    return mappers.reduce((datum, mapper) => datum.do(mapper), query);
   }
 
   export async function ReadProperties(
@@ -912,7 +898,7 @@ export namespace Query {
   ) {
     const readable =
       meta.readable[action ?? "_default"] ?? meta.readable._default;
-    const instance: Record<string, any> = { ...obj };
+    const instance = { ...obj };
     const res: Record<string, any> = {};
     for (const [key, field] of readable.props) {
       if (onlyList && !field.listable) {
@@ -935,7 +921,7 @@ export namespace Query {
 
   function writableInBody(
     writable: WritableAccessFields,
-    bodyData: Record<string, any>,
+    bodyData: Parameters<typeof WriteProperties>[2],
   ): WritableAccessFields {
     return {
       props: writable.props.filter(([key]) => Object.hasOwn(bodyData, key)),
@@ -944,9 +930,9 @@ export namespace Query {
   }
 
   function writeTargetDefaults(
-    instance: Record<string, any>,
+    instance: Parameters<typeof WriteProperties>[0],
     meta: DataAPIMeta,
-    dbData: Record<string, any>,
+    dbData: Exclude<Parameters<typeof WriteProperties>[4], undefined>,
   ) {
     for (const [key, value] of Object.entries(new meta.target())) {
       if (value !== undefined) {
@@ -980,8 +966,9 @@ export namespace Query {
     const writable = existingDBData
       ? writableInBody(actionWritable, bodyData)
       : actionWritable;
-    const instance: Record<string, any> = { ...obj };
-    const dbData: Record<string, any> = existingDBData || {};
+    const instance = { ...obj };
+    const dbData: Exclude<typeof existingDBData, undefined> =
+      existingDBData || {};
     Object.setPrototypeOf(dbData, meta.tableClass.prototype);
     if (!existingDBData) {
       writeTargetDefaults(instance, meta, dbData);
@@ -1081,12 +1068,7 @@ export namespace Query {
 
     const joinedSplit = splitJoinedFields(meta, sorting, filters);
     if (db && joinedSplit.filter.size > 0) {
-      tmpRequest = Joined(
-        db,
-        meta,
-        tmpRequest as Stream<any>,
-        joinedSplit.filter,
-      ) as Stream<T>;
+      tmpRequest = Joined(db, meta, tmpRequest, joinedSplit.filter);
     }
 
     const filteredComputed = new Set(
@@ -1095,12 +1077,7 @@ export namespace Query {
         .filter((name) => meta.fields[name]?.computed),
     );
     if (db && filteredComputed.size > 0) {
-      tmpRequest = Computed(
-        db,
-        meta,
-        tmpRequest as Stream<any>,
-        filteredComputed,
-      ) as Stream<T>;
+      tmpRequest = Computed(db, meta, tmpRequest, filteredComputed);
     }
 
     const sortField = sorting?.[0];
@@ -1132,12 +1109,7 @@ export namespace Query {
     }
     const total = tmpRequest.count();
     if (db && joinedSplit.sort.size > 0) {
-      tmpRequest = Joined(
-        db,
-        meta,
-        tmpRequest as Stream<any>,
-        joinedSplit.sort,
-      ) as Stream<T>;
+      tmpRequest = Joined(db, meta, tmpRequest, joinedSplit.sort);
     }
     if (
       db &&
@@ -1145,12 +1117,7 @@ export namespace Query {
       meta.fields[sortField]?.computed &&
       !filteredComputed.has(sortField)
     ) {
-      tmpRequest = Computed(
-        db,
-        meta,
-        tmpRequest as Stream<any>,
-        new Set([sortField]),
-      ) as Stream<T>;
+      tmpRequest = Computed(db, meta, tmpRequest, new Set([sortField]));
     }
     if (isModifiedSort && sortField) {
       tmpRequest = (tmpRequest as unknown as Stream<Record<string, any>>)
@@ -1256,20 +1223,24 @@ export namespace Query {
 export namespace Validation {
   /** A request body, parsed. */
   export type RequestBody = Record<string, any>;
-  type MissingFieldCheck = (body: RequestBody, name: string) => boolean;
 
-  function isClearingValue(value: unknown): boolean {
+  function isClearingValue(value: Parameters<FieldValidator>[0]): boolean {
     if (value === null || value === undefined) return true;
-    if (typeof value === "string") return value.length === 0;
+    if (value === "") return true;
     return Array.isArray(value) && value.length === 0;
   }
 
-  const isAbsentFromBody: MissingFieldCheck = (body, name) => !(name in body);
+  const isAbsentFromBody = (body: RequestBody, name: string) => !(name in body);
 
-  const isClearedByBody: MissingFieldCheck = (body, name) =>
+  const isClearedByBody = (body: RequestBody, name: string) =>
     Object.hasOwn(body, name) && isClearingValue(body[name]);
 
-  const MISSING_MANDATORY_FIELD_CHECKS: Record<string, MissingFieldCheck> = {
+  /** How each action decides that a body lacks a mandatory field. */
+  interface MissingFieldChecks {
+    [action: string]: typeof isAbsentFromBody;
+  }
+
+  const MISSING_MANDATORY_FIELD_CHECKS: MissingFieldChecks = {
     edit: isClearedByBody,
   };
 
@@ -1312,9 +1283,9 @@ export namespace Validation {
 
   function toParseResult(
     result: FieldValidationResult,
-    value: unknown,
+    value: Parameters<FieldValidator>[0],
   ): FieldParseResult {
-    if (typeof result !== "boolean") return result;
+    if (result !== true && result !== false) return result;
     return result ? { success: true, data: value } : { success: false };
   }
 
@@ -1328,7 +1299,7 @@ export namespace Validation {
     meta: DataAPIMeta,
     obj: RequestBody,
   ): Promise<RequestBody> {
-    const parsed: RequestBody = { ...obj };
+    const parsed = { ...obj };
     const invalid: string[] = [];
     for (const [name, field] of Object.entries(meta.fields)) {
       if (!field.validator || !(name in obj)) continue;
@@ -1368,7 +1339,7 @@ export namespace Validation {
       400,
       "The request body must be a JSON object.",
     );
-    return data as RequestBody;
+    return data;
   }
 
   /**
@@ -1428,12 +1399,7 @@ export namespace Validation {
         args: [obj[field]],
       }),
     );
-    return unlockrequest(
-      meta.tableClass as Constructible<T>,
-      row,
-      field,
-      modifiers,
-    );
+    return unlockrequest(meta.tableClass, row, field, modifiers);
   }
 
   export function ClearInternal(
@@ -1474,7 +1440,7 @@ export namespace Validation {
                 return null;
               }
             }
-            const plainPlucked: Record<string, unknown> = {};
+            const plainPlucked: ReturnType<typeof toPlainData> = {};
             for (const key of foreign[4]) {
               plainPlucked[key] = plain[key];
             }

@@ -11,7 +11,7 @@ import { Validation } from "@antelopejs/interface-data-api/components";
 import {
   Access,
   AccessMode,
-  type FieldValidationResult,
+  type FieldValidator,
   ModelReference,
   Validator,
 } from "@antelopejs/interface-data-api/metadata";
@@ -24,12 +24,13 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
+import { readJson } from "../internal/http";
 import {
-  type CreatedRow,
   editRequest,
   getFunctionName,
   getSchemaInstance,
   newRequest,
+  type CreatedRow,
 } from "../utils";
 
 const currentTestName = path
@@ -55,19 +56,19 @@ class Event extends Table {
 }
 class EventModel extends BasicDataModel(Event, eventTableName) {}
 
-function parseDate(value: unknown): FieldValidationResult {
+const parseDate: FieldValidator = (value) => {
   if (typeof value !== "string" || Number.isNaN(Date.parse(value))) {
     return { success: false };
   }
   return { success: true, data: new Date(value) };
-}
+};
 
-async function normalizeCode(value: unknown): Promise<FieldValidationResult> {
+const normalizeCode: FieldValidator = async (value) => {
   if (typeof value !== "string") {
     return { success: false };
   }
   return { success: true, data: value.trim().toUpperCase() };
-}
+};
 
 describe("Field Validator parsed value", () => {
   it("writes the parsed value on new", async () =>
@@ -130,7 +131,7 @@ async function expectWritesParsedValueOnNew() {
     startsAt,
   });
   expect(response.status).to.equal(200);
-  const { _id: id } = (await response.json()) as CreatedRow;
+  const { _id: id } = await readJson<CreatedRow>(response);
 
   const event = await eventModel.get(id);
   expect(event?.startsAt).to.be.instanceOf(Date);
@@ -164,7 +165,7 @@ async function expectWritesAsyncParsedValue() {
     code: "  launch-26 ",
   });
   expect(response.status).to.equal(200);
-  const { _id: id } = (await response.json()) as CreatedRow;
+  const { _id: id } = await readJson<CreatedRow>(response);
 
   const event = await eventModel.get(id);
   expect(event?.code).to.equal("LAUNCH-26");

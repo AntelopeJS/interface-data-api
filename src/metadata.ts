@@ -249,11 +249,13 @@ export type FilterValue = [value: string, mode: Comparison];
  */
 export type FieldFilter = FilterValue | FilterValue[];
 
+function isFilterList(filter: FieldFilter): filter is FilterValue[] {
+  return Array.isArray(filter[0]);
+}
+
 /** The filters of one field as a list, whether it holds one or several. */
 export function FilterValuesOf(filter: FieldFilter): FilterValue[] {
-  return Array.isArray(filter[0])
-    ? (filter as FilterValue[])
-    : [filter as FilterValue];
+  return isFilterList(filter) ? filter : [filter];
 }
 
 /**
@@ -283,13 +285,8 @@ interface ResolvedTableReference {
   schemaName?: string;
 }
 
-function readTableMetadata(table: Class<Table>): {
-  schemaName?: string;
-  tableName?: string;
-} {
-  const meta = getMetadata(table, DatumStaticMetadata) as
-    | { schemaName?: string; tableName?: string }
-    | undefined;
+function readTableMetadata(table: Class<Table>) {
+  const meta = getMetadata(table, DatumStaticMetadata);
   return { schemaName: meta?.schemaName, tableName: meta?.tableName };
 }
 
@@ -541,11 +538,11 @@ export class DataAPIMeta {
   ) {
     const field = this.field(name);
     const baseNames =
-      typeof requiredFields === "boolean"
-        ? requiredFields
-          ? [name]
-          : []
-        : requiredFields;
+      requiredFields === true
+        ? [name]
+        : requiredFields === false
+          ? []
+          : requiredFields;
     const names =
       baseNames.length > 0 && field.joined
         ? Array.from(new Set([...baseNames, name, field.joined.localKey]))
@@ -956,6 +953,11 @@ export const Computed = MakePropertyDecorator(
   },
 );
 
+type ForeignArguments =
+  Parameters<DataAPIMeta["setForeign"]> extends [string, ...infer Rest]
+    ? Rest
+    : never;
+
 /**
  * Declares a field to be a foreign key.
  *
@@ -968,12 +970,7 @@ export const Foreign = MakeMethodAndPropertyDecorator(
     target,
     key,
     desc,
-    table: string | Class<Table>,
-    index?: string,
-    multi?: boolean,
-    pluck?: string[],
-    schema?: string,
-    targetMeta?: DataAPIMeta,
+    ...[table, index, multi, pluck, schema, targetMeta]: ForeignArguments
   ) => {
     GetMetadata(target.constructor, DataAPIMeta)
       .setDescriptor(key as string, desc)
@@ -1007,10 +1004,7 @@ type ProxyFilterOperator = (
   value: string,
 ) => ValueProxyOrValue<boolean>;
 type DefaultFilterOperators = Record<Comparison, ProxyFilterOperator>;
-type DefaultFilterFunction = FilterFunction<
-  Record<string, any>,
-  Record<string, any>
->;
+type DefaultFilterFunction = Parameters<DataAPIMeta["setFilter"]>[1];
 
 const DEFAULT_FILTER_OPERATORS: DefaultFilterOperators = {
   eq: (proxy, value) => proxy.eq(value),
@@ -1031,7 +1025,7 @@ function applyDefaultFilterMode(
 
 function createDefaultFilter(): DefaultFilterFunction {
   return (_context, proxy, _key, value, mode) =>
-    applyDefaultFilterMode(proxy as ValueProxy<string>, value, mode);
+    applyDefaultFilterMode(proxy, value, mode);
 }
 
 const FilterDecoratorFactory = MakePropertyDecorator(

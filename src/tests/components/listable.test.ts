@@ -24,6 +24,7 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
+import { type ListResponse, readJson } from "../internal/http";
 import {
   getFunctionName,
   getSchemaInstance,
@@ -65,6 +66,13 @@ class Product extends Table {
   declare metadata: string;
 }
 class ProductModel extends BasicDataModel(Product, productTableName) {}
+
+interface ProductListed {
+  _id: string;
+  name: string;
+  price: number;
+  addedAt: string;
+}
 
 const defaultProductDataset: Partial<Product>[] = [
   {
@@ -118,8 +126,6 @@ describe("Field Listable", () => {
     await expectAddedAtAscending());
   it("sorting by date (addedAt), descending", async () =>
     await expectAddedAtDescending());
-
-  after(async () => {});
 });
 
 async function _createDataController(
@@ -208,7 +214,7 @@ async function expectDefaultList() {
 
   const response = await listRequest(getFunctionName(), {});
   expect(response.status).to.equal(200);
-  const data = (await response.json()) as { results: Product[] };
+  const data = await readJson<{ results: Product[] }>(response);
   expect(data.results).to.have.length(defaultProductDataset.length);
   const listed_products = data.results;
   const database_products = await _getDatabaseProducts(
@@ -247,7 +253,7 @@ async function expectDetailedList() {
     {},
   );
   expect(response.status).to.equal(200);
-  const data = (await response.json()) as { results: Product[] };
+  const data = await readJson<{ results: Product[] }>(response);
   expect(data.results).to.have.length(defaultProductDataset.length);
   const listed_products = data.results;
   const database_products = await _getDatabaseProducts(
@@ -297,12 +303,7 @@ async function expectTwoRowPage() {
 
   const response = await listRequest(getFunctionName(), { limit: "2" });
   expect(response.status).to.equal(200);
-  const data = (await response.json()) as {
-    results: Record<string, any>[];
-    total: number;
-    offset: number;
-    limit: number;
-  };
+  const data = await readJson<ListResponse<ProductListed>>(response);
   expect(data.results).to.have.length(2);
   expect(data.total).to.equal(defaultProductDataset.length);
   expect(data.limit).to.equal(2);
@@ -320,12 +321,7 @@ async function expectFromPageTwo() {
 
   const response = await listRequest(getFunctionName(), { offset: "2" });
   expect(response.status).to.equal(200);
-  const data = (await response.json()) as {
-    results: Record<string, any>[];
-    total: number;
-    offset: number;
-    limit: number;
-  };
+  const data = await readJson<ListResponse<ProductListed>>(response);
   expect(data.results).to.have.length(1);
   expect(data.total).to.equal(defaultProductDataset.length);
   expect(data.offset).to.equal(2);
@@ -341,12 +337,7 @@ async function expectTwoFirstPages() {
 
   const response = await listRequest(getFunctionName(), { maxPage: "2" });
   expect(response.status).to.equal(200);
-  const data = (await response.json()) as {
-    results: Record<string, any>[];
-    total: number;
-    offset: number;
-    limit: number;
-  };
+  const data = await readJson<ListResponse<ProductListed>>(response);
   expect(data.results).to.have.length(defaultProductDataset.length);
   expect(data.total).to.equal(defaultProductDataset.length);
   expect(data.results[0]._id).to.not.equal(undefined);
@@ -364,12 +355,7 @@ async function expectPageTwoOnly() {
     limit: "1",
   });
   expect(response.status).to.equal(200);
-  const data = (await response.json()) as {
-    results: Record<string, any>[];
-    total: number;
-    offset: number;
-    limit: number;
-  };
+  const data = await readJson<ListResponse<ProductListed>>(response);
   expect(data.results).to.have.length(1);
   expect(data.total).to.equal(defaultProductDataset.length);
   expect(data.offset).to.equal(2);
@@ -418,12 +404,7 @@ async function expectNameAscending() {
     sortDirection: "asc",
   });
   expect(response.status).to.equal(200);
-  const data = (await response.json()) as {
-    results: Record<string, unknown>[];
-    total: number;
-    offset: number;
-    limit: number;
-  };
+  const data = await readJson<ListResponse<ProductListed>>(response);
   expect(data.results).to.have.length(defaultProductDataset.length);
 
   const sortedNames = data.results.map((product: any) => product.name);
@@ -443,12 +424,7 @@ async function expectNameDescending() {
     sortDirection: "desc",
   });
   expect(response.status).to.equal(200);
-  const data = (await response.json()) as {
-    results: Record<string, unknown>[];
-    total: number;
-    offset: number;
-    limit: number;
-  };
+  const data = await readJson<ListResponse<ProductListed>>(response);
   expect(data.results).to.have.length(defaultProductDataset.length);
 
   const sortedNames = data.results.map((product: any) => product.name);
@@ -468,12 +444,7 @@ async function expectPriceAscending() {
     sortDirection: "asc",
   });
   expect(response.status).to.equal(200);
-  const data = (await response.json()) as {
-    results: Record<string, unknown>[];
-    total: number;
-    offset: number;
-    limit: number;
-  };
+  const data = await readJson<ListResponse<ProductListed>>(response);
   expect(data.results).to.have.length(defaultProductDataset.length);
 
   const sortedPrices = data.results.map((product: any) => product.price);
@@ -493,12 +464,7 @@ async function expectPriceDescending() {
     sortDirection: "desc",
   });
   expect(response.status).to.equal(200);
-  const data = (await response.json()) as {
-    results: Record<string, unknown>[];
-    total: number;
-    offset: number;
-    limit: number;
-  };
+  const data = await readJson<ListResponse<ProductListed>>(response);
   expect(data.results).to.have.length(defaultProductDataset.length);
 
   const sortedPrices = data.results.map((product: any) => product.price);
@@ -522,12 +488,7 @@ async function expectAddedAtAscending() {
     sortDirection: "asc",
   });
   expect(response.status).to.equal(200);
-  const data = (await response.json()) as {
-    results: Record<string, unknown>[];
-    total: number;
-    offset: number;
-    limit: number;
-  };
+  const data = await readJson<ListResponse<ProductListed>>(response);
   expect(data.results).to.have.length(defaultProductDataset.length);
   const sortedDates = data.results.map((product: any) =>
     new Date(product.addedAt).getTime(),
@@ -550,12 +511,7 @@ async function expectAddedAtDescending() {
     sortDirection: "desc",
   });
   expect(response.status).to.equal(200);
-  const data = (await response.json()) as {
-    results: Record<string, unknown>[];
-    total: number;
-    offset: number;
-    limit: number;
-  };
+  const data = await readJson<ListResponse<ProductListed>>(response);
   expect(data.results).to.have.length(defaultProductDataset.length);
 
   const sortedDates = data.results.map((product: any) =>

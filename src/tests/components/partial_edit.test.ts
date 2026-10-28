@@ -25,13 +25,14 @@ import {
 } from "@antelopejs/interface-database-decorators";
 
 import { URL_BASE } from "../constants";
+import { readJson } from "../internal/http";
 import {
-  type CreatedRow,
   editRequest,
   getFunctionName,
   getRequest,
   getSchemaInstance,
   newRequest,
+  type CreatedRow,
 } from "../utils";
 
 const currentTestName = path
@@ -177,14 +178,14 @@ async function _createLocalizedArticle(testName: string) {
     locale: allLocales,
   });
   expect(response.status).to.equal(200);
-  const { _id: id } = (await response.json()) as CreatedRow;
+  const { _id: id } = await readJson<CreatedRow>(response);
   return id;
 }
 
 async function _getLocalized(testName: string, id: string, locale: string) {
   const response = await getRequest(testName, { id, locale });
   expect(response.status).to.equal(200);
-  return (await response.json()) as LocalizedArticle;
+  return await readJson<LocalizedArticle>(response);
 }
 
 async function _rawRequest(
@@ -285,7 +286,7 @@ async function expectRunsEverySetterOnNew() {
     reference: "ART-003",
   });
   expect(response.status).to.equal(200);
-  const { _id: id } = (await response.json()) as CreatedRow;
+  const { _id: id } = await readJson<CreatedRow>(response);
 
   const article = await articleModel.get(id);
   expect(article?.slug).to.equal(defaultSlug);

@@ -3,7 +3,7 @@ import { expect } from "chai";
 
 import { getFunctionName } from "./utils";
 
-type Callable = (...args: unknown[]) => unknown;
+type NameReader = typeof getFunctionName;
 
 const WRAPPER_DEPTHS = [1, 2, 5, 20];
 
@@ -20,12 +20,16 @@ function expectReturnsTheCallerName() {
 
 function nameSeenThroughAsyncContexts(depth: number) {
   const storage = new AsyncLocalStorage<number>();
-  const run = storage.run.bind(storage) as Callable;
-  const nestedRuns = Array.from({ length: depth - 1 }, (_, store) => [
-    run,
-    store,
-  ]).flat();
-  return run(depth, ...nestedRuns, getFunctionName);
+  let read: NameReader = getFunctionName;
+  for (let store = 0; store < depth; store++) {
+    read = storage.run.bind<
+      AsyncLocalStorage<number>,
+      [store: number, callback: NameReader],
+      [],
+      ReturnType<NameReader>
+    >(storage, store, read);
+  }
+  return read();
 }
 
 function expectSkipsFramesAddedOutsideTheTestsFolder() {

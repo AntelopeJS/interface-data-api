@@ -142,10 +142,10 @@ export namespace DefaultRoutes {
    * fields, unlocked, guarded, then projected on the fields `get` reads.
    */
   async function readRow(
-    controller: unknown,
+    controller: ThisParameterType<GetGuard>,
     meta: DataAPIMeta,
     { params, reqCtx, guard }: RowRead,
-  ): Promise<Record<string, any>> {
+  ) {
     const model = Query.GetModel(controller, meta);
     let query = Query.Get(model.table, params.id, params.index);
 
@@ -187,11 +187,8 @@ export namespace DefaultRoutes {
       const meta = GetDataControllerMeta(this);
 
       const model = Query.GetModel(this, meta);
-      const sort = params?.sortKey
-        ? ([params.sortKey, params.sortDirection] as [
-            string,
-            "asc" | "desc" | undefined,
-          ])
+      const sort: Parameters<typeof Query.List>[4] = params?.sortKey
+        ? [params.sortKey, params.sortDirection]
         : undefined;
       const [query, queryTotal, deferredJoined] = Query.List(
         this,

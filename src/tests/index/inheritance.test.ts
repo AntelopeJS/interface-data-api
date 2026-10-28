@@ -20,14 +20,15 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
+import { readJson } from "../internal/http";
 import {
-  type CreatedRow,
   deleteRequest,
   editRequest,
   getRequest,
   getSchemaInstance,
   listRequest,
   newRequest,
+  type CreatedRow,
 } from "../utils";
 
 const NOTE_TABLE = "inheritance-notes";
@@ -110,14 +111,14 @@ describe("Derived data controllers", () => {
 
     const list = await listRequest(DERIVED_LOCATION);
     expect(list.status).to.equal(OK);
-    const { results } = (await list.json()) as NoteListResponse;
+    const { results } = await readJson<NoteListResponse>(list);
     expect(results).to.deep.include({ _id: id, title: "Inherited" });
   });
 
   it("inherits the parent model reference for new, edit and delete", async () => {
     const created = await newRequest(DERIVED_LOCATION, { title: "Created" });
     expect(created.status).to.equal(OK);
-    const { _id: id } = (await created.json()) as CreatedRow;
+    const { _id: id } = await readJson<CreatedRow>(created);
     expect(await noteModel.get(id)).to.have.property("title", "Created");
 
     const edited = await editRequest(

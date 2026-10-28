@@ -1,7 +1,7 @@
 import path from "node:path";
 import { expect } from "chai";
 import { Controller } from "@antelopejs/interface-api";
-import { Schema, type ValueProxy } from "@antelopejs/interface-database";
+import { Schema } from "@antelopejs/interface-database";
 import {
   DataController,
   DefaultRoutes,
@@ -26,6 +26,7 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
+import { readJson } from "../internal/http";
 import {
   getFunctionName,
   getRequest,
@@ -109,7 +110,7 @@ async function _createDataController(testName: string) {
     @Listable()
     @Access(AccessMode.ReadWrite)
     @Filter((_context, proxy, _key, value, mode) =>
-      (proxy as ValueProxy<number>)[mode](parseFloat(value)),
+      proxy[mode](parseFloat(value)),
     )
     declare age: number;
 
@@ -121,10 +122,7 @@ async function _createDataController(testName: string) {
     @Listable()
     @Computed(
       (row, db) =>
-        db
-          .table(memberTableName)
-          .getAll(row.key("team") as unknown as string, "team")
-          .count(),
+        db.table(memberTableName).getAll(row.key("team"), "team").count(),
       { default: 0 },
     )
     declare teammates: number;
@@ -165,7 +163,7 @@ async function _list(
 ): Promise<ListResponse> {
   const response = await request(testName, "list", "GET", undefined, query);
   expect(response.status, await response.clone().text()).to.equal(200);
-  return (await response.json()) as ListResponse;
+  return await readJson<ListResponse>(response);
 }
 
 async function expectListsComputedFromForeignKey() {
@@ -187,7 +185,7 @@ async function expectGetsComputedFromForeignKey() {
 
   const response = await getRequest(getFunctionName(), { id: memberIds[3] });
   expect(response.status).to.equal(200);
-  const member = (await response.json()) as MemberListed;
+  const member = await readJson<MemberListed>(response);
   expect(member.teammates).to.equal(1);
   expect(member.team).to.deep.equal({ _id: teamIds[1], name: "Blue" });
 }

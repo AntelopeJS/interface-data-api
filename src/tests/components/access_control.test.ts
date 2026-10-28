@@ -22,6 +22,7 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
+import { readJson } from "../internal/http";
 import {
   editRequest,
   getFunctionName,
@@ -75,8 +76,6 @@ describe("Field Access Control", () => {
     await expectReadInReadOnlyField());
   it("write in a write only field", async () =>
     await expectWriteInWriteOnlyField());
-
-  after(async () => {});
 });
 
 async function _createDataController(testName: string, user: Partial<User>) {
@@ -120,7 +119,7 @@ async function expectReadInReadWriteField() {
 
   const response = await getRequest(getFunctionName(), { id });
   expect(response.status).to.equal(200);
-  const data = (await response.json()) as User;
+  const data = await readJson<User>(response);
   expect(data.name).to.equal(defaultUserDataset.name);
   expect(data.age).to.equal(defaultUserDataset.age);
   expect(data.email).to.equal(defaultUserDataset.email);
@@ -152,7 +151,7 @@ async function expectReadInWriteOnlyField() {
 
   const response = await getRequest(getFunctionName(), { id });
   expect(response.status).to.equal(200);
-  const data = (await response.json()) as User;
+  const data = await readJson<User>(response);
   expect(data.password).to.equal(undefined);
 }
 
@@ -180,7 +179,7 @@ async function expectReadInReadOnlyField() {
 
   const response = await getRequest(getFunctionName(), { id });
   expect(response.status).to.equal(200);
-  const data = (await response.json()) as User;
+  const data = await readJson<User>(response);
   expect(data.email).to.equal(defaultUserDataset.email);
 }
 

@@ -27,6 +27,7 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
+import { readJson } from "../internal/http";
 import {
   getFunctionName,
   getRequest,
@@ -165,7 +166,7 @@ async function expectGetsRowWithResolvedForeignReference() {
     locale,
   });
   expect(response.status).to.equal(200);
-  const post = (await response.json()) as PostListed;
+  const post = await readJson<PostListed>(response);
   expect(post.authorId).to.not.equal(null);
   expect(post.authorId?.name).to.equal("Alice Carter");
 }
@@ -178,7 +179,7 @@ async function expectGetsRowWithNullForeignReference() {
     locale,
   });
   expect(response.status).to.equal(200);
-  const post = (await response.json()) as PostListed;
+  const post = await readJson<PostListed>(response);
   expect(post.authorId).to.equal(null);
 }
 
@@ -190,7 +191,7 @@ async function expectGetsRowWithDanglingForeignReference() {
     locale,
   });
   expect(response.status).to.equal(200);
-  const post = (await response.json()) as PostListed;
+  const post = await readJson<PostListed>(response);
   expect(post.authorId).to.equal(null);
 }
 
@@ -199,7 +200,7 @@ async function expectListsRowsContainingNullForeignReferences() {
 
   const response = await listRequest(getFunctionName(), { locale });
   expect(response.status).to.equal(200);
-  const data = (await response.json()) as { results: PostListed[] };
+  const data = await readJson<{ results: PostListed[] }>(response);
   expect(data.results).to.have.lengthOf(3);
 
   const nullAuthorPosts = data.results.filter((post) => post.authorId == null);

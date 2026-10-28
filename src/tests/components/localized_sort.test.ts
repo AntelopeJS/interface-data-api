@@ -26,6 +26,7 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
+import { readJson } from "../internal/http";
 import { getFunctionName, listRequest, newRequest } from "../utils";
 
 const currentTestName = path
@@ -111,7 +112,7 @@ async function _sortedCodes(
     sortDirection,
   });
   expect(response.status).to.equal(200);
-  const data = (await response.json()) as { results: FruitListed[] };
+  const data = await readJson<{ results: FruitListed[] }>(response);
   return data.results.map((fruit) => fruit.code);
 }
 

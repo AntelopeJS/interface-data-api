@@ -27,6 +27,7 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
+import { readJson } from "../internal/http";
 import {
   getFunctionName,
   getRequest,
@@ -202,7 +203,7 @@ async function expectResolvesJoinedLabelInList() {
 
   const response = await listRequest(getFunctionName(), {});
   expect(response.status).to.equal(200);
-  const data = (await response.json()) as { results: ShelfListed[] };
+  const data = await readJson<{ results: ShelfListed[] }>(response);
 
   const alpha = data.results.find((s) => s.book?.title === "Alpha Rising");
   expect(alpha, "row for Alpha Rising").to.not.equal(undefined);
@@ -222,7 +223,7 @@ async function expectReturnsNullForOrphanRelation() {
 
   const response = await listRequest(getFunctionName(), {});
   expect(response.status).to.equal(200);
-  const data = (await response.json()) as { results: ShelfListed[] };
+  const data = await readJson<{ results: ShelfListed[] }>(response);
 
   const resolved = data.results.filter((s) => s.book?.title);
   expect(resolved).to.have.lengthOf(2);
@@ -239,7 +240,7 @@ async function expectResolvesJoinedLabelInGet() {
     const text = await response.text();
     throw new Error(`get failed (${response.status}): ${text}`);
   }
-  const shelf = (await response.json()) as ShelfListed;
+  const shelf = await readJson<ShelfListed>(response);
   expect(shelf.book?.title).to.equal("Alpha Rising");
   expect(shelf.book?.authorName).to.equal("Alice Carter");
 }
@@ -252,6 +253,6 @@ async function expectReturnsNullForOrphanRelationInGet() {
     const text = await response.text();
     throw new Error(`get orphan failed (${response.status}): ${text}`);
   }
-  const shelf = (await response.json()) as ShelfListed;
+  const shelf = await readJson<ShelfListed>(response);
   expect(shelf.book, "orphan relation value in get").to.equal(null);
 }
