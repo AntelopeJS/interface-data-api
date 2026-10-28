@@ -162,10 +162,6 @@ async function _createDataController(testName: string) {
   return _seedTables();
 }
 
-// Regression fixture for the lazy joined-field split: `name` is a joined
-// field that is neither listable, filtered, nor sorted, while `display` is a
-// listable computed field whose expression reads it. The deferred joined
-// lookup must still run before the computed expression on the paginated rows.
 async function _createComputedJoinedController(testName: string) {
   @RegisterDataController()
   class _JoinedComputedTestAPI extends DataController(
@@ -364,7 +360,6 @@ async function expectResolvesComputedFieldReadingNonPluckedJoinedField() {
   const alphaRising = data.results.find((b) => b.title === "Alpha Rising");
   expect(alphaRising).to.not.equal(undefined);
   expect(alphaRising?.display).to.equal("Alice Carter (author)");
-  // the joined field itself is not listable, so it must stay out of the response
   expect(alphaRising?.name).to.equal(undefined);
 }
 

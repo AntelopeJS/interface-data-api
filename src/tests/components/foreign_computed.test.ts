@@ -118,7 +118,6 @@ async function _createDataController(testName: string) {
     @Access(AccessMode.ReadWrite)
     declare team: string;
 
-    // Reads the key the foreign lookup replaces with the team row.
     @Listable()
     @Computed(
       (row, db) =>

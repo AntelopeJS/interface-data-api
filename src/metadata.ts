@@ -678,6 +678,9 @@ export class DataAPIMeta {
    * @param table Other table
    * @param index Other table index
    * @param multi Index is a multi index
+   * @param targetMeta Metadata of the target's data controller. Its `@Joined`
+   *   fields that `pluck` names, or all of them when `pluck` is unset, are
+   *   resolved on the relation unless it is `multi`.
    */
   public setForeign(
     name: string,
@@ -695,15 +698,6 @@ export class DataAPIMeta {
       `foreign field "${name}"`,
     );
 
-    // Capture the target's `@Joined` fields so the foreign lookup can
-    // re-materialize them. A joined field is not a physical column, so a plain
-    // pluck of the target table returns it empty; we resolve it with a second
-    // lookup at query time (see `Query.Foreign`). Only joined fields that are
-    // actually requested (present in `pluck`) are captured. Their `localKey`
-    // is deliberately NOT added to the stored pluck: `foreign[4]` also drives
-    // response field filtering (`Validation.ClearInternal`), so adding the join
-    // key here would leak it into the API output. `Query.Foreign` extends the
-    // lookup pluck with the join keys at query time instead.
     let targetJoined: ForeignJoinedRef[] | undefined;
     if (targetMeta) {
       const pluckSet = pluck ? new Set(pluck) : undefined;

@@ -77,7 +77,6 @@ export function DataController<
         ? { endpoint: key, callback: val }
         : { endpoint: key, ...val };
     meta.addEndpoint(key, entry);
-    // TODO?: should this go in addEndpoint?
     c.prototype[key] = entry.callback.func;
   }
   return c as any;
@@ -151,8 +150,6 @@ export namespace DefaultRoutes {
     let query = Query.Get(model.table, params.id, params.index);
 
     query = Query.Joined(model.database, meta, query);
-    // Before the foreign keys: a lookup replaces a key with the row it
-    // names, which a computed expression reading the key would not find.
     query = Query.Computed(model.database, meta, query);
 
     if (!params.noForeign) {
@@ -267,8 +264,6 @@ export namespace DefaultRoutes {
       triggerEvent(dbData, "insert");
       const [id] = await model.table.insert(dbData);
 
-      // Its key even when `get` does not read `_id`: the caller needs it to
-      // name the row it created.
       const created = await readRow(this, meta, { params: { id } });
       return { _id: id, ...created };
     }
@@ -314,7 +309,6 @@ export namespace DefaultRoutes {
       const model = Query.GetModel(this, meta);
 
       const query = Query.Delete(model.table, params.id);
-      // Promise.all(ids.map(id => table.get(id).delete().then(() => true).catch(() => false)));
 
       const dbResult = await query;
       return dbResult;
@@ -350,6 +344,10 @@ export namespace DefaultRoutes {
     args: [Context(), Parameters.List()],
     method: "get",
   };
+  /**
+   * Answers the created row with its `_id`, even when `get` does not read
+   * `_id`: the caller needs it to name the row it created.
+   */
   export const New = {
     func: Methods.prototype.new,
     args: [Context(), Parameters.New(), RawBody()],

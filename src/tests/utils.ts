@@ -69,7 +69,6 @@ export async function request(
   uri: string,
   method: string,
   payload?: unknown,
-  // Pairs repeat a key (`filter_x=a&filter_x=b`).
   queryParams?: Record<string, string> | [string, string][],
 ) {
   return await fetch(

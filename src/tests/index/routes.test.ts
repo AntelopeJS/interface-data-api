@@ -81,9 +81,7 @@ describe("Routes", () => {
   beforeEach(async () => {
     try {
       await Schema.get(schemaName)?.instance().table(userTableName).delete();
-    } catch {
-      // Instance may not exist yet on first run
-    }
+    } catch {}
   });
 
   it("accessing default routes", async () => expectRequestingDefaultRoutes());
@@ -278,7 +276,6 @@ async function expectUsingRouteNew() {
     getFunctionName(),
     validUserDataset.default,
   );
-  // The created row, as the get route answers it: its key and its fields.
   const created = (await response.json()) as Record<string, unknown>;
   expect(created._id).to.be.a("string");
   expect(created.name).to.equal(validUserDataset.default.name);
@@ -304,7 +301,6 @@ async function expectUsingRouteEdit() {
     validUserDataset.alternative,
     { id },
   );
-  // The stored row after the edit, as the get route answers it.
   const stored = (await response.json()) as Record<string, unknown>;
   expect(stored._id).to.equal(id);
   expect(stored.name).to.equal(validUserDataset.alternative.name);

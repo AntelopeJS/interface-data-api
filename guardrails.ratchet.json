@@ -1,6 +1,5 @@
 {
   "rules": {
-    "antelopejs/no-comments": 60,
     "anti-slop/no-chained-type-assertions": 16,
     "anti-slop/no-known-value-widening": 10,
     "anti-slop/no-runtime-typeof": 38,
@@ -17,8 +16,8 @@
     "typescript/unbound-method": 5
   },
   "oversizeFiles": {
-    "src/components.ts": 49274,
-    "src/metadata.ts": 29852,
+    "src/components.ts": 48043,
+    "src/metadata.ts": 29373,
     "src/tests/components/listable.test.ts": 15874,
     "src/tests/integration.test.ts": 26132
   }

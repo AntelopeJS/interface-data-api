@@ -42,7 +42,6 @@ const bookTableName = `books-${currentTestName}`;
 const shelfTableName = `shelves-${currentTestName}`;
 const schemaName = "default";
 
-// Join source for the relation target's @Joined label.
 @RegisterTable(authorTableName, schemaName)
 class Author extends Table {
   declare _id: string;
@@ -52,8 +51,6 @@ class Author extends Table {
 }
 class AuthorModel extends BasicDataModel(Author, authorTableName) {}
 
-// Relation TARGET: `authorName` is a @Joined field (not a physical column),
-// pulled from Author via authorId — like memberSettingDataAPI.name from User.
 @RegisterTable(bookTableName, schemaName)
 class Book extends Table {
   declare _id: string;
@@ -67,15 +64,13 @@ class Book extends Table {
 }
 class BookModel extends BasicDataModel(Book, bookTableName) {}
 
-// PARENT (the listed controller): `book` is a relation to Book, whose label is
-// the joined `authorName`.
 @RegisterTable(shelfTableName, schemaName)
 class Shelf extends Table {
   declare _id: string;
 
   @Field("string")
   @Relation({ to: () => Book })
-  declare book: string; // stores a Book._id
+  declare book: string;
 }
 class ShelfModel extends BasicDataModel(Shelf, shelfTableName) {}
 
@@ -211,9 +206,7 @@ async function expectResolvesJoinedLabelInList() {
 
   const alpha = data.results.find((s) => s.book?.title === "Alpha Rising");
   expect(alpha, "row for Alpha Rising").to.not.equal(undefined);
-  // Core regression: the joined label resolves through the relation.
   expect(alpha?.book?.authorName).to.equal("Alice Carter");
-  // The join key must not leak: only the requested fields are exposed.
   expect(Object.keys(alpha?.book ?? {}).sort()).to.deep.equal([
     "_id",
     "authorName",
@@ -233,7 +226,6 @@ async function expectReturnsNullForOrphanRelation() {
 
   const resolved = data.results.filter((s) => s.book?.title);
   expect(resolved).to.have.lengthOf(2);
-  // The orphan shelf points to a non-existent book → relation stays null.
   const orphan = data.results.find((s) => !s.book?.title);
   expect(orphan, "orphan relation row present").to.not.equal(undefined);
   expect(orphan?.book, "orphan relation value").to.equal(null);
@@ -255,7 +247,6 @@ async function expectResolvesJoinedLabelInGet() {
 async function expectReturnsNullForOrphanRelationInGet() {
   const { shelfIds } = await _setup(getFunctionName());
 
-  // shelfIds[2] points to an orphan book id.
   const response = await getRequest(getFunctionName(), { id: shelfIds[2] });
   if (response.status !== 200) {
     const text = await response.text();

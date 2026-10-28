@@ -296,7 +296,6 @@ export namespace Query {
     query: Stream<any> | Datum<any>,
     pluck?: Set<string>,
   ): Stream<any> | Datum<any> {
-    /**/
     if (IsStream(query)) {
       for (const [name, field] of Object.entries(meta.fields)) {
         if (!field.foreign || (pluck && !pluck.has(name))) {
@@ -314,10 +313,6 @@ export namespace Query {
         const other = targetTable(db, { table, tableClass, schemaName });
         const hasTargetJoined = !multi && !!targetJoined?.length;
         if (pluckField) {
-          // The join keys of the target's @Joined fields must be fetched too
-          // (so the second lookup can resolve them), but they are NOT stored in
-          // `foreign[4]`, so they get stripped from the response by
-          // `ClearInternal` afterwards.
           const lookupPluck = hasTargetJoined
             ? Array.from(
                 new Set([
@@ -397,6 +392,9 @@ export namespace Query {
    * target's physical columns, so a joined label would come back empty; here we
    * resolve each joined field with a second lookup keyed on the target's
    * (already plucked) local key, then merge it back into the relation object.
+   * For an orphan foreign key the merge yields `{ [joined]: null }`: the
+   * database DSL has no value-level conditional to null the relation here, so
+   * {@link Validation.ClearInternal} normalizes it back to a null relation.
    */
   function applyForeignJoinedStream(
     db: SchemaInstance<any>,
@@ -421,9 +419,6 @@ export namespace Query {
         .lookup(remoteTable, tmpKey, group.remoteIndex)
         .map((row) =>
           row.merge({
-            // For an orphan foreign key this yields `{ [joined]: null }`; it is
-            // normalized back to a null relation in `ClearInternal` (the DSL has
-            // no value-level conditional to do it here).
             [foreignName]: row.key(foreignName).merge({
               [group.name]: row
                 .key(tmpKey)
@@ -450,8 +445,6 @@ export namespace Query {
   ): Datum<any> {
     let d = datum;
     for (const group of groups) {
-      // Use the raw table here (not a plucked stream): `Get` relies on
-      // `getAll`/`get`, which exist on Selection/Table but not on a Stream.
       const remoteTable = targetTable(db, group);
       d = d.do((row) =>
         row.merge({
@@ -1067,8 +1060,6 @@ export namespace Query {
     const filterList = Object.entries(meta.filters).filter(
       ([name]) => filters && name in filters,
     );
-    // The index serves one equality; a field filtered several times is
-    // filtered row by row, each of its filters in turn.
     const indexFilter = filterList.find(([name]) => {
       const values = filters ? FilterValuesOf(filters[name]) : [];
       return (
@@ -1120,7 +1111,6 @@ export namespace Query {
       tmpRequest = tmpRequest.orderBy(sortField, sorting?.[1] ?? "asc");
     }
     if (filterList.length > 0) {
-      // TODO: rework for modifier-affected fields (unlockrequest)
       tmpRequest = filterList.reduce((req, [name, filter]) => {
         const fieldFilter = filters?.[name];
         if (!fieldFilter || name === indexFilter) return req;
@@ -1163,7 +1153,6 @@ export namespace Query {
       ) as Stream<T>;
     }
     if (isModifiedSort && sortField) {
-      // Sorts on the value in the request's locale, else its fallback.
       tmpRequest = (tmpRequest as unknown as Stream<Record<string, any>>)
         .map((row) =>
           row.merge({
@@ -1250,9 +1239,6 @@ export namespace Query {
   ): Stream<any> {
     let page = query.slice(options.offset, options.limit);
     const computed = pageComputedFields(meta, options);
-    // A computed expression may read any joined field, so when one is
-    // materialized every deferred joined group is merged first, whatever
-    // the pluck; the final pluck strips what the page did not ask for.
     const joined = pageJoinedFields(options, computed.size > 0);
     if (joined.size > 0) page = Joined(db, meta, page, joined);
     if (computed.size > 0) page = Computed(db, meta, page, computed);
@@ -1473,10 +1459,6 @@ export namespace Validation {
             if (!foreign?.[4]) {
               return plain;
             }
-            // An orphan foreign key whose target exposes @Joined fields produces
-            // an object with only those joined fields (all null) and none of the
-            // physical pluck fields. Normalize it back to a null relation, so it
-            // matches the get path and non-joined foreigns (which already null).
             const targetJoined = foreign[6];
             if (targetJoined?.length) {
               const joinedNames = new Set(targetJoined.map((g) => g.name));

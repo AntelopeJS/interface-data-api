@@ -52,8 +52,6 @@ interface FruitListed {
   name: string;
 }
 
-// The French order differs from the English one, and two rows have no
-// French name: one lacks it, the other holds "" (both read the English one).
 const fruits = [
   { code: "apple", name: { en: "Apple", fr: "Pomme" } },
   { code: "banana", name: { en: "Banana", fr: "Banane" } },
