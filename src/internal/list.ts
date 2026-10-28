@@ -12,7 +12,11 @@ import type {
 import { ModifiersStaticMetadata } from "@antelopejs/interface-database-decorators/modifiers/common";
 
 import type { Query } from "../components";
-import { type DataAPIMeta, FilterValuesOf } from "../metadata";
+import {
+  type DataAPIMeta,
+  type FieldFilter,
+  FilterValuesOf,
+} from "../metadata";
 import { Computed } from "./computed";
 import { wrapDeferredJoined } from "./deferred-joined-stream";
 import { Foreign } from "./foreign";
@@ -35,13 +39,18 @@ interface ListArguments {
   options?: Parameters<typeof Query.List>[7];
 }
 
+/** Where {@link List} may resolve the joined fields it deferred. */
+interface DeferralContext {
+  db?: SchemaInstance<any>;
+  options?: ListOptions;
+}
+
 function listResultTuple<T extends Record<string, any>>(
   tmpRequest: Stream<T>,
   total: Datum<number>,
   meta: DataAPIMeta,
   joinedSplit: JoinedFieldSplit,
-  db?: SchemaInstance<any>,
-  options?: ListOptions,
+  { db, options }: DeferralContext,
 ): [sorted: Stream<T>, total: Datum<number>, deferredJoined: Set<string>] {
   const deferredJoined = deferredJoinedFields(meta, joinedSplit);
   if (options?.exposeDeferredJoined || !db || deferredJoined.size === 0) {
@@ -73,6 +82,120 @@ function isHeldByKeyedModifier(meta: DataAPIMeta, field: string): boolean {
   );
 }
 
+type FilterEntries = Array<
+  [name: string, filter: DataAPIMeta["filters"][string]]
+>;
+type ListSorting = ListArguments["sorting"];
+
+/**
+ * The rows {@link List} starts from: the index lookup serving the one field
+ * filtered once with `eq` on a single-field index, else the whole table.
+ */
+function indexedSource<T extends Record<string, any>>(
+  meta: DataAPIMeta,
+  request: Table<T>,
+  filterList: FilterEntries,
+  filters?: Record<string, FieldFilter>,
+) {
+  const indexed = filterList.find(([field]) => {
+    const fieldFilters = filters ? FilterValuesOf(filters[field]) : [];
+    return (
+      fieldFilters.length === 1 &&
+      fieldFilters[0][1] === "eq" &&
+      meta.fields[field]?.indexable
+    );
+  })?.[0];
+  const indexName = indexed
+    ? meta.fields[indexed].dbName || indexed
+    : undefined;
+  const equality = indexed
+    ? FilterValuesOf(filters?.[indexed] ?? [])[0]
+    : undefined;
+  const source: Stream<T> = indexName
+    ? request.getAll(equality?.[0] ?? "", indexName)
+    : request;
+  return { indexFilter: indexed, source };
+}
+
+/**
+ * Merges the joined and computed fields the filters read, before
+ * {@link List} filters and counts.
+ */
+function materializeFilterFields<T extends Record<string, any>>(
+  source: Stream<T>,
+  meta: DataAPIMeta,
+  db: SchemaInstance<any> | undefined,
+  joinedSplit: JoinedFieldSplit,
+  { filterList }: { filterList: FilterEntries },
+) {
+  const joined =
+    db && joinedSplit.filter.size > 0
+      ? Joined(db, meta, source, joinedSplit.filter)
+      : source;
+  const filteredComputed = new Set(
+    filterList
+      .map(([field]) => field)
+      .filter((field) => meta.fields[field]?.computed),
+  );
+  const stream: Stream<T> =
+    db && filteredComputed.size > 0
+      ? Computed(db, meta, joined, filteredComputed)
+      : joined;
+  return { stream, filteredComputed };
+}
+
+/** The field a list request sorts on, how, and whether a modifier holds it. */
+function sortPlan(meta: DataAPIMeta, sorting: ListSorting) {
+  const sortField = sorting?.[0];
+  const shouldSort = sortField ? meta.fields[sortField]?.sortable : undefined;
+  const isModifiedSort =
+    !!shouldSort && !!sortField && isHeldByKeyedModifier(meta, sortField);
+  return { sortField, shouldSort, isModifiedSort };
+}
+
+/** Sorts on an indexed field before the filters, when the plan allows it. */
+function orderedByIndex<T extends Record<string, any>>(
+  stream: Stream<T>,
+  { sortField, shouldSort, isModifiedSort }: ReturnType<typeof sortPlan>,
+  sorting: ListSorting,
+): Stream<T> {
+  if (shouldSort?.indexed && sortField && !isModifiedSort) {
+    return stream.orderBy(sortField, sorting?.[1] ?? "asc");
+  }
+  return stream;
+}
+
+/** What {@link List} merges after the count. */
+interface SortFieldsContext {
+  db?: SchemaInstance<any>;
+  meta: DataAPIMeta;
+  joinedSplit: JoinedFieldSplit;
+  filteredComputed: Set<string>;
+}
+
+/**
+ * Merges the joined fields the sort reads, then a computed sort field no
+ * filter already merged, after {@link List} counts.
+ */
+function materializeSortFields<T extends Record<string, any>>(
+  stream: Stream<T>,
+  sortField: string | undefined,
+  { db, meta, joinedSplit, filteredComputed }: SortFieldsContext,
+): Stream<T> {
+  if (!db) return stream;
+  const joined: Stream<T> =
+    joinedSplit.sort.size > 0
+      ? Joined(db, meta, stream, joinedSplit.sort)
+      : stream;
+  const sortsOnComputed =
+    !!sortField &&
+    !!meta.fields[sortField]?.computed &&
+    !filteredComputed.has(sortField);
+  return sortsOnComputed
+    ? Computed(db, meta, joined, new Set([sortField]))
+    : joined;
+}
+
 export function List<T extends Record<string, any>>(
   obj: any,
   meta: DataAPIMeta,
@@ -83,46 +206,19 @@ export function List<T extends Record<string, any>>(
   const filterList = Object.entries(meta.filters).filter(
     ([name]) => filters && name in filters,
   );
-  const indexFilter = filterList.find(([name]) => {
-    const values = filters ? FilterValuesOf(filters[name]) : [];
-    return (
-      values.length === 1 &&
-      values[0][1] === "eq" &&
-      meta.fields[name]?.indexable
-    );
-  })?.[0];
-  const index = indexFilter
-    ? meta.fields[indexFilter].dbName || indexFilter
-    : undefined;
-  const indexedFilter = indexFilter
-    ? FilterValuesOf(filters?.[indexFilter] ?? [])[0]
-    : undefined;
-
-  let tmpRequest: Stream<T> = index
-    ? request.getAll(indexedFilter?.[0] ?? "", index)
-    : request;
-
-  const joinedSplit = splitJoinedFields(meta, sorting, filters);
-  if (db && joinedSplit.filter.size > 0) {
-    tmpRequest = Joined(db, meta, tmpRequest, joinedSplit.filter);
-  }
-
-  const filteredComputed = new Set(
-    filterList
-      .map(([name]) => name)
-      .filter((name) => meta.fields[name]?.computed),
+  const { indexFilter, source } = indexedSource(
+    meta,
+    request,
+    filterList,
+    filters,
   );
-  if (db && filteredComputed.size > 0) {
-    tmpRequest = Computed(db, meta, tmpRequest, filteredComputed);
-  }
-
-  const sortField = sorting?.[0];
-  const shouldSort = sortField ? meta.fields[sortField]?.sortable : undefined;
-  const isModifiedSort =
-    !!shouldSort && !!sortField && isHeldByKeyedModifier(meta, sortField);
-  if (shouldSort?.indexed && sortField && !isModifiedSort) {
-    tmpRequest = tmpRequest.orderBy(sortField, sorting?.[1] ?? "asc");
-  }
+  const joinedSplit = splitJoinedFields(meta, sorting, filters);
+  const filtering = materializeFilterFields(source, meta, db, joinedSplit, {
+    filterList,
+  });
+  const plan = sortPlan(meta, sorting);
+  const { sortField, shouldSort, isModifiedSort } = plan;
+  let tmpRequest = orderedByIndex(filtering.stream, plan, sorting);
   if (filterList.length > 0) {
     tmpRequest = filterList.reduce((req, [name, filter]) => {
       const fieldFilter = filters?.[name];
@@ -144,17 +240,12 @@ export function List<T extends Record<string, any>>(
     }, tmpRequest);
   }
   const total = tmpRequest.count();
-  if (db && joinedSplit.sort.size > 0) {
-    tmpRequest = Joined(db, meta, tmpRequest, joinedSplit.sort);
-  }
-  if (
-    db &&
-    sortField &&
-    meta.fields[sortField]?.computed &&
-    !filteredComputed.has(sortField)
-  ) {
-    tmpRequest = Computed(db, meta, tmpRequest, new Set([sortField]));
-  }
+  tmpRequest = materializeSortFields(tmpRequest, sortField, {
+    db,
+    meta,
+    joinedSplit,
+    filteredComputed: filtering.filteredComputed,
+  });
   if (isModifiedSort && sortField) {
     tmpRequest = (tmpRequest as unknown as Stream<Record<string, any>>)
       .map((row) =>
@@ -167,7 +258,10 @@ export function List<T extends Record<string, any>>(
   } else if (shouldSort && !shouldSort.indexed && sortField) {
     tmpRequest = tmpRequest.orderBy(sortField, sorting?.[1] ?? "asc");
   }
-  return listResultTuple(tmpRequest, total, meta, joinedSplit, db, options);
+  return listResultTuple(tmpRequest, total, meta, joinedSplit, {
+    db,
+    options,
+  });
 }
 
 function pageComputedFields(

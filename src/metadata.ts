@@ -17,7 +17,6 @@ import {
   type DefaultFilterFunction,
 } from "./internal/default-filter";
 import type {
-  ForeignJoinedRef,
   FieldValidator,
   FieldData,
   ComputedExpression,
@@ -28,7 +27,12 @@ import type {
   ReadableAccessFields,
   WritableAccessFields,
 } from "./internal/field-types";
-import { merge } from "./internal/meta-records";
+import {
+  listedNames,
+  merge,
+  rebuildPluck,
+  targetJoinedFields,
+} from "./internal/meta-records";
 import { resolveTableReference } from "./internal/table-reference";
 
 export type {
@@ -185,21 +189,7 @@ export class DataAPIMeta {
   }
 
   private recomputeListable() {
-    for (const set of Object.values(this.pluck)) {
-      set.clear();
-    }
-    for (const [_, field] of Object.entries(this.fields)) {
-      if (field.listable) {
-        for (const [mode, names] of Object.entries(field.listable)) {
-          if (!(mode in this.pluck)) {
-            this.pluck[mode] = new Set();
-          }
-          for (const name of names) {
-            this.pluck[mode].add(name);
-          }
-        }
-      }
-    }
+    rebuildPluck(this.pluck, this.fields);
   }
 
   private recomputeAccess() {
@@ -274,16 +264,7 @@ export class DataAPIMeta {
     mode = "list",
   ) {
     const field = this.field(name);
-    const baseNames =
-      requiredFields === true
-        ? [name]
-        : requiredFields === false
-          ? []
-          : requiredFields;
-    const names =
-      baseNames.length > 0 && field.joined
-        ? Array.from(new Set([...baseNames, name, field.joined.localKey]))
-        : baseNames;
+    const names = listedNames(name, requiredFields, field);
     if (!field.listable) {
       field.listable = {};
     }
@@ -432,29 +413,9 @@ export class DataAPIMeta {
       `foreign field "${name}"`,
     );
 
-    let targetJoined: ForeignJoinedRef[] | undefined;
-    if (targetMeta) {
-      const pluckSet = pluck ? new Set(pluck) : undefined;
-      const groups: ForeignJoinedRef[] = [];
-      for (const [fieldName, field] of Object.entries(targetMeta.fields)) {
-        if (!field.joined || (pluckSet && !pluckSet.has(fieldName))) {
-          continue;
-        }
-        const j = field.joined;
-        groups.push({
-          name: fieldName,
-          table: j.table,
-          tableClass: j.tableClass,
-          localKey: j.localKey,
-          remoteField: j.remoteField,
-          remoteIndex: j.remoteIndex,
-          schemaName: j.schemaName,
-        });
-      }
-      if (groups.length > 0) {
-        targetJoined = groups;
-      }
-    }
+    const targetJoined = targetMeta
+      ? targetJoinedFields(targetMeta.fields, pluck)
+      : undefined;
 
     this.field(name).foreign = [
       resolved.tableName,

@@ -6,14 +6,11 @@
     "anti-slop/no-unknown-returns": 1,
     "anti-slop/no-unsafe-dictionary-type": 17,
     "anti-slop/require-safety-comment-for-type-assertion": 55,
-    "eslint/complexity": 1,
     "eslint/max-depth": 1,
-    "eslint/max-params": 4,
+    "eslint/max-params": 3,
     "typescript/no-misused-spread": 4,
     "typescript/no-redundant-type-constituents": 1,
     "typescript/unbound-method": 5
   },
-  "oversizeFiles": {
-    "src/metadata.ts": 21125
-  }
+  "oversizeFiles": {}
 }
