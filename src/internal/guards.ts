@@ -5,7 +5,7 @@ export function isString(value: unknown): value is string {
   return typeof value === "string";
 }
 
-/** Whether a value is an object other than `null`; arrays and functions are objects too. */
+/** Whether `typeof` calls a value an object and it is not `null`: arrays qualify, functions do not (the predicate `object` still types a function as one). */
 export function isObject(value: unknown): value is object {
   return typeof value === "object" && value !== null;
 }
