@@ -10,7 +10,7 @@ import type {
 } from "@antelopejs/interface-database";
 import type { Table } from "@antelopejs/interface-database-decorators";
 
-import type { AccessMode } from "../metadata";
+import type { AccessMode, DataAPIMeta } from "../metadata";
 
 /**
  * A `@Joined` field declared on the target of a relation, captured so the
@@ -27,13 +27,25 @@ export interface ForeignJoinedRef {
   schemaName?: string;
 }
 
-/**
- * DataAPI Metadata field information.
- */
+/** A value a request body or a table row holds. */
+export type FieldValue =
+  | string
+  | number
+  | boolean
+  | null
+  | Date
+  | FieldValue[]
+  | FieldValues;
+
+/** Fields by name, as a request body or a table row holds them. */
+export interface FieldValues {
+  [field: string]: FieldValue | undefined;
+}
+
 /** Parse outcome accepting the field value, carrying the value to write. */
 export interface FieldParseSuccess {
   success: true;
-  data: unknown;
+  data: FieldValue | undefined;
 }
 
 /** Parse outcome rejecting the field value. */
@@ -54,9 +66,19 @@ export type FieldValidationResult = boolean | FieldParseResult;
 
 /** Field value validator, see {@link FieldValidationResult}. */
 export type FieldValidator = (
-  value: unknown,
+  value: FieldValue | undefined,
 ) => FieldValidationResult | Promise<FieldValidationResult>;
 
+/** What a foreign key declaration takes after the field and the other table. */
+export type ForeignOptions = [
+  index?: string,
+  multi?: boolean,
+  pluck?: string[],
+  schema?: string,
+  targetMeta?: DataAPIMeta,
+];
+
+/** DataAPI Metadata field information. */
 export interface FieldData {
   /**
    * Field name in-database.
@@ -200,9 +222,7 @@ export type FilterFunction<
   context: RequestContext & { this: T },
   proxy: ValueProxy<any>,
   key: string,
-  value: FilterValue[0],
-  mode: FilterValue[1],
-  row: ValueProxy<U>,
+  ...rest: [value: FilterValue[0], mode: FilterValue[1], row: ValueProxy<U>]
 ) => ValueProxyOrValue<boolean>;
 
 export interface ReadableAccessFields {

@@ -11,7 +11,7 @@ import {
 
 import type { Validation } from "../components";
 import type { DataAPIMeta } from "../metadata";
-import { isObject } from "./guards";
+import { isFieldValues, isObject } from "./guards";
 
 type RequestBody = Validation.RequestBody;
 type WrittenBody = Validation.WrittenBody;
@@ -25,11 +25,7 @@ export function ParseBody(body: WrittenBody): RequestBody {
       assert(false, 400, "Invalid JSON body.");
     }
   }
-  assert(
-    isObject(data) && !Array.isArray(data),
-    400,
-    "The request body must be a JSON object.",
-  );
+  assert(isFieldValues(data), 400, "The request body must be a JSON object.");
   return data;
 }
 

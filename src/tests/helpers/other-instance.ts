@@ -2,13 +2,15 @@ import Module from "node:module";
 import { realpathSync } from "node:fs";
 import path from "node:path";
 
+import { isObject } from "../../internal/guards";
+
 class InternalModule extends Module {
   declare static _resolveFilename: (request: string, parent: Module) => string;
   declare static _nodeModulePaths: (directory: string) => string[];
   declare load: (filename: string) => void;
 }
 
-type ModuleRequire = (request: string) => unknown;
+type ModuleRequire = (request: string) => object;
 
 /**
  * Evaluates built packages a second time, the way the core gives each
@@ -47,4 +49,34 @@ export function CreateOtherInstance(folders: string[]): ModuleRequire {
   };
 
   return (request: string) => requireFrom(module, request);
+}
+
+function exportsAllOf<Exports extends object>(
+  loaded: unknown,
+  reference: Exports,
+): loaded is Exports {
+  return (
+    isObject(loaded) && Object.keys(reference).every((name) => name in loaded)
+  );
+}
+
+/**
+ * Evaluates a built module again and checks that the copy exports every name
+ * the module already loaded exports.
+ *
+ * @param load The `require` of {@link CreateOtherInstance}
+ * @param file Built file to evaluate again
+ * @param reference The module already loaded from the same file
+ * @returns The second copy of the module
+ */
+export function LoadAgain<Exports extends object>(
+  load: ModuleRequire,
+  file: string,
+  reference: Exports,
+): Exports {
+  const loaded = load(file);
+  if (!exportsAllOf(loaded, reference)) {
+    throw new Error(`${file} does not export the names of its first copy`);
+  }
+  return loaded;
 }

@@ -24,6 +24,7 @@ import type {
   FilterValue,
   FieldFilter,
   FilterFunction,
+  ForeignOptions,
   ReadableAccessFields,
   WritableAccessFields,
 } from "./internal/field-types";
@@ -49,6 +50,9 @@ export type {
   FieldParseFailure,
   FieldParseResult,
   FieldValidationResult,
+  FieldValue,
+  FieldValues,
+  ForeignOptions,
   FieldValidator,
   FieldData,
   ComputedExpression,
@@ -105,7 +109,7 @@ export class DataAPIMeta {
     "@antelopejs/interface-data-api/DataAPIMeta@1",
   );
 
-  public readonly filters: Record<string, FilterFunction<any>> = {};
+  public readonly filters: Record<string, FilterFunction<any, any>> = {};
 
   /** Fields information. */
   public readonly fields: Record<string, FieldData> = {};
@@ -114,10 +118,10 @@ export class DataAPIMeta {
   public readonly pluck: Record<string, Set<string>> = {};
 
   /** Key of the DataAPI class containing a database table instance. */
-  public modelKey?: string;
+  public modelKey?: PropertyKey;
 
   /** Keys of the DataAPI class containing database modifier keys. */
-  public modifierKeys = new Map<typeof ContainerModifier<any>, string>();
+  public modifierKeys = new Map<typeof ContainerModifier<any>, PropertyKey>();
 
   /** Schema name where the table is registered. */
   public schemaName!: string;
@@ -378,11 +382,7 @@ export class DataAPIMeta {
   public setForeign(
     name: string,
     table: string | Class<Table>,
-    index?: string,
-    multi?: boolean,
-    pluck?: string[],
-    schema?: string,
-    targetMeta?: DataAPIMeta,
+    ...[index, multi, pluck, schema, targetMeta]: ForeignOptions
   ) {
     const resolved = resolveTableReference(
       this.schemaName,
@@ -438,7 +438,7 @@ export class DataAPIMeta {
    */
   public setFilter(
     name: string,
-    func: FilterFunction<Record<string, any>, Record<string, any>>,
+    func: FilterFunction<any, any>,
     useIndex?: boolean,
   ) {
     this.filters[name] = func;
@@ -460,7 +460,7 @@ export class DataAPIMeta {
    *
    * @param name Field name
    */
-  public setModelKey(name: string) {
+  public setModelKey(name: PropertyKey) {
     this.modelKey = name;
     return this;
   }
@@ -472,7 +472,7 @@ export class DataAPIMeta {
    * @param modifierClass Modifier
    */
   public setModifierKey(
-    name: string,
+    name: PropertyKey,
     modifierClass: typeof ContainerModifier<any>,
   ) {
     this.modifierKeys.set(modifierClass, name);
@@ -612,10 +612,7 @@ export const Joined = MakePropertyDecorator(
       schema?: string;
     },
   ) => {
-    GetMetadata(target.constructor, DataAPIMeta).setJoined(
-      key as string,
-      options,
-    );
+    onField(target, key, (meta, name) => meta.setJoined(name, options));
   },
 );
 
@@ -639,11 +636,6 @@ export const Computed = MakePropertyDecorator(
   },
 );
 
-type ForeignArguments =
-  Parameters<DataAPIMeta["setForeign"]> extends [string, ...infer Rest]
-    ? Rest
-    : never;
-
 /**
  * Declares a field to be a foreign key.
  *
@@ -656,19 +648,16 @@ export const Foreign = MakeMethodAndPropertyDecorator(
     target,
     key,
     desc,
-    ...[table, index, multi, pluck, schema, targetMeta]: ForeignArguments
+    ...[table, index, multi, pluck, schema, targetMeta]: [
+      table: string | Class<Table>,
+      ...options: ForeignOptions,
+    ]
   ) => {
-    GetMetadata(target.constructor, DataAPIMeta)
-      .setDescriptor(key as string, desc)
-      .setForeign(
-        key as string,
-        table,
-        index,
-        multi,
-        pluck,
-        schema,
-        targetMeta,
-      );
+    onField(target, key, (meta, name) =>
+      meta
+        .setDescriptor(name, desc)
+        .setForeign(name, table, index, multi, pluck, schema, targetMeta),
+    );
   },
 );
 
@@ -687,10 +676,12 @@ export const Validator = MakeMethodAndPropertyDecorator(
 
 const FilterDecoratorFactory = MakePropertyDecorator(
   (target, key, func?: DefaultFilterFunction, useIndex?: boolean) => {
-    GetMetadata(key ? target.constructor : target, DataAPIMeta).setFilter(
-      key as string,
-      func || createDefaultFilter(),
-      useIndex === undefined ? !func : useIndex,
+    onField(target, key, (meta, name) =>
+      meta.setFilter(
+        name,
+        func || createDefaultFilter(),
+        useIndex === undefined ? !func : useIndex,
+      ),
     );
   },
 );
@@ -704,16 +695,18 @@ const FilterDecoratorFactory = MakePropertyDecorator(
  * to true for the default filter and false for custom filters. An indexed
  * equality lookup uses the raw string and bypasses the callback.
  */
-export const Filter = FilterDecoratorFactory as <T extends Record<string, any>>(
+export function Filter<T extends Record<string, any>>(
   func?: FilterFunction<T, T>,
   useIndex?: boolean,
-) => (target: T, propertyKey: string | symbol) => void;
+): (target: T, propertyKey: string | symbol) => void {
+  return FilterDecoratorFactory(func, useIndex);
+}
 
 /**
  * Sets which field will contain the reference to the database model instance.
  */
 export const ModelReference = MakePropertyDecorator((target, key) => {
-  GetMetadata(target.constructor, DataAPIMeta).setModelKey(key as string);
+  GetMetadata(target.constructor, DataAPIMeta).setModelKey(key);
 });
 
 /**
@@ -724,7 +717,7 @@ export const ModelReference = MakePropertyDecorator((target, key) => {
 export const ModifierKey = MakePropertyDecorator(
   (target, key, modifierClass: typeof ContainerModifier<any>) => {
     GetMetadata(target.constructor, DataAPIMeta).setModifierKey(
-      key as string,
+      key,
       modifierClass,
     );
   },

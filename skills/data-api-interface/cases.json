@@ -79,6 +79,21 @@
         ],
         "avoid": ["data-api-interface"]
       }
+    },
+    {
+      "id": "data-api-interface-wrap-new-stamp",
+      "area": "framework",
+      "style": "clean",
+      "prompt": "I want the generated create route to stamp a source field on every body before it is validated and written. How do I wrap it, and what type does the parsed body have?",
+      "expect": {
+        "skills": ["data-api-interface"],
+        "acceptable": [
+          "api-interface",
+          "database-decorators-interface",
+          "ajs-consume-interface"
+        ],
+        "mustMention": ["ParseBody", "WrittenBody", "FieldValues"]
+      }
     }
   ]
 }

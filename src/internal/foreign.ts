@@ -5,12 +5,11 @@ import {
   IsStream,
   type SchemaInstance,
   type Stream,
-  type Table,
   type ValueProxy,
 } from "@antelopejs/interface-database";
 
 import type { DataAPIMeta, ForeignJoinedRef } from "../metadata";
-import { Get, type TableRow, targetTable } from "./tables";
+import { Get, pluckedTable, type TableRow, targetTable } from "./tables";
 
 export function Foreign(
   db: SchemaInstance<any>,
@@ -61,7 +60,7 @@ export function Foreign(
             )
           : pluckField;
         query = query.lookup(
-          other.pluck("_internal", ...lookupPluck) as Table<any>,
+          pluckedTable(other, ...lookupPluck),
           name,
           index || "_id",
         );
@@ -138,11 +137,11 @@ function applyForeignJoinedStream(
 ): Stream<any> {
   let s = stream;
   for (const group of groups) {
-    const remoteTable = targetTable(db, group).pluck(
-      "_internal",
+    const remoteTable = pluckedTable(
+      targetTable(db, group),
       group.remoteIndex,
       group.remoteField,
-    ) as Table<any>;
+    );
     const tmpKey = `__fjoin_${foreignName}_${group.name}`;
     s = s
       .map((row) =>

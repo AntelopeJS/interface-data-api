@@ -2,15 +2,17 @@
 
 import type { FieldData, ForeignJoinedRef } from "./field-types";
 
-export const merge = (src: Record<string, any>, dst: Record<string, any>) => {
+/** Copies into `dst` the entries of `src` it lacks. */
+export function merge<Value>(
+  src: Record<string, Value>,
+  dst: Record<string, Value>,
+) {
   for (const key in src) {
     if (!(key in dst)) {
       dst[key] = src[key];
-    } else if (Array.isArray(dst[key])) {
-      dst[key].push(...src[key]);
     }
   }
-};
+}
 
 /** Rebuilds the fields each list mode plucks from the fields' listable modes. */
 export function rebuildPluck(
