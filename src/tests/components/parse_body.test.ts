@@ -42,6 +42,20 @@ describe("Validation.ParseBody", () => {
       statusOfRefusal(Buffer.from('"text"')),
     ]).to.eql([400, 400, 400, 400]);
   });
+  it("accepts a body nested far deeper than the call stack allows", () => {
+    const depth = 50000;
+    const nested = `{"a":${"[".repeat(depth)}${"]".repeat(depth)}}`;
+    expect(Object.keys(Validation.ParseBody(Buffer.from(nested)))).to.eql([
+      "a",
+    ]);
+  });
+  it("refuses a body nested deeper than the call stack allows that ends in a function", () => {
+    const deepest = Object.create(null);
+    deepest.run = () => 1;
+    let nested: FieldValues = deepest;
+    for (let level = 0; level < 50000; level++) nested = { next: nested };
+    expect(statusOfRefusal(nested)).to.equal(400);
+  });
   it("accepts a body without a prototype", () => {
     const bare = Object.create(null);
     bare.name = "a";
@@ -54,12 +68,12 @@ describe("Validation.ParseBody", () => {
     withInstance.price = new Money();
     const withBigInt = Object.create(null);
     withBigInt.count = 1n;
-    const withHole = Object.create(null);
-    withHole.list = [1, undefined];
+    const withUndefined = Object.create(null);
+    withUndefined.list = [1, undefined];
     const cyclic: FieldValues = {};
     cyclic.self = cyclic;
     expect(
-      [withFunction, withInstance, withBigInt, withHole, cyclic].map(
+      [withFunction, withInstance, withBigInt, withUndefined, cyclic].map(
         statusOfRefusal,
       ),
     ).to.eql([400, 400, 400, 400, 400]);

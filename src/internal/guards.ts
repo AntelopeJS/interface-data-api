@@ -27,29 +27,42 @@ export function isBoolean(value: unknown): value is boolean {
   return typeof value === "boolean";
 }
 
-function isFieldValueWithin(
-  value: unknown,
-  ancestors: Set<unknown>,
-): value is FieldValue {
-  if (value === null || isString(value) || isNumber(value)) return true;
-  if (isBoolean(value) || value instanceof Date) return true;
-  if (!isObject(value) || ancestors.has(value)) return false;
-  const prototype = Object.getPrototypeOf(value);
-  const isArray = Array.isArray(value);
-  if (!isArray && prototype !== Object.prototype && prototype !== null) {
-    return false;
-  }
-  ancestors.add(value);
-  const holds = Object.values(value).every((member) =>
-    member === undefined ? !isArray : isFieldValueWithin(member, ancestors),
-  );
-  ancestors.delete(value);
-  return holds;
+/** A step of the walk in {@link isFieldValue}: enter a value, or leave a container. */
+interface WalkStep {
+  value: unknown;
+  leaving: boolean;
 }
 
-/** Whether a value is a {@link FieldValue}: JSON or `Date` all the way down. */
+/**
+ * Whether a value is a {@link FieldValue}: JSON or `Date` all the way down,
+ * with no cycle. The walk keeps its own stack, so a deeply nested body is
+ * not bounded by the call stack.
+ */
 export function isFieldValue(value: unknown): value is FieldValue {
-  return isFieldValueWithin(value, new Set());
+  const ancestors = new Set<unknown>();
+  const steps: WalkStep[] = [{ value, leaving: false }];
+  for (let step = steps.pop(); step; step = steps.pop()) {
+    if (step.leaving) {
+      ancestors.delete(step.value);
+      continue;
+    }
+    const current = step.value;
+    if (current === null || isString(current) || isNumber(current)) continue;
+    if (isBoolean(current) || current instanceof Date) continue;
+    if (!isObject(current) || ancestors.has(current)) return false;
+    const isArray = Array.isArray(current);
+    const prototype = Object.getPrototypeOf(current);
+    if (!isArray && prototype !== Object.prototype && prototype !== null) {
+      return false;
+    }
+    ancestors.add(current);
+    steps.push({ value: current, leaving: true });
+    for (const member of Object.values(current)) {
+      if (member === undefined && isArray) return false;
+      if (member !== undefined) steps.push({ value: member, leaving: false });
+    }
+  }
+  return true;
 }
 
 /** Whether a value is {@link FieldValues}: a plain object holding field values. */
