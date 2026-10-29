@@ -83,7 +83,7 @@ export function DataController<
     meta.addEndpoint(key, entry);
     c.prototype[key] = entry.callback.func;
   }
-  // SAFETY: the loop above installs def[key].func on c.prototype under every own key of def, which is exactly what ExtractDefCallbacks<P> maps over; c extends base and declares the only other member, table, which the database decorators fill in with an InstanceType<C>.
+  // SAFETY: for every own key of def, the loop above installs the function ExtractCallback<P[key]> names (def[key].func, or def[key].callback.func for an entry with options) on c.prototype, which covers the members of ExtractDefCallbacks<P>; c extends base and declares table itself.
   return c as any;
 }
 
