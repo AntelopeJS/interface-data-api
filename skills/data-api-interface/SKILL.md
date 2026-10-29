@@ -140,6 +140,10 @@ This exposes `GET /tasks/get?id=`, `GET /tasks/list`, `POST /tasks/new`, `PUT /t
 - `edit` is a partial update: a field absent from the body is left unchanged, `null` clears it, and
   setters only run for the fields present. `@Mandatory("edit")` rejects a field cleared by the body
   (`null`, `""`, `[]`), not an absent one. `new` still writes every writable field and runs every setter.
+- A parsed request body is `FieldValues` (fields by name; a `FieldValue` is JSON or a `Date`). A
+  `@Validator` receives `FieldValue | undefined`, and `Validation.ParseBody` answers 400 for a body that
+  holds anything else, even one a wrapping route already parsed. The default routes run with the
+  controller as `this` (`DataControllerInstance`); a wrapper calls `route.func.call(this, ...)`.
 - A `@Validator` may return a parse result `{ success, data }` (e.g. zod's `safeParseAsync(value)`)
   instead of a boolean: `data` is then written in place of the raw value.
 

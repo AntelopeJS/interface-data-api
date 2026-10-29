@@ -5,12 +5,11 @@ import {
   IsStream,
   type SchemaInstance,
   type Stream,
-  type Table,
   type ValueProxy,
 } from "@antelopejs/interface-database";
 
 import type { DataAPIMeta, FieldFilter } from "../metadata";
-import { type TableTargetReference, targetTable } from "./tables";
+import { pluckedTable, type TableTargetReference, targetTable } from "./tables";
 
 interface JoinedGroup extends TableTargetReference {
   localKey: string;
@@ -153,11 +152,11 @@ export function Joined(
     const tmpKeys: string[] = [];
     for (const group of groups) {
       const remoteFields = group.fields.map((f) => f.remoteField);
-      const remoteTable = targetTable(db, group).pluck(
-        "_internal",
+      const remoteTable = pluckedTable(
+        targetTable(db, group),
         group.remoteIndex,
         ...remoteFields,
-      ) as Table<any>;
+      );
       const tmpKey = tmpKeyFor(group.localKey);
       tmpKeys.push(tmpKey);
       stream = stream
@@ -179,11 +178,11 @@ export function Joined(
   let datum = query;
   for (const group of groups) {
     const remoteFields = group.fields.map((f) => f.remoteField);
-    const remoteTable = targetTable(db, group).pluck(
-      "_internal",
+    const remoteTable = pluckedTable(
+      targetTable(db, group),
       group.remoteIndex,
       ...remoteFields,
-    ) as Table<any>;
+    );
     const tmpKey = tmpKeyFor(group.localKey);
     datum = datum
       .do((row) => row.merge({ [tmpKey]: row.key(group.localKey) }))

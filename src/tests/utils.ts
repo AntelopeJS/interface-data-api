@@ -2,6 +2,8 @@ import path from "node:path";
 import { expect } from "chai";
 import { Schema } from "@antelopejs/interface-database";
 
+import type { FieldValue, FieldValues } from "../metadata";
+
 import { URL_BASE } from "./constants";
 
 const UNKNOWN_FUNCTION_NAME = "unknown";
@@ -68,7 +70,7 @@ export async function request(
   functionName: string,
   uri: string,
   method: string,
-  payload?: unknown,
+  payload?: FieldValue,
   queryParams?: Record<string, string> | [string, string][],
 ) {
   return await fetch(
@@ -85,7 +87,7 @@ export async function request(
 
 export async function newRequest(
   functionName: string,
-  payload: unknown,
+  payload: FieldValue,
   queryParams?: Record<string, string>,
 ) {
   return await request(functionName, "new", "POST", payload, queryParams);
@@ -107,7 +109,7 @@ export async function listRequest(
 
 export async function editRequest(
   functionName: string,
-  payload: unknown,
+  payload: FieldValue,
   queryParams?: Record<string, string>,
 ) {
   return await request(functionName, "edit", "PUT", payload, queryParams);
@@ -159,7 +161,6 @@ export async function validateObjectList<T extends { _id: string }>(
 }
 
 /** What the `new` route answers: the created row, with its key. */
-export interface CreatedRow {
+export interface CreatedRow extends FieldValues {
   _id: string;
-  [field: string]: unknown;
 }

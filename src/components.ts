@@ -24,6 +24,7 @@ import {
 import {
   type DataAPIMeta,
   type FieldFilter,
+  type FieldValues,
   type FieldParseResult,
   type FieldValidationResult,
   type FieldValidator,
@@ -126,6 +127,7 @@ export namespace Parameters {
         const value = extractFromSearchParams(reqCtx, key, extractor);
         if (value !== undefined) result[key as keyof T] = value as any;
       } else {
+        // SAFETY: key comes from Object.keys(dynamic), typed GenericParams<Partial<T>> (a mapped type over keyof T), so for a type-checked argument it is a keyof T; false only for a stray key on a non-literal argument, which is harmless as the key is only written on result.
         result[key as keyof T] = extractor(reqCtx, meta);
       }
     }
@@ -345,7 +347,7 @@ export namespace Query {
     const readable =
       meta.readable[action ?? "_default"] ?? meta.readable._default;
     const instance = { ...obj };
-    const res: Record<string, any> = {};
+    const res: FieldValues = {};
     for (const [key, field] of readable.props) {
       if (onlyList && !field.listable) {
         continue;
@@ -378,7 +380,7 @@ export namespace Query {
   export async function WriteProperties(
     obj: any,
     meta: DataAPIMeta,
-    bodyData: Record<string, any>,
+    bodyData: FieldValues,
     action?: string,
     existingDBData?: Record<string, any>,
   ) {
@@ -409,6 +411,14 @@ export namespace Query {
     exposeDeferredJoined?: boolean;
   }
 
+  /** What {@link List} takes after the request context. */
+  export type ListTail = [
+    sorting?: [string, "asc" | "desc" | undefined],
+    filters?: Record<string, FieldFilter>,
+    db?: SchemaInstance<any>,
+    options?: ListOptions,
+  ];
+
   /**
    * Builds the filtered and sorted stream of a list request along with its
    * total count. Joined fields that no filter or sort references are not
@@ -424,10 +434,7 @@ export namespace Query {
     meta: DataAPIMeta,
     request: Table<T>,
     reqCtx: RequestContext,
-    sorting?: [string, "asc" | "desc" | undefined],
-    filters?: Record<string, FieldFilter>,
-    db?: SchemaInstance<any>,
-    options?: ListOptions,
+    ...[sorting, filters, db, options]: ListTail
   ): [sorted: Stream<T>, total: Datum<number>, deferredJoined: Set<string>] {
     return list.List(obj, meta, request, reqCtx, {
       sorting,
@@ -485,7 +492,7 @@ export namespace Query {
 
 export namespace Validation {
   /** A request body, parsed. */
-  export type RequestBody = Record<string, any>;
+  export type RequestBody = FieldValues;
 
   function isClearingValue(value: Parameters<FieldValidator>[0]): boolean {
     if (value === null || value === undefined) return true;
@@ -623,7 +630,7 @@ export namespace Validation {
 
   export function ClearInternal(
     meta: DataAPIMeta,
-    obj: Record<string, any> | Array<Record<string, any>>,
+    obj: FieldValues | FieldValues[],
   ) {
     validation.ClearInternal(meta, obj);
   }

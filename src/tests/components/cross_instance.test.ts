@@ -12,13 +12,8 @@ import {
 import * as DataApi from "../../index";
 import * as Components from "../../components";
 import * as Metadata from "../../metadata";
-import { CreateOtherInstance } from "../helpers/other-instance";
+import { CreateOtherInstance, LoadAgain } from "../helpers/other-instance";
 import { createRequestContext } from "../internal/http";
-
-type ComponentsModule = typeof Components;
-type MetadataModule = typeof Metadata;
-type StagedSchemaModule =
-  typeof import("@antelopejs/interface-database/schema");
 
 const buildFolder = path.resolve(__dirname, "..", "..");
 const packageFolder = (name: string) =>
@@ -29,15 +24,21 @@ const otherInstance = CreateOtherInstance([
   databaseFolder,
   packageFolder("@antelopejs/interface-database-decorators"),
 ]);
-const OtherComponents = otherInstance(
+const OtherComponents = LoadAgain(
+  otherInstance,
   path.join(buildFolder, "components.js"),
-) as ComponentsModule;
-const OtherMetadata = otherInstance(
+  Components,
+);
+const OtherMetadata = LoadAgain(
+  otherInstance,
   path.join(buildFolder, "metadata.js"),
-) as MetadataModule;
-const OtherStagedSchema = otherInstance(
+  Metadata,
+);
+const OtherStagedSchema = LoadAgain(
+  otherInstance,
   path.join(databaseFolder, "staged-query", "schema.js"),
-) as StagedSchemaModule;
+  { Schema },
+);
 
 const clientSchema = "cross-instance-client";
 const coreSchema = "cross-instance-core";

@@ -5,7 +5,7 @@ import { getTablesForSchema } from "@antelopejs/interface-database-decorators/sc
 import { triggerEvent } from "@antelopejs/interface-database-decorators/modifiers/common";
 import {
   type Class,
-  MakeClassDecorator,
+  type ClassDecorator,
 } from "@antelopejs/interface-core/decorators";
 import {
   DatumStaticMetadata,
@@ -28,6 +28,7 @@ import {
   type DataControllerCallbackWithOptions,
   type DataControllerDef,
   type ExtractDefCallbacks,
+  type FieldValues,
   GetDataControllerMeta,
 } from "./metadata";
 
@@ -39,6 +40,9 @@ export {
   type ExtractDefCallbacks,
   GetDataControllerMeta,
 } from "./metadata";
+
+/** The controller a data route runs on: an instance of a class built by {@link DataController}. */
+export type DataControllerInstance = InstanceType<ControllerClass>;
 
 abstract class TableHolder<C extends Class> {
   table!: InstanceType<C>;
@@ -79,54 +83,56 @@ export function DataController<
     meta.addEndpoint(key, entry);
     c.prototype[key] = entry.callback.func;
   }
+  // SAFETY: for every own key of def, the loop above installs the function ExtractCallback<P[key]> names (def[key].func, or def[key].callback.func for an entry with options) on c.prototype, which covers the members of ExtractDefCallbacks<P>; c extends base and declares table itself.
   return c as any;
 }
 
-export const RegisterDataController = MakeClassDecorator((target) => {
-  const meta = GetMetadata(target, DataAPIMeta);
-  for (const [key, entry] of Object.entries(meta.endpoints)) {
-    for (let i = 0; i < entry.callback.args.length; ++i) {
-      const arg = entry.callback.args[i];
-      if (Array.isArray(arg)) {
-        for (const step of arg) {
-          step(target.prototype, key, i);
+export const RegisterDataController =
+  (): ClassDecorator<ControllerClass> => (target) => {
+    const meta = GetMetadata(target, DataAPIMeta);
+    for (const [key, entry] of Object.entries(meta.endpoints)) {
+      for (let i = 0; i < entry.callback.args.length; ++i) {
+        const arg = entry.callback.args[i];
+        if (Array.isArray(arg)) {
+          for (const step of arg) {
+            step(target.prototype, key, i);
+          }
+        } else {
+          arg(target.prototype, key, i);
         }
-      } else {
-        arg(target.prototype, key, i);
       }
+      const meta = GetMetadata(target, ControllerMeta);
+      const fullLocation = `${meta.location}/${entry.endpoint ?? key}`.replace(
+        /\/+/g,
+        "/",
+      );
+      RegisterRoute({
+        callback: (ctx) => {
+          ctx.dataAPIEntry = entry;
+        },
+        location: fullLocation,
+        method: entry.callback.method,
+        mode: "prefix",
+        parameters: [{ provider: (ctx) => ctx, modifiers: [] }],
+        properties: meta.computed_props,
+        proto: target.prototype,
+      });
+      Route("handler", entry.callback.method, entry.endpoint)(
+        target.prototype,
+        key,
+        {
+          value: entry.callback.func,
+        },
+      );
     }
-    const meta = GetMetadata(<any>target, ControllerMeta);
-    const fullLocation = `${meta.location}/${entry.endpoint ?? key}`.replace(
-      /\/+/g,
-      "/",
-    );
-    RegisterRoute({
-      callback: (ctx) => {
-        ctx.dataAPIEntry = entry;
-      },
-      location: fullLocation,
-      method: entry.callback.method,
-      mode: "prefix",
-      parameters: [{ provider: (ctx) => ctx, modifiers: [] }],
-      properties: meta.computed_props,
-      proto: target.prototype,
-    });
-    Route("handler", entry.callback.method, entry.endpoint)(
-      target.prototype,
-      key,
-      {
-        value: entry.callback.func,
-      },
-    );
-  }
-});
+  };
 
 export namespace DefaultRoutes {
   /** Receives the loaded, unlocked model before readable fields are selected. Throw to deny the read. */
   export type GetGuard = (
-    this: unknown,
+    this: DataControllerInstance,
     ctx: RequestContext,
-    current: Record<string, any>,
+    current: FieldValues,
     params: Parameters.GetParameters,
   ) => void | Promise<void>;
 
@@ -173,147 +179,162 @@ export namespace DefaultRoutes {
     return results;
   }
 
-  class Methods {
-    async get(
-      reqCtx: RequestContext,
-      params: Parameters.GetParameters,
-      guard?: GetGuard,
-    ) {
-      const meta = GetDataControllerMeta(this);
-      return readRow(this, meta, { params, reqCtx, guard });
-    }
-
-    async list(reqCtx: RequestContext, params: Parameters.ListParameters) {
-      const meta = GetDataControllerMeta(this);
-
-      const model = Query.GetModel(this, meta);
-      const sort: Parameters<typeof Query.List>[4] = params?.sortKey
-        ? [params.sortKey, params.sortDirection]
-        : undefined;
-      const [query, queryTotal, deferredJoined] = Query.List(
-        this,
-        meta,
-        model.table,
-        reqCtx,
-        sort,
-        params?.filters,
-        model.database,
-        { exposeDeferredJoined: true },
-      );
-
-      const pluck: Set<string> | undefined =
-        meta.pluck[params.pluckMode ?? "list"];
-      assert(
-        params.noPluck || pluck,
-        400,
-        `No fields found for pluckMode '${params.pluckMode ?? "list"}'`,
-      );
-
-      const offset = params.offset || 0;
-      const limit = params.limit || 10;
-      const queryPaged = Query.ListPage(model.database, meta, query, {
-        offset,
-        limit,
-        filters: params.filters,
-        sortKey: params.sortKey,
-        pluck: params.noPluck ? undefined : pluck,
-        noForeign: params.noForeign,
-        deferredJoined,
-      });
-
-      const [dbResult, dbTotal] = await Promise.all([queryPaged, queryTotal]);
-
-      const results = await Promise.all(
-        dbResult.map((entry) => {
-          const entryInstance = model.constructor.fromDatabase(entry);
-          Validation.Unlock(this, meta, entryInstance);
-          return Query.ReadProperties(this, meta, entryInstance, "list");
-        }),
-      );
-
-      Validation.ClearInternal(meta, results);
-
-      return {
-        results,
-        total: dbTotal,
-        offset,
-        limit,
-      };
-    }
-
-    async new(
-      _reqCtx: RequestContext,
-      params: Parameters.NewParameters,
-      body: Validation.WrittenBody,
-    ) {
-      const meta = GetDataControllerMeta(this);
-
-      const data = Validation.ParseBody(body);
-      if (!params.noMandatory) {
-        Validation.MandatoryFields(meta, data, "new");
-      }
-      const parsed = await Validation.ValidateTypes(meta, data);
-
-      const dbData = await Query.WriteProperties(this, meta, parsed, "new");
-      Validation.Lock(this, meta, dbData);
-
-      const model = Query.GetModel(this, meta);
-      triggerEvent(dbData, "insert");
-      const [id] = await model.table.insert(dbData);
-
-      const created = await readRow(this, meta, { params: { id } });
-      return { _id: id, ...created };
-    }
-
-    async edit(
-      _reqCtx: RequestContext,
-      params: Parameters.EditParameters,
-      body: Validation.WrittenBody,
-    ) {
-      const meta = GetDataControllerMeta(this);
-
-      const data = Validation.ParseBody(body);
-      if (!params.noMandatory) {
-        Validation.MandatoryFields(meta, data, "edit");
-      }
-      const parsed = await Validation.ValidateTypes(meta, data);
-
-      const model = Query.GetModel(this, meta);
-
-      const stored = await Query.Get(model.table, params.id, params.index);
-      assert(stored, 404, "Not Found");
-
-      const dbData = await Query.WriteProperties(
-        this,
-        meta,
-        parsed,
-        "edit",
-        stored,
-      );
-      Validation.Lock(this, meta, dbData);
-
-      triggerEvent(dbData, "update");
-      await model.table.get(params.id).update(dbData);
-
-      return readRow(this, meta, {
-        params: { id: params.id, index: params.index },
-      });
-    }
-
-    async delete(_reqCtx: RequestContext, params: Parameters.DeleteParameters) {
-      const meta = GetDataControllerMeta(this);
-
-      const model = Query.GetModel(this, meta);
-
-      const query = Query.Delete(model.table, params.id);
-
-      const dbResult = await query;
-      return dbResult;
-    }
+  async function getRow(
+    this: DataControllerInstance,
+    reqCtx: RequestContext,
+    params: Parameters.GetParameters,
+    guard?: GetGuard,
+  ) {
+    const meta = GetDataControllerMeta(this);
+    return readRow(this, meta, { params, reqCtx, guard });
   }
 
+  async function listRows(
+    this: DataControllerInstance,
+    reqCtx: RequestContext,
+    params: Parameters.ListParameters,
+  ) {
+    const meta = GetDataControllerMeta(this);
+
+    const model = Query.GetModel(this, meta);
+    const sort: Parameters<typeof Query.List>[4] = params?.sortKey
+      ? [params.sortKey, params.sortDirection]
+      : undefined;
+    const [query, queryTotal, deferredJoined] = Query.List(
+      this,
+      meta,
+      model.table,
+      reqCtx,
+      sort,
+      params?.filters,
+      model.database,
+      { exposeDeferredJoined: true },
+    );
+
+    const pluck: Set<string> | undefined =
+      meta.pluck[params.pluckMode ?? "list"];
+    assert(
+      params.noPluck || pluck,
+      400,
+      `No fields found for pluckMode '${params.pluckMode ?? "list"}'`,
+    );
+
+    const offset = params.offset || 0;
+    const limit = params.limit || 10;
+    const queryPaged = Query.ListPage(model.database, meta, query, {
+      offset,
+      limit,
+      filters: params.filters,
+      sortKey: params.sortKey,
+      pluck: params.noPluck ? undefined : pluck,
+      noForeign: params.noForeign,
+      deferredJoined,
+    });
+
+    const [dbResult, dbTotal] = await Promise.all([queryPaged, queryTotal]);
+
+    const results = await Promise.all(
+      dbResult.map((entry) => {
+        const entryInstance = model.constructor.fromDatabase(entry);
+        Validation.Unlock(this, meta, entryInstance);
+        return Query.ReadProperties(this, meta, entryInstance, "list");
+      }),
+    );
+
+    Validation.ClearInternal(meta, results);
+
+    return {
+      results,
+      total: dbTotal,
+      offset,
+      limit,
+    };
+  }
+
+  async function newRow(
+    this: DataControllerInstance,
+    _reqCtx: RequestContext,
+    params: Parameters.NewParameters,
+    body: Validation.WrittenBody,
+  ) {
+    const meta = GetDataControllerMeta(this);
+
+    const data = Validation.ParseBody(body);
+    if (!params.noMandatory) {
+      Validation.MandatoryFields(meta, data, "new");
+    }
+    const parsed = await Validation.ValidateTypes(meta, data);
+
+    const dbData = await Query.WriteProperties(this, meta, parsed, "new");
+    Validation.Lock(this, meta, dbData);
+
+    const model = Query.GetModel(this, meta);
+    triggerEvent(dbData, "insert");
+    const [id] = await model.table.insert(dbData);
+
+    const created = await readRow(this, meta, { params: { id } });
+    return { _id: id, ...created };
+  }
+
+  async function editRow(
+    this: DataControllerInstance,
+    _reqCtx: RequestContext,
+    params: Parameters.EditParameters,
+    body: Validation.WrittenBody,
+  ) {
+    const meta = GetDataControllerMeta(this);
+
+    const data = Validation.ParseBody(body);
+    if (!params.noMandatory) {
+      Validation.MandatoryFields(meta, data, "edit");
+    }
+    const parsed = await Validation.ValidateTypes(meta, data);
+
+    const model = Query.GetModel(this, meta);
+
+    const stored = await Query.Get(model.table, params.id, params.index);
+    assert(stored, 404, "Not Found");
+
+    const dbData = await Query.WriteProperties(
+      this,
+      meta,
+      parsed,
+      "edit",
+      stored,
+    );
+    Validation.Lock(this, meta, dbData);
+
+    triggerEvent(dbData, "update");
+    await model.table.get(params.id).update(dbData);
+
+    return readRow(this, meta, {
+      params: { id: params.id, index: params.index },
+    });
+  }
+
+  async function deleteRows(
+    this: DataControllerInstance,
+    _reqCtx: RequestContext,
+    params: Parameters.DeleteParameters,
+  ) {
+    const meta = GetDataControllerMeta(this);
+
+    const model = Query.GetModel(this, meta);
+
+    const query = Query.Delete(model.table, params.id);
+
+    const dbResult = await query;
+    return dbResult;
+  }
+
+  Object.defineProperty(getRow, "name", { value: "get" });
+  Object.defineProperty(listRows, "name", { value: "list" });
+  Object.defineProperty(newRow, "name", { value: "new" });
+  Object.defineProperty(editRow, "name", { value: "edit" });
+  Object.defineProperty(deleteRows, "name", { value: "delete" });
+
   export const Get = {
-    func: Methods.prototype.get,
+    func: getRow,
     args: [Context(), Parameters.Get()],
     method: "get",
   };
@@ -331,13 +352,13 @@ export namespace DefaultRoutes {
     return {
       ...Get,
       func: function (ctx, params) {
-        return Methods.prototype.get.call(this, ctx, params, guard);
+        return getRow.call(this, ctx, params, guard);
       },
     };
   }
 
   export const List = {
-    func: Methods.prototype.list,
+    func: listRows,
     args: [Context(), Parameters.List()],
     method: "get",
   };
@@ -346,17 +367,17 @@ export namespace DefaultRoutes {
    * `_id`: the caller needs it to name the row it created.
    */
   export const New = {
-    func: Methods.prototype.new,
+    func: newRow,
     args: [Context(), Parameters.New(), RawBody()],
     method: "post",
   };
   export const Edit = {
-    func: Methods.prototype.edit,
+    func: editRow,
     args: [Context(), Parameters.Edit(), RawBody()],
     method: "put",
   };
   export const Delete = {
-    func: Methods.prototype.delete,
+    func: deleteRows,
     args: [Context(), Parameters.Delete()],
     method: "delete",
   };
