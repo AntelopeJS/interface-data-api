@@ -127,6 +127,7 @@ export namespace Parameters {
         const value = extractFromSearchParams(reqCtx, key, extractor);
         if (value !== undefined) result[key as keyof T] = value as any;
       } else {
+        // SAFETY: key comes from Object.keys(dynamic), and dynamic is typed GenericParams<Partial<T>>, a mapped type over keyof T; the cast only undoes the widening of Object.keys to string, and a stray key outside T on a non-literal argument would add a plain property to result rather than read one.
         result[key as keyof T] = extractor(reqCtx, meta);
       }
     }

@@ -40,6 +40,7 @@ function materializeDeferredJoin(stream: DeferredJoinedStream) {
 function pagedDeferredJoinOperation(name: string): DeferredJoinedOperation {
   return function (this: DeferredJoinedStream, ...args: any[]) {
     const { db, meta, names, raw } = this.deferredJoin;
+    // SAFETY: pagedDeferredJoinOperation is registered only under the slice key of DEFERRED_JOIN_OPERATION_FACTORIES, so name is always "slice", which every Stream has; raw is the Stream given to wrapDeferredJoined.
     const paged = (raw as any)[name](...args);
     return Joined(db, meta, paged, names);
   };
@@ -60,6 +61,7 @@ function nthDeferredJoinOperation(): DeferredJoinedOperation {
 
 function rawDeferredJoinOperation(name: string): DeferredJoinedOperation {
   return function (this: DeferredJoinedStream, ...args: any[]) {
+    // SAFETY: rawDeferredJoinOperation is registered only under the changes key of DEFERRED_JOIN_OPERATION_FACTORIES, so name is always "changes", which every Stream has; raw is the Stream given to wrapDeferredJoined.
     return (this.deferredJoin.raw as any)[name](...args);
   };
 }
@@ -72,11 +74,13 @@ function fieldAggregateDeferredJoinOperation(
     const { db, meta, names, raw } = this.deferredJoin;
     if (!field) {
       const bareTarget = bareCallOnRaw ? raw : materializeDeferredJoin(this);
+      // SAFETY: fieldAggregateDeferredJoinOperation is registered only under count, sum, avg, min, max and distinct, all Stream methods, and bareTarget is a Stream (raw, or the Stream Joined returns for it).
       return (bareTarget as any)[name]();
     }
     const target = names.has(field)
       ? Joined(db, meta, raw, new Set([field]))
       : raw;
+    // SAFETY: name is one of count, sum, avg, min, max and distinct, all Stream methods (see the factory table), and target is a Stream (raw, or the Stream Joined returns for it).
     return (target as any)[name](field);
   };
 }
@@ -85,6 +89,7 @@ function forwardingDeferredJoinOperation(
   name: string,
 ): DeferredJoinedOperation {
   return function (this: DeferredJoinedStream, ...args: any[]) {
+    // SAFETY: name comes from wireDeferredJoinedStream, which lists the own method names of Stream.prototype plus run, cursor and build, all present on any Stream, and Joined returns a Stream for the raw Stream it is given.
     return (materializeDeferredJoin(this) as any)[name](...args);
   };
 }
@@ -119,6 +124,7 @@ function wireDeferredJoinedStream() {
     const factory =
       DEFERRED_JOIN_OPERATION_FACTORIES[name] ??
       forwardingDeferredJoinOperation;
+    // SAFETY: name is a method name of Stream.prototype (or run, cursor, build), so the key is a writable data property on DeferredJoinedStream's prototype chain and assigning a function to it cannot throw; each installed operation takes the arguments of the Stream method it replaces.
     (DeferredJoinedStream.prototype as any)[name] = factory(name);
   }
 }
@@ -141,6 +147,7 @@ export function wrapDeferredJoined(
   const wrapped: DeferredJoinedStream = Object.create(
     DeferredJoinedStream.prototype,
   );
+  // SAFETY: Object.create skips the StagedObject constructor that sets the protected stages field, so this assigns the same field, the stage list of raw, that the constructor would have set.
   (wrapped as any).stages = raw.build();
   wrapped.deferredJoin = { db, meta, names, raw };
   return wrapped;

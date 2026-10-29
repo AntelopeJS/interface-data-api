@@ -54,6 +54,7 @@ export function pluckedTable(
   table: Table<any>,
   ...fields: string[]
 ): Table<any> {
+  // SAFETY: pluck returns a Stream, which has none of Table's own methods; pluckedTable is only called in joined.ts and foreign.ts to build the right-hand side of lookup, and lookup reads that argument only through its stage list (build()), which the pluck stage extends.
   return table.pluck("_internal", ...fields) as Table<any>;
 }
 
