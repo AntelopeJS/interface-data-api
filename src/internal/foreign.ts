@@ -91,7 +91,9 @@ export function Foreign(
         ] = field.foreign;
         const remote = targetTable(db, { table, tableClass, schemaName });
         if (multi) {
-          changedFields[name] = (obj.key(name) as ValueProxy<string[]>)
+          changedFields[name] = obj
+            .key(name)
+            .cast<string[]>()
             .default([])
             .map((val) => {
               let foreignObject: Datum<any> = Get(remote, val, index);

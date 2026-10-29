@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { toPlainData } from "@antelopejs/interface-database-decorators/modifiers/common";
 
 import { type ListResponse, readJson } from "./internal/http";
 import "./internal/shop-api";
@@ -18,6 +19,10 @@ import {
   type CreatedRow,
   validateObject,
 } from "./utils";
+
+function plainRow(row: Product | Customer | undefined) {
+  return row ? toPlainData(row) : {};
+}
 
 describe("Integration tests", () => {
   before(async () => {
@@ -229,7 +234,10 @@ async function expectStockUpdates() {
   const initialProduct = await productModel.get(productIds[0]);
   const initialStock = initialProduct?.stockQuantity || 0;
 
-  const stockReduction = { ...initialProduct, stockQuantity: initialStock - 3 };
+  const stockReduction = {
+    ...plainRow(initialProduct),
+    stockQuantity: initialStock - 3,
+  };
   const updateResponse = await editRequest("products", stockReduction, {
     id: productIds[0],
   });
@@ -244,7 +252,10 @@ async function expectStockUpdates() {
   });
   expect(invalidResponse.status).to.equal(400);
 
-  const restock = { ...initialProduct, stockQuantity: initialStock + 10 };
+  const restock = {
+    ...plainRow(initialProduct),
+    stockQuantity: initialStock + 10,
+  };
   const restockResponse = await editRequest("products", restock, {
     id: productIds[0],
   });
@@ -300,7 +311,10 @@ async function expectClientPreferences() {
 
   const customer = await customerModel.get(customerIds[0]);
   const newPreferences = ["electronics", "gaming", "tech"];
-  const preferenceUpdate = { ...customer, preferences: newPreferences };
+  const preferenceUpdate = {
+    ...plainRow(customer),
+    preferences: newPreferences,
+  };
   const updateResponse = await editRequest("customers", preferenceUpdate, {
     id: customerIds[0],
   });
@@ -319,7 +333,7 @@ async function expectClientPreferences() {
     await readJson<ListResponse<Product>>(electronicsResponse);
   expect(electronicsData.results.length).to.be.greaterThan(0);
 
-  const loyaltyUpdate = { ...updatedCustomer, loyaltyPoints: 200 };
+  const loyaltyUpdate = { ...plainRow(updatedCustomer), loyaltyPoints: 200 };
   const loyaltyResponse = await editRequest("customers", loyaltyUpdate, {
     id: customerIds[0],
   });

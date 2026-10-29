@@ -4,7 +4,7 @@ import {
   DataController,
   DefaultRoutes,
   RegisterDataController,
-} from "@antelopejs/interface-data-api";
+} from "../../index";
 import {
   Access,
   AccessMode,
@@ -13,7 +13,7 @@ import {
   ModelReference,
   Sortable,
   Validator,
-} from "@antelopejs/interface-data-api/metadata";
+} from "../../metadata";
 import { Model } from "@antelopejs/interface-database-decorators";
 
 import {
@@ -26,6 +26,7 @@ import {
   Product,
   ProductModel,
 } from "./shop-schema";
+import { isNumber, isString } from "../../internal/guards";
 
 @RegisterDataController()
 class _CustomerAPI extends DataController(
@@ -44,20 +45,20 @@ class _CustomerAPI extends DataController(
   @Listable()
   @Access(AccessMode.ReadWrite)
   @Mandatory("new", "edit")
-  @Validator((value) => typeof value === "string" && value.length >= 2)
+  @Validator((value) => isString(value) && value.length >= 2)
   declare firstName: string;
 
   @Listable()
   @Access(AccessMode.ReadWrite)
   @Mandatory("new", "edit")
-  @Validator((value) => typeof value === "string" && value.length >= 2)
+  @Validator((value) => isString(value) && value.length >= 2)
   declare lastName: string;
 
   @Listable()
   @Access(AccessMode.ReadWrite)
   @Mandatory("new", "edit")
   @Validator((value) => {
-    if (typeof value !== "string") return false;
+    if (!isString(value)) return false;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(value);
   })
@@ -65,7 +66,7 @@ class _CustomerAPI extends DataController(
 
   @Listable()
   @Access(AccessMode.ReadWrite)
-  @Validator((value) => typeof value === "string" && value.length >= 10)
+  @Validator((value) => isString(value) && value.length >= 10)
   declare phone: string;
 
   @Listable()
@@ -120,13 +121,13 @@ class _ProductAPI extends DataController(
   @Listable()
   @Access(AccessMode.ReadWrite)
   @Mandatory("new", "edit")
-  @Validator((value) => typeof value === "string" && value.length >= 3)
+  @Validator((value) => isString(value) && value.length >= 3)
   declare sku: string;
 
   @Listable()
   @Access(AccessMode.ReadWrite)
   @Mandatory("new", "edit")
-  @Validator((value) => typeof value === "string" && value.length >= 3)
+  @Validator((value) => isString(value) && value.length >= 3)
   declare name: string;
 
   @Listable()
@@ -136,19 +137,19 @@ class _ProductAPI extends DataController(
   @Listable()
   @Access(AccessMode.ReadWrite)
   @Mandatory("new", "edit")
-  @Validator((value) => typeof value === "number" && value >= 0)
+  @Validator((value) => isNumber(value) && value >= 0)
   @Sortable({ noIndex: true })
   declare price: number;
 
   @Access(AccessMode.WriteOnly)
-  @Validator((value: unknown) => typeof value === "number" && value >= 0)
+  @Validator((value) => isNumber(value) && value >= 0)
   @Sortable({ noIndex: true })
   declare costPrice: number;
 
   @Listable()
   @Access(AccessMode.ReadWrite)
   @Mandatory("new", "edit")
-  @Validator((value: unknown) => typeof value === "number" && value >= 0)
+  @Validator((value) => isNumber(value) && value >= 0)
   @Sortable({ noIndex: true })
   declare stockQuantity: number;
 
@@ -287,7 +288,7 @@ class _OrderItemAPI extends DataController(
   @Listable()
   @Access(AccessMode.ReadWrite)
   @Mandatory("new", "edit")
-  @Validator((value: unknown) => typeof value === "number" && value > 0)
+  @Validator((value) => isNumber(value) && value > 0)
   declare quantity: number;
 
   @Listable()

@@ -6,15 +6,15 @@ import {
   DataController,
   DefaultRoutes,
   RegisterDataController,
-} from "@antelopejs/interface-data-api";
-import { Validation } from "@antelopejs/interface-data-api/components";
+} from "../../index";
+import { Validation } from "../../components";
 import {
   Access,
   AccessMode,
   type FieldValidator,
   ModelReference,
   Validator,
-} from "@antelopejs/interface-data-api/metadata";
+} from "../../metadata";
 import {
   BasicDataModel,
   Field,
@@ -32,6 +32,7 @@ import {
   newRequest,
   type CreatedRow,
 } from "../utils";
+import { isString } from "../../internal/guards";
 
 const currentTestName = path
   .basename(__filename)
@@ -57,14 +58,14 @@ class Event extends Table {
 class EventModel extends BasicDataModel(Event, eventTableName) {}
 
 const parseDate: FieldValidator = (value) => {
-  if (typeof value !== "string" || Number.isNaN(Date.parse(value))) {
+  if (!isString(value) || Number.isNaN(Date.parse(value))) {
     return { success: false };
   }
   return { success: true, data: new Date(value) };
 };
 
 const normalizeCode: FieldValidator = async (value) => {
-  if (typeof value !== "string") {
+  if (!isString(value)) {
     return { success: false };
   }
   return { success: true, data: value.trim().toUpperCase() };

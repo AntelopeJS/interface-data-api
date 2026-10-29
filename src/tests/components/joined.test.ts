@@ -6,7 +6,7 @@ import {
   DataController,
   DefaultRoutes,
   RegisterDataController,
-} from "@antelopejs/interface-data-api";
+} from "../../index";
 import {
   BasicDataModel,
   Field,
@@ -25,7 +25,7 @@ import {
   Listable,
   ModelReference,
   Sortable,
-} from "@antelopejs/interface-data-api/metadata";
+} from "../../metadata";
 
 import { type ListResponse, readJson } from "../internal/http";
 import {

@@ -7,7 +7,7 @@ import {
   DataController,
   DefaultRoutes,
   RegisterDataController,
-} from "@antelopejs/interface-data-api";
+} from "../../index";
 import {
   Access,
   AccessMode,
@@ -16,7 +16,7 @@ import {
   Joined,
   Listable,
   ModelReference,
-} from "@antelopejs/interface-data-api/metadata";
+} from "../../metadata";
 import {
   BasicDataModel,
   Field,

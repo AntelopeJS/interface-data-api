@@ -32,6 +32,7 @@ import {
 import * as computed from "./internal/computed";
 import { copyFilter, parseFilter } from "./internal/filters";
 import * as foreign from "./internal/foreign";
+import { isFunction, isString } from "./internal/guards";
 import * as joined from "./internal/joined";
 import * as list from "./internal/list";
 import * as properties from "./internal/properties";
@@ -85,6 +86,32 @@ export namespace Parameters {
       | `multi:${ConvertersKey}`
       | ((reqCtx: RequestContext, meta: DataAPIMeta) => any);
   };
+  function isConverterKey(name: string): name is ConvertersKey {
+    return Object.hasOwn(converters, name);
+  }
+
+  function converterOf(name: string) {
+    if (!isConverterKey(name)) {
+      throw new TypeError(`Unknown parameter converter "${name}"`);
+    }
+    return converters[name];
+  }
+
+  function extractFromSearchParams(
+    reqCtx: RequestContext,
+    key: string,
+    extractor: ConvertersKey | `multi:${ConvertersKey}`,
+  ) {
+    if (extractor.startsWith("multi:")) {
+      const name = extractor.substring(6);
+      return reqCtx.url.searchParams
+        .getAll(key)
+        .map((searchVal) => converterOf(name)(searchVal));
+    }
+    const searchVal = reqCtx.url.searchParams.get(key);
+    return searchVal === null ? undefined : converterOf(extractor)(searchVal);
+  }
+
   export function ExtractGeneric<T extends Record<string, any>>(
     reqCtx: RequestContext,
     meta: DataAPIMeta,
@@ -93,25 +120,13 @@ export namespace Parameters {
     const overrides = GetOptionOverrides<T>(reqCtx);
     const result: Partial<T> = { ...overrides };
     for (const key of Object.keys(dynamic)) {
-      if (!(key in result) || dynamic[key] === ExtractFilters) {
-        const extractor = dynamic[key];
-        if (typeof extractor === "string") {
-          if (extractor.startsWith("multi:")) {
-            const converter = converters[<ConvertersKey>extractor.substring(6)];
-            result[key as keyof T] = reqCtx.url.searchParams
-              .getAll(key)
-              .map((searchVal) => converter(searchVal)) as any;
-          } else {
-            const searchVal = reqCtx.url.searchParams.get(key);
-            if (searchVal !== null) {
-              result[key as keyof T] = converters[<ConvertersKey>extractor](
-                searchVal,
-              ) as any;
-            }
-          }
-        } else {
-          result[key as keyof T] = extractor(reqCtx, meta);
-        }
+      const extractor = dynamic[key];
+      if (key in result && extractor !== ExtractFilters) continue;
+      if (isString(extractor)) {
+        const value = extractFromSearchParams(reqCtx, key, extractor);
+        if (value !== undefined) result[key as keyof T] = value as any;
+      } else {
+        result[key as keyof T] = extractor(reqCtx, meta);
       }
     }
     return result;
@@ -178,7 +193,7 @@ export namespace Parameters {
         },
       );
 
-      assert(params.id && typeof params.id === "string", 400, "Missing id.");
+      assert(params.id && isString(params.id), 400, "Missing id.");
 
       return params;
     }),
@@ -216,7 +231,7 @@ export namespace Parameters {
         },
       );
 
-      assert(params.id && typeof params.id === "string", 400, "Missing id.");
+      assert(params.id && isString(params.id), 400, "Missing id.");
 
       return params;
     }),
@@ -345,7 +360,7 @@ export namespace Query {
         continue;
       }
       const val = field.desc?.get?.apply(instance);
-      res[key] = await (typeof val === "function" ? val() : val);
+      res[key] = await (isFunction(val) ? val() : val);
     }
     return res;
   }

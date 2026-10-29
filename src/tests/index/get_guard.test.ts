@@ -1,16 +1,12 @@
 import { expect } from "chai";
 import { Controller } from "@antelopejs/interface-api";
 import { assert } from "@antelopejs/interface-api-util";
-import {
-  Access,
-  AccessMode,
-  ModelReference,
-} from "@antelopejs/interface-data-api/metadata";
+import { Access, AccessMode, ModelReference } from "../../metadata";
 import {
   DataController,
   DefaultRoutes,
   RegisterDataController,
-} from "@antelopejs/interface-data-api";
+} from "../../index";
 import {
   BasicDataModel,
   Field,
