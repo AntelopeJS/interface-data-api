@@ -1,5 +1,39 @@
 # Changelog
 
+## v0.5.0
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.4.0...v0.5.0)
+
+### 🚀 Enhancements
+
+- **data-api:** ⚠️  Tighten the published contract ([#54](https://github.com/AntelopeJS/interface-data-api/pull/54))
+
+### 💅 Refactors
+
+- Clean the repo with the guardrail pack ([#51](https://github.com/AntelopeJS/interface-data-api/pull/51))
+- Clear avoidable findings with pack 0.2.11 ([#53](https://github.com/AntelopeJS/interface-data-api/pull/53))
+
+### 📖 Documentation
+
+- **changelog:** Upgrade notes of interface-data-api 0.4.0 ([#46](https://github.com/AntelopeJS/interface-data-api/pull/46))
+
+### 🏡 Chore
+
+- Adopt the guardrail pack from tooling-configs 0.2.0 ([#47](https://github.com/AntelopeJS/interface-data-api/pull/47))
+- Configure Renovate with the shared preset ([#48](https://github.com/AntelopeJS/interface-data-api/pull/48))
+
+### ✅ Tests
+
+- **skills:** Add eval cases for data-api-interface ([#49](https://github.com/AntelopeJS/interface-data-api/pull/49))
+
+#### ⚠️ Breaking Changes
+
+- **data-api:** ⚠️  Tighten the published contract ([#54](https://github.com/AntelopeJS/interface-data-api/pull/54))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](http://github.com/Upd4ting))
+
 ## v0.4.0
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.3.0...v0.4.0)
