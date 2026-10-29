@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import type { RequestContext } from "@antelopejs/interface-api";
-import { Parameters } from "@antelopejs/interface-data-api/components";
-import { DataAPIMeta } from "@antelopejs/interface-data-api/metadata";
+import { Parameters } from "../../components";
+import { DataAPIMeta } from "../../metadata";
 
 import { createRequestContext } from "../internal/http";
 

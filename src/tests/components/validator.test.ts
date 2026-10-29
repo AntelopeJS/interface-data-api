@@ -5,13 +5,8 @@ import {
   DataController,
   DefaultRoutes,
   RegisterDataController,
-} from "@antelopejs/interface-data-api";
-import {
-  Access,
-  AccessMode,
-  ModelReference,
-  Validator,
-} from "@antelopejs/interface-data-api/metadata";
+} from "../../index";
+import { Access, AccessMode, ModelReference, Validator } from "../../metadata";
 import {
   BasicDataModel,
   Field,

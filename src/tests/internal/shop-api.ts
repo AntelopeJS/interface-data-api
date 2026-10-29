@@ -4,7 +4,7 @@ import {
   DataController,
   DefaultRoutes,
   RegisterDataController,
-} from "@antelopejs/interface-data-api";
+} from "../../index";
 import {
   Access,
   AccessMode,
@@ -13,7 +13,7 @@ import {
   ModelReference,
   Sortable,
   Validator,
-} from "@antelopejs/interface-data-api/metadata";
+} from "../../metadata";
 import { Model } from "@antelopejs/interface-database-decorators";
 
 import {

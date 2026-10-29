@@ -1,14 +1,14 @@
 import path from "node:path";
 import { assert, expect } from "chai";
 import { Controller } from "@antelopejs/interface-api";
-import { Query } from "@antelopejs/interface-data-api/components";
+import { Query } from "../../components";
 import { Schema } from "@antelopejs/interface-database";
 import {
   DataController,
   DefaultRoutes,
   GetDataControllerMeta,
   RegisterDataController,
-} from "@antelopejs/interface-data-api";
+} from "../../index";
 import {
   BasicDataModel,
   Field,
@@ -25,7 +25,7 @@ import {
   Listable,
   ModelReference,
   Sortable,
-} from "@antelopejs/interface-data-api/metadata";
+} from "../../metadata";
 
 import { createRequestContext } from "../internal/http";
 import { getSchemaInstance } from "../utils";

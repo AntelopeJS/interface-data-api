@@ -6,15 +6,15 @@ import {
   DataController,
   DefaultRoutes,
   RegisterDataController,
-} from "@antelopejs/interface-data-api";
-import { Validation } from "@antelopejs/interface-data-api/components";
+} from "../../index";
+import { Validation } from "../../components";
 import {
   Access,
   AccessMode,
   type FieldValidator,
   ModelReference,
   Validator,
-} from "@antelopejs/interface-data-api/metadata";
+} from "../../metadata";
 import {
   BasicDataModel,
   Field,

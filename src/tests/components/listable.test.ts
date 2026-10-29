@@ -6,14 +6,14 @@ import {
   DataController,
   DefaultRoutes,
   RegisterDataController,
-} from "@antelopejs/interface-data-api";
+} from "../../index";
 import {
   Access,
   AccessMode,
   Listable,
   ModelReference,
   Sortable,
-} from "@antelopejs/interface-data-api/metadata";
+} from "../../metadata";
 import {
   BasicDataModel,
   Field,
