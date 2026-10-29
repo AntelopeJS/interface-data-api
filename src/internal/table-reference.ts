@@ -8,6 +8,8 @@ import {
   type Table,
 } from "@antelopejs/interface-database-decorators";
 
+import { isString } from "./guards";
+
 interface ResolvedTableReference {
   tableName: string;
   tableClass?: Class<Table>;
@@ -26,7 +28,7 @@ export function resolveTableReference(
   explicitSchema: string | undefined,
   contextLabel: string,
 ): ResolvedTableReference {
-  if (typeof table !== "string") {
+  if (!isString(table)) {
     const inferred = readTableMetadata(table);
     const schemaName = explicitSchema ?? inferred.schemaName;
     const tableName = inferred.tableName;

@@ -25,6 +25,7 @@ import {
   type CreatedRow,
   validateObject,
 } from "../utils";
+import { isNumber, isString } from "../../internal/guards";
 
 const currentTestName = path
   .basename(__filename)
@@ -120,25 +121,23 @@ async function _createDataController(
     declare _id: string;
 
     @Access(AccessMode.ReadWrite)
-    @Validator((value) => typeof value === "string" && value.length >= 3)
+    @Validator((value) => isString(value) && value.length >= 3)
     declare name: string;
 
     @Access(AccessMode.ReadWrite)
-    @Validator((value) => typeof value === "number" && value >= 0)
+    @Validator((value) => isNumber(value) && value >= 0)
     declare price: number;
 
     @Access(AccessMode.ReadWrite)
     @Validator((value) => {
-      if (typeof value !== "string") return false;
+      if (!isString(value)) return false;
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       return emailRegex.test(value);
     })
     declare email: string;
 
     @Access(AccessMode.ReadWrite)
-    @Validator(
-      (value) => typeof value === "string" && !Number.isNaN(Date.parse(value)),
-    )
+    @Validator((value) => isString(value) && !Number.isNaN(Date.parse(value)))
     declare birthDate: Date;
 
     @Access(AccessMode.ReadWrite)
@@ -151,7 +150,7 @@ async function _createDataController(
     @Validator(
       (value) =>
         Array.isArray(value) &&
-        value.every((tag) => typeof tag === "string" && tag.length > 0),
+        value.every((tag) => isString(tag) && tag.length > 0),
     )
     declare tags: string[];
   }

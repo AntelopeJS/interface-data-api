@@ -33,6 +33,7 @@ import {
   rebuildPluck,
   targetJoinedFields,
 } from "./internal/meta-records";
+import { isString } from "./internal/guards";
 import { resolveTableReference } from "./internal/table-reference";
 
 export type {
@@ -99,63 +100,41 @@ export function FilterValuesOf(filter: FieldFilter): FilterValue[] {
  * Metadata Class containing the DataAPI information.
  */
 export class DataAPIMeta {
-  /**
-   * Key symbol.
-   */
+  /** Key symbol. */
   public static key = Symbol.for(
     "@antelopejs/interface-data-api/DataAPIMeta@1",
   );
 
   public readonly filters: Record<string, FilterFunction<any>> = {};
 
-  /**
-   * Fields information.
-   */
+  /** Fields information. */
   public readonly fields: Record<string, FieldData> = {};
 
-  /**
-   * Fields to pluck in listing endpoints.
-   */
+  /** Fields to pluck in listing endpoints. */
   public readonly pluck: Record<string, Set<string>> = {};
 
-  /**
-   * Key of the DataAPI class containing a database table instance.
-   */
+  /** Key of the DataAPI class containing a database table instance. */
   public modelKey?: string;
 
-  /**
-   * Keys of the DataAPI class containing database modifier keys.
-   */
+  /** Keys of the DataAPI class containing database modifier keys. */
   public modifierKeys = new Map<typeof ContainerModifier<any>, string>();
 
-  /**
-   * Schema name where the table is registered.
-   */
+  /** Schema name where the table is registered. */
   public schemaName!: string;
 
-  /**
-   * Database Schema class.
-   */
+  /** Database Schema class. */
   public tableClass!: Class;
 
-  /**
-   * Database Schema table name.
-   */
+  /** Database Schema table name. */
   public tableName!: string;
 
-  /**
-   * Readable fields.
-   */
+  /** Readable fields. */
   public readonly readable: Record<string, ReadableAccessFields> = {};
 
-  /**
-   * Writeable fields.
-   */
+  /** Writeable fields. */
   public readonly writable: Record<string, WritableAccessFields> = {};
 
-  /**
-   * Registered DataAPI endpoints.
-   */
+  /** Registered DataAPI endpoints. */
   public readonly endpoints: Record<string, DataControllerCallbackWithOptions> =
     {};
 
@@ -290,7 +269,6 @@ export class DataAPIMeta {
    * @param name Field name
    * @param active Sortable
    * @param noIndex Ignore database indexes
-   * @returns
    */
   public setSortable(name: string, active: boolean, noIndex?: boolean) {
     const field = this.field(name);
@@ -519,6 +497,16 @@ export class DataAPIMeta {
   }
 }
 
+/** Declares a decorated field; a symbol-named property declares none. */
+function onField(
+  target: { constructor: Class },
+  key: PropertyKey,
+  declare: (meta: DataAPIMeta, name: string) => void,
+) {
+  if (!isString(key)) return;
+  declare(GetMetadata(target.constructor, DataAPIMeta), key);
+}
+
 /**
  * Sets the access mode of a DataAPI field.
  *
@@ -532,9 +520,9 @@ export const Access = MakeMethodAndPropertyDecorator(
     mode: AccessMode,
     overrides?: Record<string, AccessMode>,
   ) => {
-    GetMetadata(target.constructor, DataAPIMeta)
-      .setDescriptor(key as string, desc)
-      .setMode(key as string, mode, overrides);
+    onField(target, key, (meta, name) =>
+      meta.setDescriptor(name, desc).setMode(name, mode, overrides),
+    );
   },
 );
 
@@ -551,13 +539,15 @@ export const Access = MakeMethodAndPropertyDecorator(
  */
 export const Listable = MakeMethodAndPropertyDecorator(
   (target, key, desc, requiredFields?: boolean | string[], mode?: string) => {
-    GetMetadata(target.constructor, DataAPIMeta)
-      .setDescriptor(key as string, desc)
-      .setListable(
-        key as string,
-        typeof requiredFields !== "undefined" ? requiredFields : true,
-        mode,
-      );
+    onField(target, key, (meta, name) =>
+      meta
+        .setDescriptor(name, desc)
+        .setListable(
+          name,
+          requiredFields === undefined ? true : requiredFields,
+          mode,
+        ),
+    );
   },
 );
 
@@ -568,9 +558,9 @@ export const Listable = MakeMethodAndPropertyDecorator(
  */
 export const Mandatory = MakeMethodAndPropertyDecorator(
   (target, key, desc, ...modes: string[]) => {
-    GetMetadata(target.constructor, DataAPIMeta)
-      .setDescriptor(key as string, desc)
-      .setMandatory(key as string, modes);
+    onField(target, key, (meta, name) =>
+      meta.setDescriptor(name, desc).setMandatory(name, modes),
+    );
   },
 );
 
@@ -580,9 +570,9 @@ export const Mandatory = MakeMethodAndPropertyDecorator(
  * This must be used on fields with no other decorators.
  */
 export const Optional = MakeMethodAndPropertyDecorator((target, key, desc) => {
-  GetMetadata(target.constructor, DataAPIMeta)
-    .setDescriptor(key as string, desc)
-    .setMandatory(key as string, []);
+  onField(target, key, (meta, name) =>
+    meta.setDescriptor(name, desc).setMandatory(name, []),
+  );
 });
 
 /**
@@ -592,9 +582,11 @@ export const Optional = MakeMethodAndPropertyDecorator((target, key, desc) => {
  */
 export const Sortable = MakeMethodAndPropertyDecorator(
   (target, key, desc, options?: { noIndex?: boolean }) => {
-    GetMetadata(target.constructor, DataAPIMeta)
-      .setDescriptor(key as string, desc)
-      .setSortable(key as string, true, options?.noIndex ?? false);
+    onField(target, key, (meta, name) =>
+      meta
+        .setDescriptor(name, desc)
+        .setSortable(name, true, options?.noIndex ?? false),
+    );
   },
 );
 
@@ -643,11 +635,7 @@ export const Joined = MakePropertyDecorator(
  */
 export const Computed = MakePropertyDecorator(
   (target, key, expr: ComputedExpression, options?: ComputedOptions) => {
-    GetMetadata(target.constructor, DataAPIMeta).setComputed(
-      key as string,
-      expr,
-      options,
-    );
+    onField(target, key, (meta, name) => meta.setComputed(name, expr, options));
   },
 );
 
@@ -691,9 +679,9 @@ export const Foreign = MakeMethodAndPropertyDecorator(
  */
 export const Validator = MakeMethodAndPropertyDecorator(
   (target, key, desc, validator: FieldValidator) => {
-    GetMetadata(target.constructor, DataAPIMeta)
-      .setDescriptor(key as string, desc)
-      .setValidator(key as string, validator);
+    onField(target, key, (meta, name) =>
+      meta.setDescriptor(name, desc).setValidator(name, validator),
+    );
   },
 );
 

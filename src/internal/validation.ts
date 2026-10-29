@@ -11,6 +11,7 @@ import {
 
 import type { Validation } from "../components";
 import type { DataAPIMeta } from "../metadata";
+import { isObject } from "./guards";
 
 type RequestBody = Validation.RequestBody;
 type WrittenBody = Validation.WrittenBody;
@@ -25,7 +26,7 @@ export function ParseBody(body: WrittenBody): RequestBody {
     }
   }
   assert(
-    typeof data === "object" && data !== null && !Array.isArray(data),
+    isObject(data) && !Array.isArray(data),
     400,
     "The request body must be a JSON object.",
   );
@@ -34,12 +35,7 @@ export function ParseBody(body: WrittenBody): RequestBody {
 
 export function Unlock(obj: any, meta: DataAPIMeta, dbData: any) {
   for (const [name, field] of Object.entries(meta.fields)) {
-    if (
-      field.foreign &&
-      dbData[name] &&
-      typeof dbData[name] === "object" &&
-      field.foreign[1]
-    ) {
+    if (field.foreign && isObject(dbData[name]) && field.foreign[1]) {
       const foreignSchema = field.foreign[1];
       dbData[name] = Array.isArray(dbData[name])
         ? dbData[name].map((entry) => fromDatabase(entry, foreignSchema))
@@ -50,11 +46,7 @@ export function Unlock(obj: any, meta: DataAPIMeta, dbData: any) {
     const key = obj[field];
     unlock(dbData, modifier, undefined, key);
     for (const [foreign, fieldData] of Object.entries(meta.fields)) {
-      if (
-        fieldData.foreign &&
-        dbData[foreign] &&
-        typeof dbData[foreign] === "object"
-      ) {
+      if (fieldData.foreign && isObject(dbData[foreign])) {
         unlock(dbData[foreign], modifier, undefined, key);
       }
     }
@@ -90,9 +82,10 @@ export function ClearInternal(
     for (const [name, { foreign }] of foreignFields) {
       if (
         foreign &&
-        entry[name] &&
-        typeof entry[name] === "object" &&
-        (!Array.isArray(entry[name]) || typeof entry[name][0] === "object")
+        isObject(entry[name]) &&
+        (!Array.isArray(entry[name]) ||
+          entry[name][0] === null ||
+          isObject(entry[name][0]))
       ) {
         const processForeign = (data: any) => {
           const plain = toPlainData(data);

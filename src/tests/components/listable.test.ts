@@ -32,6 +32,7 @@ import {
   request,
   validateObjectList,
 } from "../utils";
+import { isNumber, isString } from "../../internal/guards";
 
 const currentTestName = path
   .basename(__filename)
@@ -380,10 +381,10 @@ function _getSortedField(
         ? a.getTime() - b.getTime()
         : b.getTime() - a.getTime();
     }
-    if (typeof a === "number" && typeof b === "number") {
+    if (isNumber(a) && isNumber(b)) {
       return direction === "asc" ? a - b : b - a;
     }
-    if (typeof a === "string" && typeof b === "string") {
+    if (isString(a) && isString(b)) {
       return direction === "asc" ? a.localeCompare(b) : b.localeCompare(a);
     }
     return 0;

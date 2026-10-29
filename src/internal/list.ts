@@ -87,6 +87,10 @@ type FilterEntries = Array<
 >;
 type ListSorting = ListArguments["sorting"];
 
+/** The row a filter reads and a modified sort merges into. */
+type FilterRow = Parameters<DataAPIMeta["filters"][string]>[5];
+type FilterRowValue = FilterRow extends ValueProxy<infer Row> ? Row : never;
+
 /**
  * The rows {@link List} starts from: the index lookup serving the one field
  * filtered once with `eq` on a single-field index, else the whole table.
@@ -232,7 +236,7 @@ export function List<T extends Record<string, any>>(
               name,
               value,
               mode,
-              row as ValueProxy<Record<string, any>>,
+              row.cast<FilterRowValue>(),
             ),
           ),
         req,
@@ -247,14 +251,16 @@ export function List<T extends Record<string, any>>(
     filteredComputed: filtering.filteredComputed,
   });
   if (isModifiedSort && sortField) {
-    tmpRequest = (tmpRequest as unknown as Stream<Record<string, any>>)
+    tmpRequest = tmpRequest
+      .cast<FilterRowValue>()
       .map((row) =>
         row.merge({
           [MODIFIED_SORT_KEY]: UnlockRequest(obj, meta, row, sortField),
         }),
       )
       .orderBy(MODIFIED_SORT_KEY, sorting?.[1] ?? "asc")
-      .without(MODIFIED_SORT_KEY) as unknown as Stream<T>;
+      .without(MODIFIED_SORT_KEY)
+      .cast<T>();
   } else if (shouldSort && !shouldSort.indexed && sortField) {
     tmpRequest = tmpRequest.orderBy(sortField, sorting?.[1] ?? "asc");
   }
