@@ -121,14 +121,15 @@ export namespace Parameters {
     const overrides = GetOptionOverrides<T>(reqCtx);
     const result: Partial<T> = { ...overrides };
     for (const key of Object.keys(dynamic)) {
+      // SAFETY: key comes from Object.keys(dynamic), typed GenericParams<Partial<T>> (a mapped type over keyof T), so for a type-checked argument it is a keyof T; false only for a stray key on a non-literal argument, which is harmless as the key is only written on result.
+      const field = key as keyof T;
       const extractor = dynamic[key];
       if (key in result && extractor !== ExtractFilters) continue;
       if (isString(extractor)) {
         const value = extractFromSearchParams(reqCtx, key, extractor);
-        if (value !== undefined) result[key as keyof T] = value as any;
+        if (value !== undefined) result[field] = value as any;
       } else {
-        // SAFETY: key comes from Object.keys(dynamic), typed GenericParams<Partial<T>> (a mapped type over keyof T), so for a type-checked argument it is a keyof T; false only for a stray key on a non-literal argument, which is harmless as the key is only written on result.
-        result[key as keyof T] = extractor(reqCtx, meta);
+        result[field] = extractor(reqCtx, meta);
       }
     }
     return result;

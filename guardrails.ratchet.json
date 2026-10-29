@@ -1,7 +1,7 @@
 {
   "rules": {
     "anti-slop/no-unsafe-dictionary-type": 3,
-    "anti-slop/require-safety-comment-for-type-assertion": 4,
+    "anti-slop/require-safety-comment-for-type-assertion": 3,
     "typescript/no-redundant-type-constituents": 1
   },
   "oversizeFiles": {}
