@@ -37,6 +37,7 @@ import { isString } from "./internal/guards";
 import * as joined from "./internal/joined";
 import * as list from "./internal/list";
 import * as properties from "./internal/properties";
+import { ReadProperties as readProperties } from "./internal/read-properties";
 import * as tables from "./internal/tables";
 import * as validation from "./internal/validation";
 
@@ -345,7 +346,7 @@ export namespace Query {
     action?: string,
     onlyList?: boolean,
   ) {
-    return properties.ReadProperties(obj, meta, dbData, action, onlyList);
+    return readProperties(obj, meta, dbData, action, onlyList);
   }
 
   /**
