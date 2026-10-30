@@ -2,6 +2,7 @@
 
 import type { Query } from "../components";
 import type { DataAPIMeta, WritableAccessFields } from "../metadata";
+import { prototypeOf } from "./prototypes";
 
 function writableInBody(
   writable: WritableAccessFields,
@@ -43,7 +44,7 @@ export function WriteProperties(
   const instance = { ...obj };
   const dbData: Exclude<typeof existingDBData, undefined> =
     existingDBData || {};
-  Object.setPrototypeOf(dbData, meta.tableClass.prototype);
+  Object.setPrototypeOf(dbData, prototypeOf(meta.tableClass));
   if (!existingDBData) {
     writeTargetDefaults(instance, meta, dbData);
   }
@@ -52,7 +53,7 @@ export function WriteProperties(
     dbData[field.dbName || key] = bodyData[key];
   }
   instance.table = dbData;
-  Object.setPrototypeOf(instance, meta.target.prototype);
+  Object.setPrototypeOf(instance, prototypeOf(meta.target));
   for (const [key, field] of writable.setters) {
     field.desc?.set?.apply(instance, [bodyData[key]]);
   }

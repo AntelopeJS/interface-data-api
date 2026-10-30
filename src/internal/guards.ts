@@ -51,7 +51,7 @@ export function isFieldValue(value: unknown): value is FieldValue {
     if (isBoolean(current) || current instanceof Date) continue;
     if (!isObject(current) || ancestors.has(current)) return false;
     const isArray = Array.isArray(current);
-    const prototype = Object.getPrototypeOf(current);
+    const prototype: unknown = Object.getPrototypeOf(current);
     if (!isArray && prototype !== Object.prototype && prototype !== null) {
       return false;
     }

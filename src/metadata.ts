@@ -165,7 +165,7 @@ export class DataAPIMeta {
   }
 
   private field(name: string) {
-    if (!(name in this.fields)) {
+    if (!Object.hasOwn(this.fields, name)) {
       this.fields[name] = {};
     }
     return this.fields[name];
@@ -183,34 +183,37 @@ export class DataAPIMeta {
       delete this.writable[key];
     }
 
-    const actions = new Set<string>([DEFAULT_ACTION]);
-    for (const field of Object.values(this.fields)) {
-      if (field.modeOverrides) {
-        for (const action of Object.keys(field.modeOverrides)) {
-          actions.add(action);
-        }
-      }
-    }
+    const actions = new Set([
+      DEFAULT_ACTION,
+      ...Object.values(this.fields).flatMap((field) =>
+        Object.keys(field.modeOverrides ?? {}),
+      ),
+    ]);
 
+    const access = new Map<
+      string,
+      [ReadableAccessFields, WritableAccessFields]
+    >();
     for (const action of actions) {
-      this.readable[action] = { getters: [], props: [] };
-      this.writable[action] = { setters: [], props: [] };
+      const readable: ReadableAccessFields = { getters: [], props: [] };
+      const writable: WritableAccessFields = { setters: [], props: [] };
+      this.readable[action] = readable;
+      this.writable[action] = writable;
+      access.set(action, [readable, writable]);
     }
 
     for (const [key, field] of Object.entries(this.fields)) {
-      for (const action of actions) {
+      for (const [action, [readable, writable]] of access) {
         const effectiveMode = GetEffectiveMode(field, action);
         if (!effectiveMode) {
           continue;
         }
 
         if (effectiveMode & AccessMode.ReadOnly) {
-          const target = field.desc?.get ? "getters" : "props";
-          this.readable[action][target].push([key, field]);
+          readable[field.desc?.get ? "getters" : "props"].push([key, field]);
         }
         if (effectiveMode & AccessMode.WriteOnly) {
-          const target = field.desc?.set ? "setters" : "props";
-          this.writable[action][target].push([key, field]);
+          writable[field.desc?.set ? "setters" : "props"].push([key, field]);
         }
       }
     }

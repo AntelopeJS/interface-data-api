@@ -86,7 +86,15 @@ export function Computed(
   }
   const mappers = buildComputedMappers(db, entries);
   if (IsStream(query)) {
-    return mappers.reduce((stream, mapper) => stream.map(mapper), query);
+    let stream = query;
+    for (const mapper of mappers) {
+      stream = stream.map(mapper);
+    }
+    return stream;
   }
-  return mappers.reduce((datum, mapper) => datum.do(mapper), query);
+  let datum = query;
+  for (const mapper of mappers) {
+    datum = datum.do(mapper);
+  }
+  return datum;
 }

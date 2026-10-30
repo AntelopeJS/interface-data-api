@@ -22,6 +22,7 @@ import {
 } from "@antelopejs/interface-api";
 
 import { Parameters, Query, Validation } from "./components";
+import { prototypeOf } from "./internal/prototypes";
 import {
   DataAPIMeta,
   type DataControllerCallback,
@@ -84,7 +85,7 @@ export function DataController<
     c.prototype[key] = entry.callback.func;
   }
   // SAFETY: for every own key of def, the loop above installs the function ExtractCallback<P[key]> names (def[key].func, or def[key].callback.func for an entry with options) on c.prototype, which covers the members of ExtractDefCallbacks<P>; c extends base and declares table itself.
-  return c as any;
+  return c as Class<ExtractDefCallbacks<P> & TableHolder<C>> & Base;
 }
 
 export const RegisterDataController =
@@ -115,7 +116,7 @@ export const RegisterDataController =
         mode: "prefix",
         parameters: [{ provider: (ctx) => ctx, modifiers: [] }],
         properties: meta.computed_props,
-        proto: target.prototype,
+        proto: prototypeOf(target),
       });
       Route("handler", entry.callback.method, entry.endpoint)(
         target.prototype,

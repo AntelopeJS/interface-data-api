@@ -57,8 +57,7 @@ describe("Validation.ParseBody", () => {
     expect(statusOfRefusal(nested)).to.equal(400);
   });
   it("accepts a body without a prototype", () => {
-    const bare = Object.create(null);
-    bare.name = "a";
+    const bare: FieldValues = { __proto__: null, name: "a" };
     expect(Validation.ParseBody(bare)).to.equal(bare);
   });
   it("refuses a parsed body holding what JSON cannot", () => {

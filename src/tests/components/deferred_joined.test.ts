@@ -189,9 +189,7 @@ async function _seedTables(): Promise<ListHarness> {
   ];
   await bookModel.insert(booksDataset);
 
-  const thisObj: _DeferredJoinedTestAPI = Object.create(
-    _DeferredJoinedTestAPI.prototype,
-  );
+  const thisObj = new _DeferredJoinedTestAPI();
   return { thisObj, model: bookModel };
 }
 

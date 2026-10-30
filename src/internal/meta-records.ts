@@ -8,7 +8,7 @@ export function merge<Value>(
   dst: Record<string, Value>,
 ) {
   for (const key in src) {
-    if (!(key in dst)) {
+    if (!Object.hasOwn(dst, key)) {
       dst[key] = src[key];
     }
   }
@@ -25,11 +25,11 @@ export function rebuildPluck(
   for (const [_, field] of Object.entries(fields)) {
     if (field.listable) {
       for (const [mode, names] of Object.entries(field.listable)) {
-        if (!(mode in pluck)) {
-          pluck[mode] = new Set();
-        }
+        const modeNames = Object.hasOwn(pluck, mode) ? pluck[mode] : undefined;
+        const set = modeNames ?? new Set<string>();
+        pluck[mode] = set;
         for (const name of names) {
-          pluck[mode].add(name);
+          set.add(name);
         }
       }
     }
