@@ -408,7 +408,7 @@ async function expectNameAscending() {
   const data = await readJson<ListResponse<ProductListed>>(response);
   expect(data.results).to.have.length(defaultProductDataset.length);
 
-  const sortedNames = data.results.map((product: any) => product.name);
+  const sortedNames = data.results.map((product) => product.name);
   const expectedNames = _getSortedField(defaultProductDataset, "name", "asc");
   expect(sortedNames).to.deep.equal(expectedNames);
 }
@@ -428,7 +428,7 @@ async function expectNameDescending() {
   const data = await readJson<ListResponse<ProductListed>>(response);
   expect(data.results).to.have.length(defaultProductDataset.length);
 
-  const sortedNames = data.results.map((product: any) => product.name);
+  const sortedNames = data.results.map((product) => product.name);
   const expectedNames = _getSortedField(defaultProductDataset, "name", "desc");
   expect(sortedNames).to.deep.equal(expectedNames);
 }
@@ -448,7 +448,7 @@ async function expectPriceAscending() {
   const data = await readJson<ListResponse<ProductListed>>(response);
   expect(data.results).to.have.length(defaultProductDataset.length);
 
-  const sortedPrices = data.results.map((product: any) => product.price);
+  const sortedPrices = data.results.map((product) => product.price);
   const expectedPrices = _getSortedField(defaultProductDataset, "price", "asc");
   expect(sortedPrices).to.deep.equal(expectedPrices);
 }
@@ -468,7 +468,7 @@ async function expectPriceDescending() {
   const data = await readJson<ListResponse<ProductListed>>(response);
   expect(data.results).to.have.length(defaultProductDataset.length);
 
-  const sortedPrices = data.results.map((product: any) => product.price);
+  const sortedPrices = data.results.map((product) => product.price);
   const expectedPrices = _getSortedField(
     defaultProductDataset,
     "price",
@@ -491,7 +491,7 @@ async function expectAddedAtAscending() {
   expect(response.status).to.equal(200);
   const data = await readJson<ListResponse<ProductListed>>(response);
   expect(data.results).to.have.length(defaultProductDataset.length);
-  const sortedDates = data.results.map((product: any) =>
+  const sortedDates = data.results.map((product) =>
     new Date(product.addedAt).getTime(),
   );
   const expectedDates = _getSortedField(defaultProductDataset, "addedAt", "asc")
@@ -515,7 +515,7 @@ async function expectAddedAtDescending() {
   const data = await readJson<ListResponse<ProductListed>>(response);
   expect(data.results).to.have.length(defaultProductDataset.length);
 
-  const sortedDates = data.results.map((product: any) =>
+  const sortedDates = data.results.map((product) =>
     new Date(product.addedAt).getTime(),
   );
   const expectedDates = _getSortedField(

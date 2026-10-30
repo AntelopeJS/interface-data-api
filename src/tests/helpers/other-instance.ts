@@ -34,7 +34,8 @@ export function CreateOtherInstance(folders: string[]): ModuleRequire {
     const loaded = new InternalModule(filename, parent);
     loaded.filename = filename;
     loaded.paths = InternalModule._nodeModulePaths(path.dirname(filename));
-    loaded.require = (request: string) => requireFrom(loaded, request);
+    loaded.require = (request: string): Module["exports"] =>
+      requireFrom(loaded, request);
     modules.set(filename, loaded);
     loaded.load(filename);
     return loaded.exports;
@@ -48,7 +49,7 @@ export function CreateOtherInstance(folders: string[]): ModuleRequire {
       : Module.prototype.require.call(parent, request);
   };
 
-  return (request: string) => requireFrom(module, request);
+  return (request: string): Module["exports"] => requireFrom(module, request);
 }
 
 function exportsAllOf<Exports extends object>(

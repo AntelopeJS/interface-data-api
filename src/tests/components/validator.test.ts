@@ -26,6 +26,7 @@ import {
   validateObject,
 } from "../utils";
 import { isNumber, isString } from "../../internal/guards";
+import type { FieldValue } from "../../metadata";
 
 const currentTestName = path
   .basename(__filename)
@@ -173,7 +174,7 @@ interface IncorrectScenario {
 function createIncorrectValidator(
   testName: string,
   fieldName: string,
-  invalidValue: any,
+  invalidValue: FieldValue,
   requestFunction: (
     testName: string,
     data: any,
@@ -250,7 +251,7 @@ function createCorrectValidator(
 function createIncorrectValidatorEdit(
   testName: string,
   fieldName: string,
-  invalidValue: any,
+  invalidValue: FieldValue,
   requestFunction: (testName: string, data: any) => Promise<Response>,
 ) {
   return createIncorrectValidator(
@@ -269,7 +270,7 @@ function createIncorrectValidatorEdit(
 function createIncorrectValidatorNew(
   testName: string,
   fieldName: string,
-  invalidValue: any,
+  invalidValue: FieldValue,
   requestFunction: (testName: string, data: any) => Promise<Response>,
 ) {
   return createIncorrectValidator(
