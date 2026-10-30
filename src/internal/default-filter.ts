@@ -9,7 +9,7 @@ import type { DataAPIMeta } from "../metadata";
 import type { Comparison, FilterValue } from "./field-types";
 
 type ProxyFilterOperator = (
-  proxy: ValueProxy<string>,
+  proxy: ValueProxy<any>,
   value: string,
 ) => ValueProxyOrValue<boolean>;
 
@@ -27,7 +27,7 @@ const DEFAULT_FILTER_OPERATORS: DefaultFilterOperators = {
 };
 
 function applyDefaultFilterMode(
-  proxy: ValueProxy<string>,
+  proxy: ValueProxy<any>,
   value: string,
   mode: FilterValue[1],
 ): ValueProxyOrValue<boolean> {
