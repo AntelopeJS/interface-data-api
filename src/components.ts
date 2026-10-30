@@ -33,7 +33,7 @@ import {
 import * as computed from "./internal/computed";
 import { copyFilter, parseFilter } from "./internal/filters";
 import * as foreign from "./internal/foreign";
-import { isFunction, isString } from "./internal/guards";
+import { isString } from "./internal/guards";
 import * as joined from "./internal/joined";
 import * as list from "./internal/list";
 import * as properties from "./internal/properties";
@@ -345,27 +345,7 @@ export namespace Query {
     action?: string,
     onlyList?: boolean,
   ) {
-    const readable =
-      meta.readable[action ?? "_default"] ?? meta.readable._default;
-    const instance = { ...obj };
-    const res: FieldValues = {};
-    for (const [key, field] of readable.props) {
-      if (onlyList && !field.listable) {
-        continue;
-      }
-      instance[key] = dbData[field.dbName || key];
-      res[key] = dbData[field.dbName || key];
-    }
-    instance.table = dbData;
-    Object.setPrototypeOf(instance, meta.target.prototype);
-    for (const [key, field] of readable.getters) {
-      if (onlyList && !field.listable) {
-        continue;
-      }
-      const val = field.desc?.get?.apply(instance);
-      res[key] = await (isFunction(val) ? val() : val);
-    }
-    return res;
+    return properties.ReadProperties(obj, meta, dbData, action, onlyList);
   }
 
   /**
