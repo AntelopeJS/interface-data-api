@@ -91,6 +91,16 @@ type ListSorting = ListArguments["sorting"];
 type FilterRow = Parameters<DataAPIMeta["filters"][string]>[5];
 type FilterRowValue = FilterRow extends ValueProxy<infer Row> ? Row : never;
 
+/** The filters a request holds for a field, none when it holds none. */
+function filterValuesIn(
+  filters: Record<string, FieldFilter> | undefined,
+  field: string,
+) {
+  return filters && Object.hasOwn(filters, field)
+    ? FilterValuesOf(filters[field])
+    : [];
+}
+
 /**
  * The rows {@link List} starts from: the index lookup serving the one field
  * filtered once with `eq` on a single-field index, else the whole table.
@@ -102,7 +112,7 @@ function indexedSource<T extends Record<string, any>>(
   filters?: Record<string, FieldFilter>,
 ) {
   const indexed = filterList.find(([field]) => {
-    const fieldFilters = filters ? FilterValuesOf(filters[field]) : [];
+    const fieldFilters = filterValuesIn(filters, field);
     return (
       fieldFilters.length === 1 &&
       fieldFilters[0][1] === "eq" &&
@@ -112,9 +122,7 @@ function indexedSource<T extends Record<string, any>>(
   const indexName = indexed
     ? meta.fields[indexed].dbName || indexed
     : undefined;
-  const equality = indexed
-    ? FilterValuesOf(filters?.[indexed] ?? [])[0]
-    : undefined;
+  const equality = indexed ? filterValuesIn(filters, indexed)[0] : undefined;
   const source: Stream<T> = indexName
     ? request.getAll(equality?.[0] ?? "", indexName)
     : request;
