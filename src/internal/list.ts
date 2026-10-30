@@ -216,7 +216,7 @@ export function List<T extends Record<string, any>>(
   { sorting, filters, db, options }: ListArguments,
 ): [sorted: Stream<T>, total: Datum<number>, deferredJoined: Set<string>] {
   const filterList = Object.entries(meta.filters).filter(
-    ([name]) => filters && name in filters,
+    ([name]) => filters && Object.hasOwn(filters, name),
   );
   const { indexFilter, source } = indexedSource(
     meta,
@@ -283,7 +283,9 @@ function pageComputedFields(
   options: ListPageOptions,
 ): Set<string> {
   const merged = new Set(
-    Object.keys(options.filters ?? {}).filter((name) => name in meta.filters),
+    Object.keys(options.filters ?? {}).filter((name) =>
+      Object.hasOwn(meta.filters, name),
+    ),
   );
   if (options.sortKey) merged.add(options.sortKey);
   const names = Object.entries(meta.fields)

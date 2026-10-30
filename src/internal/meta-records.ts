@@ -14,6 +14,14 @@ export function merge<Value>(
   }
 }
 
+/** The entry `table` holds under `key` itself, not one it inherits. */
+export function ownEntry<Value>(
+  table: Record<string, Value>,
+  key: string,
+): Value | undefined {
+  return Object.hasOwn(table, key) ? table[key] : undefined;
+}
+
 /** Rebuilds the fields each list mode plucks from the fields' listable modes. */
 export function rebuildPluck(
   pluck: Record<string, Set<string>>,
