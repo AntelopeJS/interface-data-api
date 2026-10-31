@@ -139,7 +139,12 @@ export class DataAPIMeta {
   public readonly endpoints: Record<string, DataControllerCallbackWithOptions> =
     {};
 
-  constructor(public readonly target: Class<object>) {}
+  /** The controller class. */
+  public readonly target: Class<object>;
+
+  constructor(target: Class) {
+    this.target = target;
+  }
 
   public inherit(parent: DataAPIMeta) {
     merge(parent.filters, this.filters);
