@@ -119,7 +119,7 @@ The controller serves `GET /tasks/get?id=`, `GET /tasks/list`, `POST /tasks/new`
 
 ## Compatibility
 
-Use with `@antelopejs/core` 1.x and the following peer dependencies:
+The package declares these `@antelopejs/*` peer dependencies:
 
 <!-- antelopejs-docs-compat:start -->
 
