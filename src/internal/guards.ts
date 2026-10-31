@@ -1,8 +1,12 @@
 /** @internal @packageDocumentation */
 
 import type { Class } from "@antelopejs/interface-core/decorators";
+import type {
+  WriteDocument,
+  WriteValue,
+} from "@antelopejs/interface-database/common";
 
-import type { FieldValue, FieldValues } from "./field-types";
+import type { FieldValue, FieldValues, RowFields } from "./field-types";
 
 /** Whether a value is a string. */
 export function isString(value: unknown): value is string {
@@ -80,4 +84,33 @@ export function isFieldValues(value: unknown): value is FieldValues {
     !Array.isArray(value) &&
     !(value instanceof Date)
   );
+}
+
+/** The `typeof` answers of the primitives a {@link WriteValue} may be. */
+const STORED_PRIMITIVES = new Set(["string", "number", "boolean", "undefined"]);
+
+/**
+ * Whether a value is a {@link WriteValue}: `null`, text, a number, a boolean,
+ * `undefined`, or an object whose own enumerable values are write values, all
+ * the way down. A `bigint`, a `symbol` or a function anywhere fails. An object
+ * is read by its own values whatever its prototype, as the type reads it, and
+ * an object met again, as in a cycle, is read once.
+ */
+export function isWriteValue(value: unknown): value is WriteValue {
+  const seen = new Set<object>();
+  const pending: unknown[] = [value];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (current === null || STORED_PRIMITIVES.has(typeof current)) continue;
+    if (!isObject(current)) return false;
+    if (seen.has(current)) continue;
+    seen.add(current);
+    for (const member of Object.values(current)) pending.push(member);
+  }
+  return true;
+}
+
+/** Whether every own field of a row holds a {@link WriteValue}. */
+export function isWriteDocument(row: RowFields): row is WriteDocument {
+  return Object.values(row).every(isWriteValue);
 }
