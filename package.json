@@ -104,7 +104,7 @@
     "@antelopejs/interface-database": ">=0.1.10 <1.0.0",
     "@antelopejs/interface-database-decorators": ">=0.1.10 <1.0.0"
   },
-  "packageManager": "pnpm@10.6.5",
+  "packageManager": "pnpm@10.33.0",
   "antelopeJs": {
     "standalone": true,
     "test": "src/antelope.test.ts",
