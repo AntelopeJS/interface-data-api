@@ -1,5 +1,7 @@
 /** @internal @packageDocumentation */
 
+import type { Class } from "@antelopejs/interface-core/decorators";
+
 import type { FieldValue, FieldValues } from "./field-types";
 
 /** Whether a value is a string. */
@@ -15,6 +17,11 @@ export function isObject(value: unknown): value is object {
 /** Whether a value is a function, whatever its parameters. */
 export function isFunction(value: unknown): value is Function {
   return typeof value === "function";
+}
+
+/** Whether a value is a class: a function, which `new` may call. */
+export function isClass(value: unknown): value is Class<object> {
+  return isFunction(value);
 }
 
 /** Whether a value is a number. */

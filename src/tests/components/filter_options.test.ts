@@ -21,9 +21,9 @@ function context(
 function extract(ctx: RequestContext) {
   return Parameters.ExtractGeneric<Parameters.ListParameters>(ctx, meta, {
     filters: Parameters.ExtractFilters,
-    limit: "int",
-    offset: "int",
-    sortKey: "string",
+    limit: Parameters.FromSearch.int,
+    offset: Parameters.FromSearch.int,
+    sortKey: Parameters.FromSearch.string,
   });
 }
 

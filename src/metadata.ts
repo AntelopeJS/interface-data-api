@@ -11,7 +11,10 @@ import {
   MakePropertyDecorator,
 } from "@antelopejs/interface-core/decorators";
 
-import type { DataControllerCallbackWithOptions } from "./internal/controller-types";
+import type {
+  DataControllerCallbackWithOptions,
+  DataControllerInstance,
+} from "./internal/controller-types";
 import {
   createDefaultFilter,
   type DefaultFilterFunction,
@@ -21,8 +24,6 @@ import type {
   FieldData,
   ComputedExpression,
   ComputedOptions,
-  FilterValue,
-  FieldFilter,
   FilterFunction,
   ForeignOptions,
   ReadableAccessFields,
@@ -36,11 +37,14 @@ import {
   targetJoinedFields,
 } from "./internal/meta-records";
 import { isString } from "./internal/guards";
+import { classOf } from "./internal/prototypes";
 import { resolveTableReference } from "./internal/table-reference";
 
+export { FilterValuesOf } from "./internal/filters";
 export type {
   DataControllerCallback,
   DataControllerCallbackWithOptions,
+  DataControllerInstance,
   ExtractCallback,
   DataControllerDef,
   ExtractDefCallbacks,
@@ -53,6 +57,7 @@ export type {
   FieldValidationResult,
   FieldValue,
   FieldValues,
+  RowFields,
   ForeignOptions,
   FieldValidator,
   FieldData,
@@ -92,15 +97,6 @@ export function GetEffectiveMode(
   return field.modeOverrides?.[action] ?? field.mode;
 }
 
-function isFilterList(filter: FieldFilter): filter is FilterValue[] {
-  return Array.isArray(filter[0]);
-}
-
-/** The filters of one field as a list, whether it holds one or several. */
-export function FilterValuesOf(filter: FieldFilter): FilterValue[] {
-  return isFilterList(filter) ? filter : [filter];
-}
-
 /**
  * Metadata Class containing the DataAPI information.
  */
@@ -119,10 +115,10 @@ export class DataAPIMeta {
   public readonly pluck: Record<string, Set<string>> = {};
 
   /** Key of the DataAPI class containing a database table instance. */
-  public modelKey?: PropertyKey;
+  public modelKey?: string;
 
   /** Keys of the DataAPI class containing database modifier keys. */
-  public modifierKeys = new Map<typeof ContainerModifier<any>, PropertyKey>();
+  public modifierKeys = new Map<typeof ContainerModifier<any>, string>();
 
   /** Schema name where the table is registered. */
   public schemaName!: string;
@@ -143,7 +139,7 @@ export class DataAPIMeta {
   public readonly endpoints: Record<string, DataControllerCallbackWithOptions> =
     {};
 
-  constructor(public readonly target: Class) {}
+  constructor(public readonly target: Class<object>) {}
 
   public inherit(parent: DataAPIMeta) {
     merge(parent.filters, this.filters);
@@ -464,7 +460,7 @@ export class DataAPIMeta {
    *
    * @param name Field name
    */
-  public setModelKey(name: PropertyKey) {
+  public setModelKey(name: string) {
     this.modelKey = name;
     return this;
   }
@@ -476,7 +472,7 @@ export class DataAPIMeta {
    * @param modifierClass Modifier
    */
   public setModifierKey(
-    name: PropertyKey,
+    name: string,
     modifierClass: typeof ContainerModifier<any>,
   ) {
     this.modifierKeys.set(modifierClass, name);
@@ -710,7 +706,7 @@ export function Filter<T extends Record<string, any>>(
  * Sets which field will contain the reference to the database model instance.
  */
 export const ModelReference = MakePropertyDecorator((target, key) => {
-  GetMetadata(target.constructor, DataAPIMeta).setModelKey(key);
+  onField(target, key, (meta, name) => meta.setModelKey(name));
 });
 
 /**
@@ -720,17 +716,14 @@ export const ModelReference = MakePropertyDecorator((target, key) => {
  */
 export const ModifierKey = MakePropertyDecorator(
   (target, key, modifierClass: typeof ContainerModifier<any>) => {
-    GetMetadata(target.constructor, DataAPIMeta).setModifierKey(
-      key,
-      modifierClass,
+    onField(target, key, (meta, name) =>
+      meta.setModifierKey(name, modifierClass),
     );
   },
 );
 
-export function GetDataControllerMeta(thisObj: any): DataAPIMeta {
-  return GetMetadata(
-    Object.getPrototypeOf(thisObj).constructor,
-    DataAPIMeta,
-    true,
-  );
+export function GetDataControllerMeta(
+  thisObj: DataControllerInstance,
+): DataAPIMeta {
+  return GetMetadata(classOf(thisObj), DataAPIMeta, true);
 }

@@ -14,6 +14,7 @@ import { ModifiersStaticMetadata } from "@antelopejs/interface-database-decorato
 import type { Query } from "../components";
 import {
   type DataAPIMeta,
+  type DataControllerInstance,
   type FieldFilter,
   FilterValuesOf,
 } from "../metadata";
@@ -209,7 +210,7 @@ function materializeSortFields<T extends Record<string, any>>(
 }
 
 export function List<T extends Record<string, any>>(
-  obj: any,
+  obj: DataControllerInstance,
   meta: DataAPIMeta,
   request: Table<T>,
   reqCtx: RequestContext,

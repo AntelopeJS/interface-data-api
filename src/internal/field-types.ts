@@ -42,6 +42,15 @@ export interface FieldValues {
   [field: string]: FieldValue | undefined;
 }
 
+/**
+ * The fields of a table row a route holds, by name. The table class decides
+ * what they hold: a relation holds a row instance, and a getter's result is
+ * what the getter returned. Read a field through a guard.
+ */
+export interface RowFields {
+  [field: string]: unknown;
+}
+
 /** Parse outcome accepting the field value, carrying the value to write. */
 export interface FieldParseSuccess {
   success: true;
@@ -176,13 +185,14 @@ export interface FieldData {
  * In-database computed field expression.
  *
  * Receives the row proxy and the schema instance of the controller's table.
- * May return a row-local expression (built from `row`) or a per-row subquery
- * (ex: an aggregate over another table).
+ * May return a row-local expression (built from `row`), a per-row subquery
+ * (ex: an aggregate over another table), or a constant. A value proxy is
+ * invariant in its value, so the proxy and the query take any value.
  */
 export type ComputedExpression = (
-  row: ValueProxy<Record<string, any>>,
+  row: ValueProxy<FieldValues>,
   db: SchemaInstance<any>,
-) => ValueProxyOrValue<unknown> | Query<unknown>;
+) => ValueProxy<any> | Query<any> | FieldValue;
 
 /**
  * Computed field options.
@@ -202,9 +212,16 @@ export interface ComputedFieldData extends ComputedOptions {
   expr: ComputedExpression;
 }
 
+/** The comparisons the default filter applies. */
 export type Comparison = "eq" | "ne" | "gt" | "ge" | "lt" | "le";
 
-export type FilterValue = [value: string, mode: Comparison];
+/**
+ * One filter of a list request: the value, and the mode to compare it with.
+ * The mode is text: what the request sent, or what the route wrote. The
+ * default filter refuses a mode that is not a {@link Comparison}. A custom
+ * filter defines its own modes.
+ */
+export type FilterValue = [value: string, mode: string];
 
 /**
  * The filters of one field in a list request: one {@link FilterValue}, or
@@ -217,7 +234,7 @@ export type FieldFilter = FilterValue | FilterValue[];
  */
 export type FilterFunction<
   T extends Record<string, any>,
-  U extends Record<string, any> = Record<string, any>,
+  U extends Record<string, any> = FieldValues,
 > = (
   context: RequestContext & { this: T },
   proxy: ValueProxy<any>,
