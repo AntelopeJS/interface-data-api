@@ -106,6 +106,7 @@ class _DeferredJoinedTestAPI extends DataController(
 
 interface BookListed {
   _id: string;
+  _internal?: unknown;
   authorId: string;
   title: string;
   name: string | null;

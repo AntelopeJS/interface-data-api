@@ -160,8 +160,9 @@ export function wrapDeferredJoined(
   names: Set<string>,
   raw: Stream<any>,
 ): Stream<any> {
-  const wrapped = new DeferredJoinedStream({ stage: "", args: [] });
-  Object.assign(wrapped, { stages: raw.build() });
+  const stages = raw.build();
+  const wrapped = new DeferredJoinedStream(stages[0]);
+  Object.assign(wrapped, { stages });
   wrapped.deferredJoin = { db, meta, names, raw };
   return wrapped;
 }
