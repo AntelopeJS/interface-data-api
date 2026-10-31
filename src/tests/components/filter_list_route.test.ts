@@ -24,7 +24,7 @@ import {
 } from "@antelopejs/interface-database-decorators";
 
 import { readJson } from "../internal/http";
-import { getSchemaInstance, listRequest } from "../utils";
+import { getSchemaInstance, listRequest, request } from "../utils";
 
 const currentTestName = path
   .basename(__filename)
@@ -125,6 +125,41 @@ describe("List route - filter comparisons", () => {
     const response = await listRequest("unknown-comparison", {
       filter_title: "like:alp",
     });
+
+    expect(response.status, await response.clone().text()).to.equal(400);
+  });
+
+  it("answers 400 for a comparison named like an Object.prototype member", async () => {
+    await createController("prototype-comparison");
+
+    for (const comparison of [
+      "constructor",
+      "toString",
+      "hasOwnProperty",
+      "valueOf",
+      "__proto__",
+    ]) {
+      const response = await listRequest("prototype-comparison", {
+        filter_title: `${comparison}:alpha`,
+      });
+
+      expect(response.status, comparison).to.equal(400);
+    }
+  });
+
+  it("answers 400 when one of several filters of a field is unknown", async () => {
+    await createController("several-comparisons");
+
+    const response = await request(
+      "several-comparisons",
+      "list",
+      "GET",
+      undefined,
+      [
+        ["filter_title", "ne:alpha"],
+        ["filter_title", "like:b"],
+      ],
+    );
 
     expect(response.status, await response.clone().text()).to.equal(400);
   });
