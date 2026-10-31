@@ -119,17 +119,17 @@ The controller serves `GET /tasks/get?id=`, `GET /tasks/list`, `POST /tasks/new`
 
 ## Compatibility
 
-Use with `@antelopejs/core` 1.x and the following peer dependencies:
+The package declares these `@antelopejs/*` peer dependencies:
 
 <!-- antelopejs-docs-compat:start -->
 
-| Package                                     | Supported         | Tested with                                                               |
-| ------------------------------------------- | ----------------- | ------------------------------------------------------------------------- |
-| `@antelopejs/interface-api`                 | `>=0.0.15 <1.0.0` | `0.0.15`                                                                  |
-| `@antelopejs/interface-api-util`            | `>=0.1.3 <1.0.0`  | `0.1.3`                                                                   |
-| `@antelopejs/interface-core`                | `>=0.2.4 <1.0.0`  | `0.2.4`                                                                   |
-| `@antelopejs/interface-database`            | `>=0.1.10 <1.0.0` | `file:.campaign/tgz/antelopejs-interface-database-4939b45.tgz`            |
-| `@antelopejs/interface-database-decorators` | `>=0.1.10 <1.0.0` | `file:.campaign/tgz/antelopejs-interface-database-decorators-d4f3b5a.tgz` |
+| Package                                     | Supported         | Tested with                                                    |
+| ------------------------------------------- | ----------------- | -------------------------------------------------------------- |
+| `@antelopejs/interface-api`                 | `>=0.0.15 <1.0.0` | `0.0.15`                                                       |
+| `@antelopejs/interface-api-util`            | `>=0.1.3 <1.0.0`  | `0.1.3`                                                        |
+| `@antelopejs/interface-core`                | `>=0.2.4 <1.0.0`  | `0.2.4`                                                        |
+| `@antelopejs/interface-database`            | `>=0.1.10 <1.0.0` | `file:.campaign/tgz/antelopejs-interface-database-6bef278.tgz` |
+| `@antelopejs/interface-database-decorators` | `>=0.1.10 <1.0.0` | `0.1.10`                                                       |
 
 <!-- antelopejs-docs-compat:end -->
 

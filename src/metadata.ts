@@ -31,6 +31,7 @@ import type {
 import {
   listedNames,
   merge,
+  ownEntry,
   rebuildPluck,
   targetJoinedFields,
 } from "./internal/meta-records";
@@ -448,7 +449,7 @@ export class DataAPIMeta {
     const field = this.field(name);
     if (useIndex) {
       const tableMeta = getMetadata(this.tableClass, DatumStaticMetadata);
-      const index = tableMeta.indexes[field.dbName ?? name];
+      const index = ownEntry(tableMeta.indexes, field.dbName ?? name);
       if (index && index.length === 1) {
         field.indexable = true;
       }
