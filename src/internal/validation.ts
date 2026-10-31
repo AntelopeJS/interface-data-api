@@ -135,7 +135,7 @@ export function ClearInternal(
               return null;
             }
           }
-          const plainPlucked: ReturnType<typeof toPlainData> = {};
+          const plainPlucked: RowFields = {};
           for (const key of foreign[4]) {
             const value: unknown = plain[key];
             plainPlucked[key] = value;
