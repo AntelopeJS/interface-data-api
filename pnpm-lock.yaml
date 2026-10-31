@@ -6,6 +6,7 @@ settings:
 
 overrides:
   '@antelopejs/interface-database': file:.campaign/tgz/antelopejs-interface-database-4939b45.tgz
+  '@antelopejs/interface-database-decorators': file:.campaign/tgz/antelopejs-interface-database-decorators-d4f3b5a.tgz
 
 importers:
 
@@ -14,6 +15,9 @@ importers:
       '@antelopejs/interface-database':
         specifier: file:.campaign/tgz/antelopejs-interface-database-4939b45.tgz
         version: file:.campaign/tgz/antelopejs-interface-database-4939b45.tgz(@antelopejs/interface-core@0.2.4)
+      '@antelopejs/interface-database-decorators':
+        specifier: file:.campaign/tgz/antelopejs-interface-database-decorators-d4f3b5a.tgz
+        version: file:.campaign/tgz/antelopejs-interface-database-decorators-d4f3b5a.tgz(@antelopejs/interface-api@0.0.15(@antelopejs/interface-core@0.2.4))(@antelopejs/interface-core@0.2.4)(@antelopejs/interface-database@file:.campaign/tgz/antelopejs-interface-database-4939b45.tgz(@antelopejs/interface-core@0.2.4))
     devDependencies:
       '@antelopejs/core':
         specifier: ^1.16.0
@@ -27,9 +31,6 @@ importers:
       '@antelopejs/interface-core':
         specifier: ^0.2.4
         version: 0.2.4
-      '@antelopejs/interface-database-decorators':
-        specifier: ^0.1.10
-        version: 0.1.10(@antelopejs/interface-api@0.0.15(@antelopejs/interface-core@0.2.4))(@antelopejs/interface-core@0.2.4)(@antelopejs/interface-database@file:.campaign/tgz/antelopejs-interface-database-4939b45.tgz(@antelopejs/interface-core@0.2.4))
       '@antelopejs/tooling-configs':
         specifier: ^0.2.17
         version: 0.2.17(eslint-plugin-perfectionist@5.11.0(eslint@10.10.0(jiti@2.7.0))(typescript@5.9.3))(knip@6.34.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
@@ -103,9 +104,9 @@ packages:
   '@antelopejs/interface-core@0.2.4':
     resolution: {integrity: sha512-2qF6/KwahCQvvNuC/piUvPWD4wq2Npmco941HMg2/bMBoJKbhMH16WcXXRvPYznNSkU0U+6vqK6KE+2N5NojSA==}
 
-  '@antelopejs/interface-database-decorators@0.1.10':
-    resolution: {integrity: sha512-frdqN199ExzpoeMu+wi/y0Zc2ARADYXSFJ3+YJH5sUSCKa0U4GXfiXC36XdvBCqNjG+Kv7h+C/vjpi+r0/vqDg==}
-    version: 0.1.10
+  '@antelopejs/interface-database-decorators@file:.campaign/tgz/antelopejs-interface-database-decorators-d4f3b5a.tgz':
+    resolution: {integrity: sha512-OyZc3pj2+d/KOsVazOksNfycrZpfHS8AwLRcXRVgIXqHvJtuH0TfukRlrMSlvhwo+/f4GfwTFEp5VGeBMBrPKQ==, tarball: file:.campaign/tgz/antelopejs-interface-database-decorators-d4f3b5a.tgz}
+    version: 0.2.0
     peerDependencies:
       '@antelopejs/interface-api': '>=0.0.15 <1.0.0'
       '@antelopejs/interface-core': '>=0.2.4 <1.0.0'
@@ -2825,7 +2826,7 @@ snapshots:
     dependencies:
       reflect-metadata: 0.2.2
 
-  '@antelopejs/interface-database-decorators@0.1.10(@antelopejs/interface-api@0.0.15(@antelopejs/interface-core@0.2.4))(@antelopejs/interface-core@0.2.4)(@antelopejs/interface-database@file:.campaign/tgz/antelopejs-interface-database-4939b45.tgz(@antelopejs/interface-core@0.2.4))':
+  '@antelopejs/interface-database-decorators@file:.campaign/tgz/antelopejs-interface-database-decorators-d4f3b5a.tgz(@antelopejs/interface-api@0.0.15(@antelopejs/interface-core@0.2.4))(@antelopejs/interface-core@0.2.4)(@antelopejs/interface-database@file:.campaign/tgz/antelopejs-interface-database-4939b45.tgz(@antelopejs/interface-core@0.2.4))':
     dependencies:
       '@antelopejs/interface-api': 0.0.15(@antelopejs/interface-core@0.2.4)
       '@antelopejs/interface-core': 0.2.4
