@@ -1,5 +1,4 @@
 import { assert } from "@antelopejs/interface-api-util";
-import type { DataModel } from "@antelopejs/interface-database-decorators/model";
 import { getMetadata } from "@antelopejs/interface-database-decorators/common";
 import { MakeParameterAndPropertyDecorator } from "@antelopejs/interface-core/decorators";
 import {
@@ -16,23 +15,24 @@ import type {
   ValueProxy,
 } from "@antelopejs/interface-database";
 import "@antelopejs/interface-database";
-import {
-  lock,
-  ModifiersDynamicMetadata,
-} from "@antelopejs/interface-database-decorators/modifiers/common";
+import { ModifiersDynamicMetadata } from "@antelopejs/interface-database-decorators/modifiers/common";
 
 import {
   type DataAPIMeta,
+  type DataControllerCallbackWithOptions,
+  type DataControllerInstance,
   type FieldFilter,
   type FieldValues,
   type FieldParseResult,
   type FieldValidationResult,
   type FieldValidator,
   GetDataControllerMeta,
+  type RowFields,
 } from "./metadata";
 import * as computed from "./internal/computed";
 import { copyFilter, parseFilter } from "./internal/filters";
 import * as foreign from "./internal/foreign";
+import * as extractors from "./internal/extractors";
 import { isString } from "./internal/guards";
 import * as joined from "./internal/joined";
 import * as list from "./internal/list";
@@ -45,10 +45,20 @@ export namespace Parameters {
   /** The controller a parameter provider computes its parameter for. */
   type Owner = Parameters<typeof computeParameter>[2];
 
-  export function GetOptionOverrides<T extends Record<string, any>>(
-    reqCtx: RequestContext,
-  ): T {
-    return (<any>reqCtx).dataAPIEntry?.options ?? {};
+  /**
+   * A request context as a data route holds it: {@link RegisterDataController}
+   * sets the route's entry on it. `Options` is what the route's parameter
+   * reads, which `WithOptions` wrote.
+   */
+  export interface DataRequestContext<Options = any> extends RequestContext {
+    dataAPIEntry?: DataControllerCallbackWithOptions<Options>;
+  }
+
+  /** The options the route's `WithOptions` set, none when it set none. */
+  export function GetOptionOverrides<Options>(
+    reqCtx: DataRequestContext<Options>,
+  ): Partial<Options> {
+    return reqCtx.dataAPIEntry?.options ?? {};
   }
 
   /**
@@ -58,7 +68,10 @@ export namespace Parameters {
    * (`?filter_age=ge:18&filter_age=lt:65`) gets them all, which a row must
    * all pass. Returns fresh tuples.
    */
-  export function ExtractFilters(reqCtx: RequestContext, meta: DataAPIMeta) {
+  export function ExtractFilters(
+    reqCtx: DataRequestContext<ListParameters>,
+    meta: DataAPIMeta,
+  ) {
     const result: Record<string, FieldFilter> = {};
     for (const filter of Object.keys(meta.filters)) {
       const values = reqCtx.url.searchParams
@@ -75,63 +88,33 @@ export namespace Parameters {
     return result;
   }
 
-  const converters = {
-    number: (val: string) => parseFloat(val),
-    int: (val: string) => parseInt(val, 10),
-    bool: (val: string) => val !== "0",
-    string: (val: string) => val,
-  };
-  type ConvertersKey = keyof typeof converters;
-  type GenericParams<T extends Record<string, any>> = {
-    [K in keyof T]:
-      | ConvertersKey
-      | `multi:${ConvertersKey}`
-      | ((reqCtx: RequestContext, meta: DataAPIMeta) => any);
-  };
-  function isConverterKey(name: string): name is ConvertersKey {
-    return Object.hasOwn(converters, name);
+  export type ParameterExtractor<Value> = extractors.ParameterExtractor<Value>;
+  export type ParameterExtractors<T> = extractors.ParameterExtractors<T>;
+  export const FromSearch = extractors.FromSearch;
+
+  function combinesWithOptions(extractor: Function) {
+    return extractor === ExtractFilters;
   }
 
-  function converterOf(name: string) {
-    if (!isConverterKey(name)) {
-      throw new TypeError(`Unknown parameter converter "${name}"`);
-    }
-    return converters[name];
-  }
-
-  function extractFromSearchParams(
-    reqCtx: RequestContext,
-    key: string,
-    extractor: ConvertersKey | `multi:${ConvertersKey}`,
-  ) {
-    if (extractor.startsWith("multi:")) {
-      const name = extractor.substring(6);
-      return reqCtx.url.searchParams
-        .getAll(key)
-        .map((searchVal) => converterOf(name)(searchVal));
-    }
-    const searchVal = reqCtx.url.searchParams.get(key);
-    return searchVal === null ? undefined : converterOf(extractor)(searchVal);
-  }
-
+  /**
+   * Builds a route's parameters: the options its `WithOptions` set, then each
+   * extracted field those options leave out. An extractor of `undefined` is
+   * skipped like an absent key. {@link ExtractFilters} also runs for a route
+   * that sets `filters`, since it combines them with the request's.
+   */
   export function ExtractGeneric<T extends Record<string, any>>(
-    reqCtx: RequestContext,
+    reqCtx: DataRequestContext<T>,
     meta: DataAPIMeta,
-    dynamic: GenericParams<Partial<T>>,
+    dynamic: ParameterExtractors<T>,
   ) {
-    const overrides = GetOptionOverrides<T>(reqCtx);
-    const result: Partial<T> = { ...overrides };
-    for (const key of Object.keys(dynamic)) {
-      // SAFETY: key comes from Object.keys(dynamic), typed GenericParams<Partial<T>> (a mapped type over keyof T), so for a type-checked argument it is a keyof T; false only for a stray key on a non-literal argument, which is harmless as the key is only written on result.
-      const field = key as keyof T;
+    const result: Partial<T> = { ...GetOptionOverrides(reqCtx) };
+    for (const key in dynamic) {
       const extractor = dynamic[key];
-      if (key in result && extractor !== ExtractFilters) continue;
-      if (isString(extractor)) {
-        const value = extractFromSearchParams(reqCtx, key, extractor);
-        if (value !== undefined) result[field] = value as any;
-      } else {
-        result[field] = extractor(reqCtx, meta);
+      if (!extractor || (key in result && !combinesWithOptions(extractor))) {
+        continue;
       }
+      const value = extractor(reqCtx, meta, key);
+      if (value !== undefined) result[key] = value;
     }
     return result;
   }
@@ -157,15 +140,24 @@ export namespace Parameters {
     pluckMode?: string;
   }
 
+  /**
+   * The sort direction a request sends. Any other text sorts ascending, as an
+   * absent direction does.
+   */
+  const sortDirectionOf: ParameterExtractor<ListParameters["sortDirection"]> =
+    extractors.fromSearch((text) =>
+      text === "asc" || text === "desc" ? text : undefined,
+    );
+
   export const List = MakeParameterAndPropertyDecorator((target, key, param) =>
     SetParameterProvider(target, key, param, function (this: Owner, context) {
       const meta = GetDataControllerMeta(this);
       const params = ExtractGeneric<ListParameters>(context, meta, {
         filters: ExtractFilters,
-        offset: "int",
-        limit: "int",
-        sortKey: "string",
-        sortDirection: "string",
+        offset: FromSearch.int,
+        limit: FromSearch.int,
+        sortKey: FromSearch.string,
+        sortDirection: sortDirectionOf,
       });
 
       assert(
@@ -193,7 +185,7 @@ export namespace Parameters {
         context,
         GetDataControllerMeta(this),
         {
-          id: "string",
+          id: FromSearch.string,
         },
       );
 
@@ -231,7 +223,7 @@ export namespace Parameters {
         context,
         GetDataControllerMeta(this),
         {
-          id: "string",
+          id: FromSearch.string,
         },
       );
 
@@ -252,7 +244,7 @@ export namespace Parameters {
           context,
           GetDataControllerMeta(this),
           {
-            id: "multi:string",
+            id: FromSearch.strings,
           },
         );
 
@@ -268,12 +260,24 @@ export namespace Parameters {
 }
 
 export namespace Query {
+  /**
+   * The database model a controller holds under its `@ModelReference` field,
+   * typed by the table rows it reads.
+   */
+  export type ModelInstance = tables.ModelInstance;
+
   export function GetModel(
-    obj: any,
+    obj: DataControllerInstance,
     meta: DataAPIMeta,
-  ): InstanceType<DataModel> & { constructor: DataModel } {
+  ): ModelInstance {
     assert(meta.modelKey, 500, "Missing model key.");
-    return obj[meta.modelKey];
+    const model: unknown = obj[meta.modelKey];
+    assert(
+      tables.isModelInstance(model),
+      500,
+      "The controller holds no model.",
+    );
+    return model;
   }
 
   export function Foreign(
@@ -340,9 +344,9 @@ export namespace Query {
   }
 
   export async function ReadProperties(
-    obj: any,
+    obj: DataControllerInstance,
     meta: DataAPIMeta,
-    dbData: any,
+    dbData: RowFields,
     action?: string,
     onlyList?: boolean,
   ) {
@@ -360,11 +364,11 @@ export namespace Query {
    * `null` clears it.
    */
   export async function WriteProperties(
-    obj: any,
+    obj: DataControllerInstance,
     meta: DataAPIMeta,
     bodyData: FieldValues,
     action?: string,
-    existingDBData?: Record<string, any>,
+    existingDBData?: RowFields,
   ) {
     return properties.WriteProperties(
       obj,
@@ -375,8 +379,8 @@ export namespace Query {
     );
   }
 
-  export function Get(
-    table: Table<any>,
+  export function Get<T extends object>(
+    table: Table<T>,
     id: string | ValueProxy<string>,
     index?: string,
   ) {
@@ -412,7 +416,7 @@ export namespace Query {
    * and the third element names the joined fields left for the caller.
    */
   export function List<T extends Record<string, any>>(
-    obj: any,
+    obj: DataControllerInstance,
     meta: DataAPIMeta,
     request: Table<T>,
     reqCtx: RequestContext,
@@ -523,7 +527,11 @@ export namespace Validation {
    * other action, it is missing when absent from the body. The body of the
    * 400 is a {@link FieldsErrorBody} with {@link MISSING_MANDATORY_FIELDS}.
    */
-  export function MandatoryFields(meta: DataAPIMeta, obj: any, type: string) {
+  export function MandatoryFields(
+    meta: DataAPIMeta,
+    obj: RequestBody,
+    type: string,
+  ) {
     const isMissing = MISSING_MANDATORY_FIELD_CHECKS[type] ?? isAbsentFromBody;
     const missing = Object.entries(meta.fields)
       .filter(
@@ -587,22 +595,27 @@ export namespace Validation {
    * untouched keeps its stored locked value: read while locked it would be
    * `undefined`, and locking it again would store that over it.
    */
-  export function Lock(obj: any, meta: DataAPIMeta, data: any) {
+  export function Lock(
+    obj: DataControllerInstance,
+    meta: DataAPIMeta,
+    data: RowFields,
+  ) {
     const written = Object.keys(
       getMetadata(data, ModifiersDynamicMetadata).floating,
     );
-    for (const [modifier, field] of meta.modifierKeys.entries()) {
-      const key = obj[field];
-      lock(data, modifier, written, key);
-    }
+    validation.Lock(obj, meta, data, written);
   }
 
-  export function Unlock(obj: any, meta: DataAPIMeta, dbData: any) {
+  export function Unlock(
+    obj: DataControllerInstance,
+    meta: DataAPIMeta,
+    dbData: RowFields,
+  ) {
     validation.Unlock(obj, meta, dbData);
   }
 
   export function UnlockRequest<T extends {}, K extends keyof T>(
-    obj: any,
+    obj: DataControllerInstance,
     meta: DataAPIMeta,
     row: ValueProxy<T>,
     field: K,
@@ -612,7 +625,7 @@ export namespace Validation {
 
   export function ClearInternal(
     meta: DataAPIMeta,
-    obj: FieldValues | FieldValues[],
+    obj: RowFields | RowFields[],
   ) {
     validation.ClearInternal(meta, obj);
   }

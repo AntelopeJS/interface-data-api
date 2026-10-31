@@ -28,22 +28,21 @@ import {
   type DataControllerCallback,
   type DataControllerCallbackWithOptions,
   type DataControllerDef,
+  type DataControllerInstance,
   type ExtractDefCallbacks,
-  type FieldValues,
   GetDataControllerMeta,
+  type RowFields,
 } from "./metadata";
 
 export {
   type DataControllerCallback,
   type DataControllerCallbackWithOptions,
   type DataControllerDef,
+  type DataControllerInstance,
   type ExtractCallback,
   type ExtractDefCallbacks,
   GetDataControllerMeta,
 } from "./metadata";
-
-/** The controller a data route runs on: an instance of a class built by {@link DataController}. */
-export type DataControllerInstance = InstanceType<ControllerClass>;
 
 abstract class TableHolder<C extends Class> {
   table!: InstanceType<C>;
@@ -108,7 +107,7 @@ export const RegisterDataController =
         "/",
       );
       RegisterRoute({
-        callback: (ctx) => {
+        callback: (ctx: Parameters.DataRequestContext) => {
           ctx.dataAPIEntry = entry;
         },
         location: fullLocation,
@@ -133,7 +132,7 @@ export namespace DefaultRoutes {
   export type GetGuard = (
     this: DataControllerInstance,
     ctx: RequestContext,
-    current: FieldValues,
+    current: RowFields,
     params: Parameters.GetParameters,
   ) => void | Promise<void>;
 
@@ -237,6 +236,7 @@ export namespace DefaultRoutes {
     const results = await Promise.all(
       dbResult.map((entry) => {
         const entryInstance = model.constructor.fromDatabase(entry);
+        assert(entryInstance, 500, "The database answered an empty row.");
         Validation.Unlock(this, meta, entryInstance);
         return Query.ReadProperties(this, meta, entryInstance, "list");
       }),
@@ -349,7 +349,7 @@ export namespace DefaultRoutes {
    */
   export function WithGetGuard(
     guard: GetGuard,
-  ): DataControllerCallback<Parameters.GetParameters> {
+  ): DataControllerCallback<Parameters.GetParameters, RowFields> {
     return {
       ...Get,
       func: function (ctx, params) {
@@ -391,11 +391,13 @@ export namespace DefaultRoutes {
     delete: Delete,
   } as const;
 
-  export function WithOptions<O>(
-    callback: DataControllerCallback<O> | DataControllerCallbackWithOptions<O>,
+  export function WithOptions<O, R>(
+    callback:
+      | DataControllerCallback<O, R>
+      | DataControllerCallbackWithOptions<O, R>,
     options?: Partial<O>,
     endpoint?: string,
-  ): DataControllerCallbackWithOptions<O> {
+  ): DataControllerCallbackWithOptions<O, R> {
     if ("func" in callback) {
       return {
         endpoint,

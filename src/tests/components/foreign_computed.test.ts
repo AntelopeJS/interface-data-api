@@ -110,7 +110,7 @@ async function _createDataController(testName: string) {
     @Listable()
     @Access(AccessMode.ReadWrite)
     @Filter((_context, proxy, _key, value, mode) =>
-      proxy[mode](parseFloat(value)),
+      mode === "ge" ? proxy.ge(parseFloat(value)) : proxy.lt(parseFloat(value)),
     )
     declare age: number;
 
@@ -122,7 +122,10 @@ async function _createDataController(testName: string) {
     @Listable()
     @Computed(
       (row, db) =>
-        db.table(memberTableName).getAll(row.key("team"), "team").count(),
+        db
+          .table(memberTableName)
+          .getAll(row.key("team").cast<string | number | boolean>(), "team")
+          .count(),
       { default: 0 },
     )
     declare teammates: number;

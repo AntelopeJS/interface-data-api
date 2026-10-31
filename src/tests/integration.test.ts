@@ -104,6 +104,15 @@ async function expectCustomerWorkflow() {
   expect(listResponse.status).to.equal(200);
   const listData = await readJson<{ results: Customer[] }>(listResponse);
   expect(listData.results).to.have.length(2);
+
+  const [ascending, unknownDirection] = await Promise.all(
+    ["asc", "sideways"].map((sortDirection) =>
+      listRequest("customers", { sortKey: "registrationDate", sortDirection }),
+    ),
+  );
+  expect(await readJson(unknownDirection)).to.deep.equal(
+    await readJson(ascending),
+  );
 }
 
 async function expectProductWorkflow() {

@@ -1,20 +1,24 @@
 /** @internal @packageDocumentation */
 
-import type { DataAPIMeta, FieldValues } from "../metadata";
+import type {
+  DataAPIMeta,
+  DataControllerInstance,
+  RowFields,
+} from "../metadata";
 import { isFunction } from "./guards";
 import { prototypeOf } from "./prototypes";
 
 export async function ReadProperties(
-  obj: any,
+  obj: DataControllerInstance,
   meta: DataAPIMeta,
-  dbData: any,
+  dbData: RowFields,
   action?: string,
   onlyList?: boolean,
 ) {
   const readable =
     meta.readable[action ?? "_default"] ?? meta.readable._default;
   const instance = { ...obj };
-  const res: FieldValues = {};
+  const res: RowFields = {};
   for (const [key, field] of readable.props) {
     if (onlyList && !field.listable) {
       continue;

@@ -1,7 +1,12 @@
 /** @internal @packageDocumentation */
 
 import type { Query } from "../components";
-import type { DataAPIMeta, WritableAccessFields } from "../metadata";
+import type {
+  DataAPIMeta,
+  DataControllerInstance,
+  RowFields,
+  WritableAccessFields,
+} from "../metadata";
 import { prototypeOf } from "./prototypes";
 
 function writableInBody(
@@ -17,9 +22,10 @@ function writableInBody(
 function writeTargetDefaults(
   instance: Parameters<typeof Query.WriteProperties>[0],
   meta: DataAPIMeta,
-  dbData: Exclude<Parameters<typeof Query.WriteProperties>[4], undefined>,
+  dbData: RowFields,
 ) {
-  for (const [key, value] of Object.entries(new meta.target())) {
+  const defaults: [string, unknown][] = Object.entries(new meta.target());
+  for (const [key, value] of defaults) {
     if (value !== undefined) {
       instance[key] = value;
       if (key in meta.fields) {
@@ -30,7 +36,7 @@ function writeTargetDefaults(
 }
 
 export function WriteProperties(
-  obj: any,
+  obj: DataControllerInstance,
   meta: DataAPIMeta,
   bodyData: Parameters<typeof Query.WriteProperties>[2],
   action?: string,
@@ -42,8 +48,7 @@ export function WriteProperties(
     ? writableInBody(actionWritable, bodyData)
     : actionWritable;
   const instance = { ...obj };
-  const dbData: Exclude<typeof existingDBData, undefined> =
-    existingDBData || {};
+  const dbData: RowFields = existingDBData || {};
   Object.setPrototypeOf(dbData, prototypeOf(meta.tableClass));
   if (!existingDBData) {
     writeTargetDefaults(instance, meta, dbData);

@@ -1,13 +1,10 @@
 {
   "pack": "0.2.17",
   "rules": {
-    "anti-slop/no-unsafe-dictionary-type": 3,
-    "anti-slop/require-safety-comment-for-type-assertion": 3,
-    "typescript/no-redundant-type-constituents": 1,
-    "typescript/no-unnecessary-type-parameters": 1,
-    "typescript/no-unsafe-argument": 19,
-    "typescript/no-unsafe-assignment": 21,
-    "typescript/no-unsafe-return": 7
+    "anti-slop/no-unsafe-dictionary-type": 1,
+    "typescript/no-unsafe-argument": 12,
+    "typescript/no-unsafe-assignment": 6,
+    "typescript/no-unsafe-return": 4
   },
   "oversizeFiles": {}
 }

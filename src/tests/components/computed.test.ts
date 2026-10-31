@@ -134,7 +134,10 @@ async function _createDataController(testName: string) {
     @Listable()
     @Computed(
       (row, db) =>
-        db.table(deviceTableName).getAll(row.key("_id"), "group_id").count(),
+        db
+          .table(deviceTableName)
+          .getAll(row.key("_id").cast<string | number | boolean>(), "group_id")
+          .count(),
       { default: 0 },
     )
     @Sortable()
