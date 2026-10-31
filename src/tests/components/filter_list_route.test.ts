@@ -48,6 +48,18 @@ interface ListResponse {
   results: { title: string; url: string }[];
 }
 
+async function seedPages() {
+  await RegisterSchema(schemaName);
+  const schema = Schema.get(schemaName);
+  if (schema) {
+    await schema.instance().table(pageTableName).delete();
+  }
+  await new PageModel(getSchemaInstance(schemaName)).insert([
+    { title: "alpha", url: "http://example.com" },
+    { title: "beta", url: "http://example.org" },
+  ]);
+}
+
 async function createController(testName: string) {
   @RegisterDataController()
   class _FilterListAPI extends DataController(
@@ -70,15 +82,40 @@ async function createController(testName: string) {
     declare url: string;
   }
 
-  await RegisterSchema(schemaName);
-  const schema = Schema.get(schemaName);
-  if (schema) {
-    await schema.instance().table(pageTableName).delete();
+  await seedPages();
+}
+
+async function createCustomFilterController(testName: string) {
+  @RegisterDataController()
+  class _CustomFilterListAPI extends DataController(
+    Page,
+    { list: DefaultRoutes.List },
+    Controller(`/${testName}`),
+  ) {
+    @ModelReference()
+    @Model(PageModel)
+    declare pageModel: PageModel;
+
+    @Listable()
+    @Access(AccessMode.ReadOnly)
+    @Filter(
+      (_context, proxy, _key, value, mode) =>
+        `${mode}` === "is" ? proxy.eq(value) : proxy.ne(value),
+      false,
+    )
+    declare title: string;
+
+    @Listable()
+    @Access(AccessMode.ReadOnly)
+    @Filter(
+      (_context, proxy, _key, value, mode) =>
+        `${mode}` === "http" ? proxy.eq(`http:${value}`) : proxy.eq(value),
+      false,
+    )
+    declare url: string;
   }
-  await new PageModel(getSchemaInstance(schemaName)).insert([
-    { title: "alpha", url: "http://example.com" },
-    { title: "beta", url: "http://example.org" },
-  ]);
+
+  await seedPages();
 }
 
 describe("List route - filter comparisons", () => {
@@ -124,5 +161,29 @@ describe("List route - filter comparisons", () => {
     expect(response.status, await response.clone().text()).to.equal(200);
     const data = await readJson<ListResponse>(response);
     expect(data.results.map(({ title }) => title)).to.eql(["beta"]);
+  });
+
+  it("hands the comparison of a custom filter to its callback", async () => {
+    await createCustomFilterController("custom-comparison");
+
+    const response = await listRequest("custom-comparison", {
+      filter_title: "is:alpha",
+    });
+
+    expect(response.status, await response.clone().text()).to.equal(200);
+    const data = await readJson<ListResponse>(response);
+    expect(data.results.map(({ title }) => title)).to.eql(["alpha"]);
+  });
+
+  it("hands an unnamed value that contains a colon to a custom filter", async () => {
+    await createCustomFilterController("custom-colon-value");
+
+    const response = await listRequest("custom-colon-value", {
+      filter_url: "http://example.com",
+    });
+
+    expect(response.status, await response.clone().text()).to.equal(200);
+    const data = await readJson<ListResponse>(response);
+    expect(data.results.map(({ title }) => title)).to.eql(["alpha"]);
   });
 });

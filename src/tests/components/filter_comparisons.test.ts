@@ -81,4 +81,25 @@ describe("Parameters.ExtractFilters - comparisons", () => {
       statusOfExtraction("filter_title=ge:a&filter_title=like:b"),
     ).to.equal(400);
   });
+
+  it("hands a comparison the default filter lacks to a custom filter", () => {
+    for (const comparison of ["is", "like", "include", "http"]) {
+      expect(
+        Parameters.ExtractFilters(
+          context(`filter_title=${comparison}:abc`),
+          meta,
+        ),
+        comparison,
+      ).to.eql({ title: ["abc", comparison] });
+    }
+  });
+
+  it("hands an unnamed value that contains a colon to a custom filter", () => {
+    expect(
+      Parameters.ExtractFilters(
+        context("filter_title=http://example.com"),
+        meta,
+      ),
+    ).to.eql({ title: ["//example.com", "http"] });
+  });
 });
