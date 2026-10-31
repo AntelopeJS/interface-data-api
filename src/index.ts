@@ -21,7 +21,10 @@ import {
   Route,
 } from "@antelopejs/interface-api";
 
+import type { WriteDocument } from "@antelopejs/interface-database/common";
+
 import { Parameters, Query, Validation } from "./components";
+import { isWriteDocument, isWriteValue } from "./internal/guards";
 import { prototypeOf } from "./internal/prototypes";
 import {
   DataAPIMeta,
@@ -126,6 +129,18 @@ export const RegisterDataController =
       );
     }
   };
+
+/** The row a route writes, refused before the write when a field holds a value no database stores. */
+function writtenRow(row: RowFields): WriteDocument {
+  if (isWriteDocument(row)) {
+    return row;
+  }
+  const [field] =
+    Object.entries(row).find(([, value]) => !isWriteValue(value)) ?? [];
+  throw new TypeError(
+    `Field '${field}' holds a bigint, a symbol or a function, which no database stores`,
+  );
+}
 
 export namespace DefaultRoutes {
   /** Receives the loaded, unlocked model before readable fields are selected. Throw to deny the read. */
@@ -271,7 +286,7 @@ export namespace DefaultRoutes {
 
     const model = Query.GetModel(this, meta);
     triggerEvent(dbData, "insert");
-    const [id] = await model.table.insert(dbData);
+    const [id] = await model.table.insert(writtenRow(dbData));
 
     const created = await readRow(this, meta, { params: { id } });
     return { _id: id, ...created };
@@ -306,7 +321,7 @@ export namespace DefaultRoutes {
     Validation.Lock(this, meta, dbData);
 
     triggerEvent(dbData, "update");
-    await model.table.get(params.id).update(dbData);
+    await model.table.get(params.id).update(writtenRow(dbData));
 
     return readRow(this, meta, {
       params: { id: params.id, index: params.index },
