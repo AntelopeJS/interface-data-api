@@ -118,6 +118,7 @@ export const RegisterDataController =
         mode: "prefix",
         parameters: [{ provider: (ctx) => ctx, modifiers: [] }],
         properties: meta.computed_props,
+        controller: target,
         proto: prototypeOf(target),
       });
       Route("handler", entry.callback.method, entry.endpoint)(
