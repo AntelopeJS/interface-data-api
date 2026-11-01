@@ -2,7 +2,7 @@ import Module from "node:module";
 import { realpathSync } from "node:fs";
 import path from "node:path";
 
-import { isObject } from "../../internal/guards";
+import { isFunction, isObject } from "../../internal/guards";
 
 class InternalModule extends Module {
   declare static _resolveFilename: (request: string, parent: Module) => string;
@@ -26,10 +26,10 @@ export function CreateOtherInstance(folders: string[]): ModuleRequire {
   const owned = folders.map((folder) => realpathSync(folder) + path.sep);
   const modules = new Map<string, InternalModule>();
 
-  const load = (filename: string, parent: Module): Module["exports"] => {
+  const load = (filename: string, parent: Module): InternalModule => {
     const cached = modules.get(filename);
     if (cached) {
-      return cached.exports;
+      return cached;
     }
     const loaded = new InternalModule(filename, parent);
     loaded.filename = filename;
@@ -37,15 +37,19 @@ export function CreateOtherInstance(folders: string[]): ModuleRequire {
     loaded.require = (request: string) => requireFrom(loaded, request);
     modules.set(filename, loaded);
     loaded.load(filename);
-    return loaded.exports;
+    return loaded;
   };
 
-  const requireFrom = (parent: Module, request: string): Module["exports"] => {
+  const requireFrom = (parent: Module, request: string): object => {
     const filename = InternalModule._resolveFilename(request, parent);
     const isOwned = owned.some((root) => filename.startsWith(root));
-    return isOwned
-      ? load(filename, parent)
+    const exported: unknown = isOwned
+      ? load(filename, parent).exports
       : Module.prototype.require.call(parent, request);
+    if (!isObject(exported) && !isFunction(exported)) {
+      throw new Error(`${request} exports neither an object nor a function`);
+    }
+    return exported;
   };
 
   return (request: string) => requireFrom(module, request);
