@@ -50,10 +50,13 @@ describe("Validation.ParseBody", () => {
     ]);
   });
   it("refuses a body nested deeper than the call stack allows that ends in a function", () => {
-    const deepest = Object.create(null);
-    deepest.run = () => 1;
-    let nested: FieldValues = deepest;
-    for (let level = 0; level < 50000; level++) nested = { next: nested };
+    const deepest = { __proto__: null, run: () => 1 };
+    type Link = { next: Link | typeof deepest };
+    const nested = Array.from({ length: 50000 }).reduce<Link | typeof deepest>(
+      (inner) => ({ next: inner }),
+      deepest,
+    );
+    // @ts-expect-error a function deep in the body is off-contract input, and the body is refused with 400
     expect(statusOfRefusal(nested)).to.equal(400);
   });
   it("accepts a body without a prototype", () => {
@@ -61,20 +64,20 @@ describe("Validation.ParseBody", () => {
     expect(Validation.ParseBody(bare)).to.equal(bare);
   });
   it("refuses a parsed body holding what JSON cannot", () => {
-    const withFunction = Object.create(null);
-    withFunction.run = () => 1;
-    const withInstance = Object.create(null);
-    withInstance.price = new Money();
-    const withBigInt = Object.create(null);
-    withBigInt.count = 1n;
-    const withUndefined = Object.create(null);
-    withUndefined.list = [1, undefined];
+    const withFunction = { __proto__: null, run: () => 1 };
+    const withInstance = { __proto__: null, price: new Money() };
+    const withBigInt = { __proto__: null, count: 1n };
+    const withUndefined = { __proto__: null, list: [1, undefined] };
     const cyclic: FieldValues = {};
     cyclic.self = cyclic;
-    expect(
-      [withFunction, withInstance, withBigInt, withUndefined, cyclic].map(
-        statusOfRefusal,
-      ),
-    ).to.eql([400, 400, 400, 400, 400]);
+    // @ts-expect-error a function value is off-contract input, and the body is refused with 400
+    expect(statusOfRefusal(withFunction)).to.equal(400);
+    // @ts-expect-error a class instance value is off-contract input, and the body is refused with 400
+    expect(statusOfRefusal(withInstance)).to.equal(400);
+    // @ts-expect-error a bigint value is off-contract input, and the body is refused with 400
+    expect(statusOfRefusal(withBigInt)).to.equal(400);
+    // @ts-expect-error an undefined array item is off-contract input, and the body is refused with 400
+    expect(statusOfRefusal(withUndefined)).to.equal(400);
+    expect(statusOfRefusal(cyclic)).to.equal(400);
   });
 });
