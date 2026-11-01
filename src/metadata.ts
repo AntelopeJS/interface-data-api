@@ -708,7 +708,7 @@ const FilterDecoratorFactory = MakePropertyDecorator(
 export function Filter<T extends Record<string, any>>(
   func?: FilterFunction<T, T>,
   useIndex?: boolean,
-): (target: T, propertyKey: string | symbol) => void {
+) {
   return FilterDecoratorFactory(func, useIndex);
 }
 
