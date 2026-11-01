@@ -74,7 +74,7 @@
   },
   "devDependencies": {
     "@antelopejs/api": "file:.campaign/tgz/antelopejs-api-fb0bc81.tgz",
-    "@antelopejs/core": "^1.17.0",
+    "@antelopejs/core": "~1.17.0",
     "@antelopejs/interface-api": "file:.campaign/tgz/antelopejs-interface-api-9b197e1.tgz",
     "@antelopejs/interface-api-util": "file:.campaign/tgz/antelopejs-interface-api-util-cc740f8.tgz",
     "@antelopejs/interface-core": "^0.2.6",

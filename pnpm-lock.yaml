@@ -30,10 +30,10 @@ importers:
     devDependencies:
       '@antelopejs/api':
         specifier: file:.campaign/tgz/antelopejs-api-fb0bc81.tgz
-        version: file:.campaign/tgz/antelopejs-api-fb0bc81.tgz(@antelopejs/core@1.18.2)
+        version: file:.campaign/tgz/antelopejs-api-fb0bc81.tgz(@antelopejs/core@1.17.1)
       '@antelopejs/core':
-        specifier: ^1.17.0
-        version: 1.18.2
+        specifier: ~1.17.0
+        version: 1.17.1
       '@antelopejs/interface-core':
         specifier: ^0.2.6
         version: 0.2.7
@@ -100,8 +100,8 @@ packages:
       '@antelopejs/core':
         optional: true
 
-  '@antelopejs/core@1.18.2':
-    resolution: {integrity: sha512-9ceeM21jBoNGvHiWi30hTdhy8al+0WKxAF5/nQqItOH3ufH29MRJhB+o6F5DQxIdGyOqQffIFqSyn+EjXuah7Q==}
+  '@antelopejs/core@1.17.1':
+    resolution: {integrity: sha512-gul38oMJuiaLl5MEwinRbM6d08uPI2wqCmDDrI5V+VilcxJA025VF1l1CqNta3xQfszvRr/jt4RzOgUlhKJi/g==}
     engines: {node: '>=20.19'}
     hasBin: true
 
@@ -120,9 +120,6 @@ packages:
 
   '@antelopejs/interface-core@0.2.7':
     resolution: {integrity: sha512-2zWWTxSMutyqVbnr/xfGtjgIcx2x4zLZk6wOQkXDgX+i0DVPw6DOE/nsUHGP4uGrVAYg6b1z4oLdTV1NMAyZjA==}
-
-  '@antelopejs/interface-core@0.3.0':
-    resolution: {integrity: sha512-GeGclCe5JOg+9H7XvTxYmE78u9tHG7QpVddHkB11kSgjNKq1hXqbEXPv0BRKQD9jjiV594qr1HuFuuYp4aqCZQ==}
 
   '@antelopejs/interface-database-decorators@file:.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz':
     resolution: {integrity: sha512-IO3ovOrBj5yWA39lNFqgr8+oJhjy8bzBTbgFvx369afjGO2J1i3J0+riEbZZzQ5fTx1qYV5gYuyx+BdoQBf+BQ==, tarball: file:.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz}
@@ -2830,7 +2827,7 @@ packages:
 
 snapshots:
 
-  '@antelopejs/api@file:.campaign/tgz/antelopejs-api-fb0bc81.tgz(@antelopejs/core@1.18.2)':
+  '@antelopejs/api@file:.campaign/tgz/antelopejs-api-fb0bc81.tgz(@antelopejs/core@1.17.1)':
     dependencies:
       '@antelopejs/interface-api': file:.campaign/tgz/antelopejs-interface-api-9b197e1.tgz(@antelopejs/interface-core@0.2.7)
       '@antelopejs/interface-api-util': file:.campaign/tgz/antelopejs-interface-api-util-cc740f8.tgz(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-9b197e1.tgz(@antelopejs/interface-core@0.2.7))(@antelopejs/interface-core@0.2.7)
@@ -2838,14 +2835,14 @@ snapshots:
       reflect-metadata: 0.2.2
       ws: 8.22.1
     optionalDependencies:
-      '@antelopejs/core': 1.18.2
+      '@antelopejs/core': 1.17.1
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@antelopejs/core@1.18.2':
+  '@antelopejs/core@1.17.1':
     dependencies:
-      '@antelopejs/interface-core': 0.3.0
+      '@antelopejs/interface-core': 0.2.7
       '@clack/prompts': 1.8.1
       '@types/proper-lockfile': 4.1.4
       commander: 13.1.0
@@ -2868,10 +2865,6 @@ snapshots:
       '@antelopejs/interface-core': 0.2.7
 
   '@antelopejs/interface-core@0.2.7':
-    dependencies:
-      reflect-metadata: 0.2.2
-
-  '@antelopejs/interface-core@0.3.0':
     dependencies:
       reflect-metadata: 0.2.2
 
