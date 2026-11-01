@@ -51,7 +51,8 @@ describe("Validation.ParseBody", () => {
   });
   it("refuses a body nested deeper than the call stack allows that ends in a function", () => {
     const deepest = { __proto__: null, run: () => 1 };
-    const nested = Array.from({ length: 50000 }).reduce<object>(
+    type Link = { next: Link | typeof deepest };
+    const nested = Array.from({ length: 50000 }).reduce<Link | typeof deepest>(
       (inner) => ({ next: inner }),
       deepest,
     );
