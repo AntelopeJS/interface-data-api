@@ -350,7 +350,11 @@ export namespace DefaultRoutes {
   Object.defineProperty(editRow, "name", { value: "edit" });
   Object.defineProperty(deleteRows, "name", { value: "delete" });
 
-  export const Get = {
+  export const Get: DataControllerCallback<
+    Parameters.GetParameters,
+    RowFields,
+    [RequestContext, Parameters.GetParameters]
+  > = {
     func: getRow,
     args: [Context(), Parameters.Get()],
     method: "get",
@@ -365,16 +369,24 @@ export namespace DefaultRoutes {
    */
   export function WithGetGuard(
     guard: GetGuard,
-  ): DataControllerCallback<Parameters.GetParameters, RowFields> {
+  ): DataControllerCallback<
+    Parameters.GetParameters,
+    RowFields,
+    [RequestContext, Parameters.GetParameters]
+  > {
     return {
       ...Get,
-      func: function (ctx, params) {
+      func: function (this: DataControllerInstance, ctx, params) {
         return getRow.call(this, ctx, params, guard);
       },
     };
   }
 
-  export const List = {
+  export const List: DataControllerCallback<
+    Parameters.ListParameters,
+    Awaited<ReturnType<typeof listRows>>,
+    [RequestContext, Parameters.ListParameters]
+  > = {
     func: listRows,
     args: [Context(), Parameters.List()],
     method: "get",
@@ -383,17 +395,29 @@ export namespace DefaultRoutes {
    * Answers the created row with its `_id`, even when `get` does not read
    * `_id`: the caller needs it to name the row it created.
    */
-  export const New = {
+  export const New: DataControllerCallback<
+    Parameters.NewParameters,
+    Awaited<ReturnType<typeof newRow>>,
+    [RequestContext, Parameters.NewParameters, Validation.WrittenBody]
+  > = {
     func: newRow,
     args: [Context(), Parameters.New(), RawBody()],
     method: "post",
   };
-  export const Edit = {
+  export const Edit: DataControllerCallback<
+    Parameters.EditParameters,
+    Awaited<ReturnType<typeof editRow>>,
+    [RequestContext, Parameters.EditParameters, Validation.WrittenBody]
+  > = {
     func: editRow,
     args: [Context(), Parameters.Edit(), RawBody()],
     method: "put",
   };
-  export const Delete = {
+  export const Delete: DataControllerCallback<
+    Parameters.DeleteParameters,
+    Awaited<ReturnType<typeof deleteRows>>,
+    [RequestContext, Parameters.DeleteParameters]
+  > = {
     func: deleteRows,
     args: [Context(), Parameters.Delete()],
     method: "delete",
@@ -407,13 +431,13 @@ export namespace DefaultRoutes {
     delete: Delete,
   } as const;
 
-  export function WithOptions<O, R>(
+  export function WithOptions<O, R, A extends unknown[]>(
     callback:
-      | DataControllerCallback<O, R>
-      | DataControllerCallbackWithOptions<O, R>,
+      | DataControllerCallback<O, R, A>
+      | DataControllerCallbackWithOptions<O, R, A>,
     options?: Partial<O>,
     endpoint?: string,
-  ): DataControllerCallbackWithOptions<O, R> {
+  ): DataControllerCallbackWithOptions<O, R, A> {
     if ("func" in callback) {
       return {
         endpoint,

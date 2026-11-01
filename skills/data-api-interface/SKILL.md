@@ -136,6 +136,10 @@ This exposes `GET /tasks/get?id=`, `GET /tasks/list`, `POST /tasks/new`, `PUT /t
 - A custom list route reads its page with `Query.ListPage(db, meta, query, options)` (`offset`,
   `limit`, `filters`, `sortKey`, `pluck`, `noForeign`, `deferredJoined`): joined, then computed, then
   foreign, then pluck.
+- A route is `DataControllerCallback<O, R, A>`: `A` is the tuple `func` receives, one element per
+  `args` entry. The default routes declare theirs (`Get` takes `[RequestContext, GetParameters]`), so a
+  wrapper generic over `[RequestContext, P, ...Rest]` calls `route.func.call(this, ctx, params, ...rest)`
+  typed; without `A` its parameters are not checked.
 - `new` answers the created row as `get` reads it, with its `_id`; `edit` answers the stored row after
   the update. Both accept a body already parsed (`Validation.WrittenBody`), so a wrapping route can
   amend it before the write.
