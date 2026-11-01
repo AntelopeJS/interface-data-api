@@ -202,7 +202,7 @@ export interface ComputedOptions {
    * Fallback merged over the computed value when the expression yields null
    * (ex: `0` for an aggregate count over an empty set).
    */
-  default?: unknown;
+  default?: FieldValue;
 }
 
 /**
