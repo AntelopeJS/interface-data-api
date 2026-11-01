@@ -128,7 +128,7 @@ The package declares these `@antelopejs/*` peer dependencies:
 | `@antelopejs/interface-api`                 | `>=0.0.15 <1.0.0` | `file:.campaign/tgz/antelopejs-interface-api-f206be7.tgz`                 |
 | `@antelopejs/interface-api-util`            | `>=0.1.3 <1.0.0`  | `file:.campaign/tgz/antelopejs-interface-api-util-cc740f8.tgz`            |
 | `@antelopejs/interface-core`                | `>=0.2.4 <1.0.0`  | `0.2.4`                                                                   |
-| `@antelopejs/interface-database`            | `>=0.1.10 <1.0.0` | `file:.campaign/tgz/antelopejs-interface-database-dca4c73.tgz`            |
+| `@antelopejs/interface-database`            | `>=0.1.10 <1.0.0` | `file:.campaign/tgz/antelopejs-interface-database-028abec.tgz`            |
 | `@antelopejs/interface-database-decorators` | `>=0.1.10 <1.0.0` | `file:.campaign/tgz/antelopejs-interface-database-decorators-fcb0a29.tgz` |
 
 <!-- antelopejs-docs-compat:end -->
