@@ -25,7 +25,6 @@ import type { WriteDocument } from "@antelopejs/interface-database/common";
 
 import { Parameters, Query, Validation } from "./components";
 import { isWriteDocument, isWriteValue } from "./internal/guards";
-import { prototypeOf } from "./internal/prototypes";
 import {
   DataAPIMeta,
   type DataControllerCallback,
@@ -119,7 +118,6 @@ export const RegisterDataController =
         parameters: [{ provider: (ctx) => ctx, modifiers: [] }],
         properties: meta.computed_props,
         controller: target,
-        proto: prototypeOf(target),
       });
       Route("handler", entry.callback.method, entry.endpoint)(
         target.prototype,
