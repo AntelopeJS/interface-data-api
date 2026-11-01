@@ -22,11 +22,7 @@ export default defineConfig({
       },
     },
     api: {
-      source: {
-        type: "package",
-        package: "@antelopejs/api",
-        version: "1.3.0",
-      },
+      source: { type: "local", path: "node_modules/@antelopejs/api" },
       config: {
         publicBaseUrl: "http://127.0.0.1:5010",
         servers: [{ protocol: "http", host: "127.0.0.1", port: 5010 }],

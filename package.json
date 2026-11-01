@@ -73,10 +73,11 @@
     "suppressions:update": "antelopejs-suppressions --update"
   },
   "devDependencies": {
-    "@antelopejs/core": "^1.16.0",
+    "@antelopejs/api": "file:.campaign/tgz/antelopejs-api-fb0bc81.tgz",
+    "@antelopejs/core": "^1.17.0",
     "@antelopejs/interface-api": "file:.campaign/tgz/antelopejs-interface-api-9b197e1.tgz",
     "@antelopejs/interface-api-util": "file:.campaign/tgz/antelopejs-interface-api-util-cc740f8.tgz",
-    "@antelopejs/interface-core": "^0.2.4",
+    "@antelopejs/interface-core": "^0.2.6",
     "@antelopejs/interface-database": "file:.campaign/tgz/antelopejs-interface-database-724ff72.tgz",
     "@antelopejs/interface-database-decorators": "file:.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz",
     "@antelopejs/tooling-configs": "^0.2.17",
@@ -110,7 +111,8 @@
       "@antelopejs/interface-database": "file:.campaign/tgz/antelopejs-interface-database-724ff72.tgz",
       "@antelopejs/interface-database-decorators": "file:.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz",
       "@antelopejs/interface-api": "file:.campaign/tgz/antelopejs-interface-api-9b197e1.tgz",
-      "@antelopejs/interface-api-util": "file:.campaign/tgz/antelopejs-interface-api-util-cc740f8.tgz"
+      "@antelopejs/interface-api-util": "file:.campaign/tgz/antelopejs-interface-api-util-cc740f8.tgz",
+      "@antelopejs/api": "file:.campaign/tgz/antelopejs-api-fb0bc81.tgz"
     }
   },
   "antelopeJs": {
