@@ -1,5 +1,6 @@
 import path from "node:path";
 import { expect } from "chai";
+import { z } from "zod";
 import { Schema } from "@antelopejs/interface-database";
 import { Controller, Parameter } from "@antelopejs/interface-api";
 import {
@@ -68,16 +69,14 @@ class Post extends Table.with(LocalizationModifier) {
 }
 class PostModel extends BasicDataModel(Post, postTableName) {}
 
-interface AuthorReference {
-  _id: string;
-  name: string;
-  email: string;
-}
+const postListedSchema = z.looseObject({
+  _id: z.string(),
+  authorId: z
+    .looseObject({ _id: z.string(), name: z.string(), email: z.string() })
+    .nullish(),
+});
 
-interface PostListed {
-  _id: string;
-  authorId: AuthorReference | null;
-}
+const postListSchema = z.looseObject({ results: z.array(postListedSchema) });
 
 const authorDataset: Partial<Author>[] = [
   { name: "Alice Carter", email: "alice@example.com" },
@@ -166,7 +165,7 @@ async function expectGetsRowWithResolvedForeignReference() {
     locale,
   });
   expect(response.status).to.equal(200);
-  const post = await readJson<PostListed>(response);
+  const post = await readJson(postListedSchema, response);
   expect(post.authorId).to.not.equal(null);
   expect(post.authorId?.name).to.equal("Alice Carter");
 }
@@ -179,7 +178,7 @@ async function expectGetsRowWithNullForeignReference() {
     locale,
   });
   expect(response.status).to.equal(200);
-  const post = await readJson<PostListed>(response);
+  const post = await readJson(postListedSchema, response);
   expect(post.authorId).to.equal(null);
 }
 
@@ -191,7 +190,7 @@ async function expectGetsRowWithDanglingForeignReference() {
     locale,
   });
   expect(response.status).to.equal(200);
-  const post = await readJson<PostListed>(response);
+  const post = await readJson(postListedSchema, response);
   expect(post.authorId).to.equal(null);
 }
 
@@ -200,7 +199,7 @@ async function expectListsRowsContainingNullForeignReferences() {
 
   const response = await listRequest(getFunctionName(), { locale });
   expect(response.status).to.equal(200);
-  const data = await readJson<{ results: PostListed[] }>(response);
+  const data = await readJson(postListSchema, response);
   expect(data.results).to.have.lengthOf(3);
 
   const nullAuthorPosts = data.results.filter((post) => post.authorId == null);

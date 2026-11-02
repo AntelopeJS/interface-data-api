@@ -1,5 +1,6 @@
 import path from "node:path";
 import { expect } from "chai";
+import { z } from "zod";
 import { Controller } from "@antelopejs/interface-api";
 import { Schema } from "@antelopejs/interface-database";
 import {
@@ -27,7 +28,7 @@ import {
   Sortable,
 } from "../../metadata";
 
-import { type ListResponse, readJson } from "../internal/http";
+import { listResponseSchema, readJson } from "../internal/http";
 import {
   editRequest,
   getFunctionName,
@@ -71,20 +72,25 @@ class Book extends Table {
 }
 class BookModel extends BasicDataModel(Book, bookTableName) {}
 
-interface BookListed {
-  _id: string;
-  authorId: string;
-  title: string;
-  price: number;
-  name: string | null;
-  email: string | null;
-}
+const bookListedSchema = z.looseObject({
+  _id: z.string(),
+  authorId: z.string(),
+  title: z.string(),
+  price: z.number(),
+  name: z.string().nullable(),
+  email: z.string().nullable(),
+});
 
-interface BookDisplayed {
-  title: string;
-  display: string | null;
-  name?: string;
-}
+const bookListSchema = z.looseObject({
+  results: z.array(bookListedSchema),
+  total: z.number(),
+});
+
+const bookDisplayedSchema = z.looseObject({
+  title: z.string(),
+  display: z.string().nullable(),
+  name: z.string().optional(),
+});
 
 const authorsDataset: Partial<Author>[] = [
   { name: "Alice Carter", email: "alice@example.com" },
@@ -243,7 +249,7 @@ async function expectListsRowsWithJoinedFieldsFlattened() {
 
   const response = await listRequest(getFunctionName(), {});
   expect(response.status).to.equal(200);
-  const data = await readJson<{ results: BookListed[] }>(response);
+  const data = await readJson(bookListSchema, response);
   expect(data.results).to.have.lengthOf(5);
 
   const alphaRising = data.results.find((b) => b.title === "Alpha Rising");
@@ -265,7 +271,7 @@ async function expectGetsRowWithJoinedFieldsFlattened() {
     const text = await response.text();
     throw new Error(`get failed (${response.status}): ${text}`);
   }
-  const book = await readJson<BookListed>(response);
+  const book = await readJson(bookListedSchema, response);
   expect(book.title).to.equal("Alpha Rising");
   expect(book.name).to.equal("Alice Carter");
   expect(book.email).to.equal("alice@example.com");
@@ -280,7 +286,7 @@ async function expectSortsByJoinedFieldAscending() {
     sortDirection: "asc",
   });
   expect(response.status).to.equal(200);
-  const data = await readJson<{ results: BookListed[] }>(response);
+  const data = await readJson(bookListSchema, response);
   const namesInOrder = data.results
     .map((b) => b.name)
     .filter((n) => n !== null);
@@ -296,7 +302,7 @@ async function expectSortsByJoinedFieldDescending() {
     sortDirection: "desc",
   });
   expect(response.status).to.equal(200);
-  const data = await readJson<{ results: BookListed[] }>(response);
+  const data = await readJson(bookListSchema, response);
   const namesInOrder = data.results
     .map((b) => b.name)
     .filter((n) => n !== null);
@@ -314,7 +320,7 @@ async function expectFiltersByJoinedField() {
     const text = await response.text();
     throw new Error(`filter failed (${response.status}): ${text}`);
   }
-  const data = await readJson<{ results: BookListed[] }>(response);
+  const data = await readJson(bookListSchema, response);
   expect(data.results.length).to.equal(2);
   for (const book of data.results) {
     expect(book.name).to.equal("Alice Carter");
@@ -331,10 +337,7 @@ async function expectKeepsJoinedFieldsOnPaginatedRows() {
     limit: "2",
   });
   expect(response.status).to.equal(200);
-  const data = await readJson<{
-    results: BookListed[];
-    total: number;
-  }>(response);
+  const data = await readJson(bookListSchema, response);
   expect(data.total).to.equal(5);
   expect(data.results.map((b) => b.title)).to.deep.equal([
     "Alpha Rising",
@@ -355,7 +358,10 @@ async function expectResolvesComputedFieldReadingNonPluckedJoinedField() {
 
   const response = await listRequest(getFunctionName(), {});
   expect(response.status).to.equal(200);
-  const data = await readJson<ListResponse<BookDisplayed>>(response);
+  const data = await readJson(
+    listResponseSchema(bookDisplayedSchema),
+    response,
+  );
   expect(data.total).to.equal(5);
   expect(data.results).to.have.lengthOf(5);
 
@@ -370,7 +376,7 @@ async function expectReturnsNullForOrphanForeignKey() {
 
   const response = await listRequest(getFunctionName(), {});
   expect(response.status).to.equal(200);
-  const data = await readJson<{ results: BookListed[] }>(response);
+  const data = await readJson(bookListSchema, response);
   const orphan = data.results.find((b) => b.title === "Lost Chapter");
   expect(orphan).to.not.equal(undefined);
   expect(orphan?.name).to.equal(null);

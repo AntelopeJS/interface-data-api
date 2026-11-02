@@ -107,6 +107,7 @@ function forwardingDeferredJoinOperation(
 ): DeferredJoinedOperation {
   return function (this: DeferredJoinedStream, ...args: any[]) {
     // SAFETY: name comes from wireDeferredJoinedStream, which lists the own method names of Stream.prototype plus run, cursor and build, all present on any Stream, and Joined returns a Stream for the raw Stream it is given.
+    // oxlint-disable-next-line typescript/no-unsafe-return -- the method is looked up by a runtime name on a Stream, which TypeScript cannot relate to a signature; Reflect.apply and a typed lookup were tried and moved the finding to no-reflect-get, no-reflect-apply and no-unknown-returns
     return (materializeDeferredJoin(this) as any)[name](...args);
   };
 }

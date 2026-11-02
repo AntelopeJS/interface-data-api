@@ -2,7 +2,7 @@ import path from "node:path";
 import { expect } from "chai";
 import { Schema } from "@antelopejs/interface-database";
 
-import type { FieldValue, FieldValues } from "../metadata";
+import type { FieldValue } from "../metadata";
 
 import { URL_BASE } from "./constants";
 
@@ -128,10 +128,10 @@ export async function deleteRequest(
   );
 }
 
-export async function validateObject<T>(
+export async function validateObject<T, E>(
   object: T,
-  expectedObject: Partial<T>,
-  fieldsToCheck: (keyof T)[],
+  expectedObject: Partial<E>,
+  fieldsToCheck: (keyof T & keyof E)[],
 ) {
   for (const field of fieldsToCheck) {
     expect(object[field]).to.deep.equal(expectedObject[field]);
@@ -144,10 +144,13 @@ export function getSchemaInstance(schemaName: string) {
   return schema.instance();
 }
 
-export async function validateObjectList<T extends { _id: string }>(
+export async function validateObjectList<
+  T extends { _id: string },
+  E extends { _id?: unknown },
+>(
   objectList: T[],
-  expectedObjectList: Partial<T>[],
-  fieldsToCheck: (keyof T)[],
+  expectedObjectList: Partial<E>[],
+  fieldsToCheck: (keyof T & keyof E)[],
 ) {
   for (const object of objectList) {
     const id = object._id;
@@ -158,9 +161,4 @@ export async function validateObjectList<T extends { _id: string }>(
       await validateObject(object, expectedObject, fieldsToCheck);
     }
   }
-}
-
-/** What the `new` route answers: the created row, with its key. */
-export interface CreatedRow extends FieldValues {
-  _id: string;
 }
