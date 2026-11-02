@@ -18,6 +18,7 @@ import type {
   DataControllerInstance,
   RowFields,
 } from "../metadata";
+import { fieldsOf } from "./prototypes";
 import { isFieldValues, isObject } from "./guards";
 
 type RequestBody = Validation.RequestBody;
@@ -52,7 +53,7 @@ export function Lock(
 ) {
   for (const [modifier, field] of meta.modifierKeys.entries()) {
     const keyed: KeyedModifier = modifier;
-    const key: unknown = obj[field];
+    const key = fieldsOf(obj)[field];
     lock(data, keyed, written, key);
   }
 }
@@ -72,7 +73,7 @@ export function Unlock(
   }
   for (const [modifier, field] of meta.modifierKeys.entries()) {
     const keyed: KeyedModifier = modifier;
-    const key: unknown = obj[field];
+    const key = fieldsOf(obj)[field];
     unlock(dbData, keyed, undefined, key);
     for (const [foreign, fieldData] of Object.entries(meta.fields)) {
       const related = dbData[foreign];
@@ -92,7 +93,7 @@ export function UnlockRequest<T extends {}, K extends keyof T>(
   const modifiers = Array.from(meta.modifierKeys.entries()).map(
     ([modifier, field]) => ({
       modifier,
-      args: [obj[field]],
+      args: [fieldsOf(obj)[field]],
     }),
   );
   return unlockrequest<T, K>(meta.tableClass, row, field, modifiers);
