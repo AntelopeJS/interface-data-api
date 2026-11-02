@@ -23,9 +23,14 @@ export function isFunction(value: unknown): value is Function {
   return typeof value === "function";
 }
 
-/** Whether a value is a class: a function, which `new` may call. */
+/**
+ * Whether a value is a class: a function with an object `prototype`, which
+ * arrow functions, methods and bound functions lack. A generator function
+ * has one too, a language limit this check shares with every `prototype`
+ * test.
+ */
 export function isClass(value: unknown): value is Class<object> {
-  return isFunction(value);
+  return isFunction(value) && isObject(value.prototype);
 }
 
 /** Whether a value is a number. */

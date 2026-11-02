@@ -7,6 +7,7 @@ import {
 } from "@antelopejs/interface-database-decorators";
 import {
   type Class,
+  type DecoratorTarget,
   MakeMethodAndPropertyDecorator,
   MakePropertyDecorator,
 } from "@antelopejs/interface-core/decorators";
@@ -36,7 +37,7 @@ import {
   rebuildPluck,
   targetJoinedFields,
 } from "./internal/meta-records";
-import { isString } from "./internal/guards";
+import { isClass, isString } from "./internal/guards";
 import { classOf } from "./internal/prototypes";
 import { resolveTableReference } from "./internal/table-reference";
 
@@ -504,12 +505,16 @@ export class DataAPIMeta {
 
 /** Declares a decorated field; a symbol-named property declares none. */
 function onField(
-  target: { constructor: Class },
+  target: DecoratorTarget,
   key: PropertyKey,
   declare: (meta: DataAPIMeta, name: string) => void,
 ) {
   if (!isString(key)) return;
-  declare(GetMetadata(target.constructor, DataAPIMeta), key);
+  const owner = target.constructor;
+  if (!isClass(owner)) {
+    throw new TypeError("A field decorator applies to a class.");
+  }
+  declare(GetMetadata(owner, DataAPIMeta), key);
 }
 
 /**
@@ -703,7 +708,7 @@ const FilterDecoratorFactory = MakePropertyDecorator(
 export function Filter<T extends Record<string, any>>(
   func?: FilterFunction<T, T>,
   useIndex?: boolean,
-): (target: T, propertyKey: string | symbol) => void {
+) {
   return FilterDecoratorFactory(func, useIndex);
 }
 
