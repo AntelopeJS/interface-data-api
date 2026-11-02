@@ -125,11 +125,11 @@ The package declares these `@antelopejs/*` peer dependencies:
 
 | Package                                     | Supported         | Tested with                                                               |
 | ------------------------------------------- | ----------------- | ------------------------------------------------------------------------- |
-| `@antelopejs/interface-api`                 | `>=0.3.0 <1.0.0`  | `file:.campaign/tgz/antelopejs-interface-api-f2a99b5.tgz`                 |
+| `@antelopejs/interface-api`                 | `>=0.3.0 <1.0.0`  | `file:.campaign/tgz/antelopejs-interface-api-015a93a.tgz`                 |
 | `@antelopejs/interface-api-util`            | `>=0.1.3 <1.0.0`  | `file:.campaign/tgz/antelopejs-interface-api-util-639f38b.tgz`            |
-| `@antelopejs/interface-core`                | `>=0.2.4 <1.0.0`  | `0.2.7`                                                                   |
+| `@antelopejs/interface-core`                | `>=0.2.4 <1.0.0`  | `file:.campaign/tgz/antelopejs-interface-core-f7df541.tgz`                |
 | `@antelopejs/interface-database`            | `>=0.1.10 <1.0.0` | `file:.campaign/tgz/antelopejs-interface-database-724ff72.tgz`            |
-| `@antelopejs/interface-database-decorators` | `>=0.1.10 <1.0.0` | `file:.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz` |
+| `@antelopejs/interface-database-decorators` | `>=0.1.10 <1.0.0` | `file:.campaign/tgz/antelopejs-interface-database-decorators-1234214.tgz` |
 
 <!-- antelopejs-docs-compat:end -->
 

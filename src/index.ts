@@ -25,6 +25,7 @@ import type { WriteDocument } from "@antelopejs/interface-database/common";
 
 import { Parameters, Query, Validation } from "./components";
 import { isWriteDocument, isWriteValue } from "./internal/guards";
+import { prototypeOf } from "./internal/prototypes";
 import {
   DataAPIMeta,
   type DataControllerCallback,
@@ -92,22 +93,21 @@ export function DataController<
 export const RegisterDataController =
   (): ClassDecorator<ControllerClass> => (target) => {
     const meta = GetMetadata(target, DataAPIMeta);
+    const prototype = prototypeOf(target);
     for (const [key, entry] of Object.entries(meta.endpoints)) {
       for (let i = 0; i < entry.callback.args.length; ++i) {
         const arg = entry.callback.args[i];
         if (Array.isArray(arg)) {
           for (const step of arg) {
-            step(target.prototype, key, i);
+            step(prototype, key, i);
           }
         } else {
-          arg(target.prototype, key, i);
+          arg(prototype, key, i);
         }
       }
-      const meta = GetMetadata(target, ControllerMeta);
-      const fullLocation = `${meta.location}/${entry.endpoint ?? key}`.replace(
-        /\/+/g,
-        "/",
-      );
+      const controllerMeta = GetMetadata(target, ControllerMeta);
+      const fullLocation =
+        `${target.location}/${entry.endpoint ?? key}`.replace(/\/+/g, "/");
       RegisterRoute({
         callback: (ctx: Parameters.DataRequestContext) => {
           ctx.dataAPIEntry = entry;
@@ -116,16 +116,12 @@ export const RegisterDataController =
         method: entry.callback.method,
         mode: "prefix",
         parameters: [{ provider: (ctx) => ctx, modifiers: [] }],
-        properties: meta.computed_props,
+        properties: controllerMeta.computed_props,
         controller: target,
       });
-      Route("handler", entry.callback.method, entry.endpoint)(
-        target.prototype,
-        key,
-        {
-          value: entry.callback.func,
-        },
-      );
+      Route("handler", entry.callback.method, entry.endpoint)(prototype, key, {
+        value: entry.callback.func,
+      });
     }
   };
 
