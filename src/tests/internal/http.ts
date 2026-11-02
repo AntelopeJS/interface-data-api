@@ -38,5 +38,6 @@ export interface ListResponse<Row> {
  * @returns The parsed body
  */
 export async function readJson<T>(response: Response): Promise<T> {
+  // oxlint-disable-next-line typescript/no-unsafe-return -- JSON.parse returns any and readJson<T> is the JSON boundary of the HTTP test client, where each test compares the body by value; returning unknown moves the claim to a cast at every caller
   return JSON.parse(await response.text());
 }

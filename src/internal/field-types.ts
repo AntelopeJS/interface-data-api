@@ -48,6 +48,7 @@ export interface FieldValues {
  * what the getter returned. Read a field through a guard.
  */
 export interface RowFields {
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- a table row holds whatever its table class declares (relation instances, getter results), and a route reads each field through a guard, so no schema-derived value type exists for the fields of a schemaless store row
   [field: string]: unknown;
 }
 
