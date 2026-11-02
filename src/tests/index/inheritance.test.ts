@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { z } from "zod";
 import { Controller } from "@antelopejs/interface-api";
 import { Access, AccessMode, Listable, ModelReference } from "../../metadata";
 import {
@@ -15,7 +16,7 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
-import { readJson } from "../internal/http";
+import { createdRowSchema, readJson } from "../internal/http";
 import {
   deleteRequest,
   editRequest,
@@ -23,7 +24,6 @@ import {
   getSchemaInstance,
   listRequest,
   newRequest,
-  type CreatedRow,
 } from "../utils";
 
 const NOTE_TABLE = "inheritance-notes";
@@ -84,9 +84,11 @@ class _ArchiveAPI extends DataController(
   declare archiveModel: ArchiveModel;
 }
 
-interface NoteListResponse {
-  results: Partial<Note>[];
-}
+const noteListSchema = z.looseObject({
+  results: z.array(
+    z.looseObject({ _id: z.string().optional(), title: z.string().optional() }),
+  ),
+});
 
 describe("Derived data controllers", () => {
   let noteModel: NoteModel;
@@ -106,14 +108,14 @@ describe("Derived data controllers", () => {
 
     const list = await listRequest(DERIVED_LOCATION);
     expect(list.status).to.equal(OK);
-    const { results } = await readJson<NoteListResponse>(list);
+    const { results } = await readJson(noteListSchema, list);
     expect(results).to.deep.include({ _id: id, title: "Inherited" });
   });
 
   it("inherits the parent model reference for new, edit and delete", async () => {
     const created = await newRequest(DERIVED_LOCATION, { title: "Created" });
     expect(created.status).to.equal(OK);
-    const { _id: id } = await readJson<CreatedRow>(created);
+    const { _id: id } = await readJson(createdRowSchema, created);
     expect(await noteModel.get(id)).to.have.property("title", "Created");
 
     const edited = await editRequest(

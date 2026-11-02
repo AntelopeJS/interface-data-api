@@ -17,12 +17,11 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
-import { readJson } from "../internal/http";
+import { createdRowSchema, readJson } from "../internal/http";
 import {
   editRequest,
   getSchemaInstance,
   newRequest,
-  type CreatedRow,
   validateObject,
 } from "../utils";
 import { isNumber, isString } from "../../internal/guards";
@@ -231,7 +230,7 @@ function createCorrectValidator(
     if (id) {
       product_fetched = await productModel.get(id);
     } else {
-      const created = await readJson<CreatedRow>(response);
+      const created = await readJson(createdRowSchema, response);
       expect(created._id).to.be.a("string");
       product_fetched = await productModel.get(created._id);
     }

@@ -1,5 +1,6 @@
 import path from "node:path";
 import { expect } from "chai";
+import { z } from "zod";
 import { Controller } from "@antelopejs/interface-api";
 import { Schema } from "@antelopejs/interface-database";
 import {
@@ -24,7 +25,7 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
-import { type ListResponse, readJson } from "../internal/http";
+import { listResponseSchema, readJson } from "../internal/http";
 import {
   getFunctionName,
   getSchemaInstance,
@@ -68,12 +69,26 @@ class Product extends Table {
 }
 class ProductModel extends BasicDataModel(Product, productTableName) {}
 
-interface ProductListed {
-  _id: string;
-  name: string;
-  price: number;
-  addedAt: string;
-}
+const productRowSchema = z.looseObject({
+  _id: z.string(),
+  reference: z.string().optional(),
+  name: z.string().optional(),
+  description: z.string().optional(),
+  price: z.number().optional(),
+  addedAt: z.string().optional(),
+  internalNotes: z.string().optional(),
+  metadata: z.string().optional(),
+});
+
+const productListedSchema = z.looseObject({
+  _id: z.string(),
+  name: z.string(),
+  price: z.number(),
+  addedAt: z.string(),
+});
+
+const productRowListSchema = listResponseSchema(productRowSchema);
+const productListedListSchema = listResponseSchema(productListedSchema);
 
 const defaultProductDataset: Partial<Product>[] = [
   {
@@ -215,7 +230,7 @@ async function expectDefaultList() {
 
   const response = await listRequest(getFunctionName(), {});
   expect(response.status).to.equal(200);
-  const data = await readJson<{ results: Product[] }>(response);
+  const data = await readJson(productRowListSchema, response);
   expect(data.results).to.have.length(defaultProductDataset.length);
   const listed_products = data.results;
   const database_products = await _getDatabaseProducts(
@@ -254,7 +269,7 @@ async function expectDetailedList() {
     {},
   );
   expect(response.status).to.equal(200);
-  const data = await readJson<{ results: Product[] }>(response);
+  const data = await readJson(productRowListSchema, response);
   expect(data.results).to.have.length(defaultProductDataset.length);
   const listed_products = data.results;
   const database_products = await _getDatabaseProducts(
@@ -304,7 +319,7 @@ async function expectTwoRowPage() {
 
   const response = await listRequest(getFunctionName(), { limit: "2" });
   expect(response.status).to.equal(200);
-  const data = await readJson<ListResponse<ProductListed>>(response);
+  const data = await readJson(productListedListSchema, response);
   expect(data.results).to.have.length(2);
   expect(data.total).to.equal(defaultProductDataset.length);
   expect(data.limit).to.equal(2);
@@ -322,7 +337,7 @@ async function expectFromPageTwo() {
 
   const response = await listRequest(getFunctionName(), { offset: "2" });
   expect(response.status).to.equal(200);
-  const data = await readJson<ListResponse<ProductListed>>(response);
+  const data = await readJson(productListedListSchema, response);
   expect(data.results).to.have.length(1);
   expect(data.total).to.equal(defaultProductDataset.length);
   expect(data.offset).to.equal(2);
@@ -338,7 +353,7 @@ async function expectTwoFirstPages() {
 
   const response = await listRequest(getFunctionName(), { maxPage: "2" });
   expect(response.status).to.equal(200);
-  const data = await readJson<ListResponse<ProductListed>>(response);
+  const data = await readJson(productListedListSchema, response);
   expect(data.results).to.have.length(defaultProductDataset.length);
   expect(data.total).to.equal(defaultProductDataset.length);
   expect(data.results[0]._id).to.not.equal(undefined);
@@ -356,7 +371,7 @@ async function expectPageTwoOnly() {
     limit: "1",
   });
   expect(response.status).to.equal(200);
-  const data = await readJson<ListResponse<ProductListed>>(response);
+  const data = await readJson(productListedListSchema, response);
   expect(data.results).to.have.length(1);
   expect(data.total).to.equal(defaultProductDataset.length);
   expect(data.offset).to.equal(2);
@@ -405,7 +420,7 @@ async function expectNameAscending() {
     sortDirection: "asc",
   });
   expect(response.status).to.equal(200);
-  const data = await readJson<ListResponse<ProductListed>>(response);
+  const data = await readJson(productListedListSchema, response);
   expect(data.results).to.have.length(defaultProductDataset.length);
 
   const sortedNames = data.results.map((product) => product.name);
@@ -425,7 +440,7 @@ async function expectNameDescending() {
     sortDirection: "desc",
   });
   expect(response.status).to.equal(200);
-  const data = await readJson<ListResponse<ProductListed>>(response);
+  const data = await readJson(productListedListSchema, response);
   expect(data.results).to.have.length(defaultProductDataset.length);
 
   const sortedNames = data.results.map((product) => product.name);
@@ -445,7 +460,7 @@ async function expectPriceAscending() {
     sortDirection: "asc",
   });
   expect(response.status).to.equal(200);
-  const data = await readJson<ListResponse<ProductListed>>(response);
+  const data = await readJson(productListedListSchema, response);
   expect(data.results).to.have.length(defaultProductDataset.length);
 
   const sortedPrices = data.results.map((product) => product.price);
@@ -465,7 +480,7 @@ async function expectPriceDescending() {
     sortDirection: "desc",
   });
   expect(response.status).to.equal(200);
-  const data = await readJson<ListResponse<ProductListed>>(response);
+  const data = await readJson(productListedListSchema, response);
   expect(data.results).to.have.length(defaultProductDataset.length);
 
   const sortedPrices = data.results.map((product) => product.price);
@@ -489,7 +504,7 @@ async function expectAddedAtAscending() {
     sortDirection: "asc",
   });
   expect(response.status).to.equal(200);
-  const data = await readJson<ListResponse<ProductListed>>(response);
+  const data = await readJson(productListedListSchema, response);
   expect(data.results).to.have.length(defaultProductDataset.length);
   const sortedDates = data.results.map((product) =>
     new Date(product.addedAt).getTime(),
@@ -512,7 +527,7 @@ async function expectAddedAtDescending() {
     sortDirection: "desc",
   });
   expect(response.status).to.equal(200);
-  const data = await readJson<ListResponse<ProductListed>>(response);
+  const data = await readJson(productListedListSchema, response);
   expect(data.results).to.have.length(defaultProductDataset.length);
 
   const sortedDates = data.results.map((product) =>

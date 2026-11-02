@@ -1,5 +1,6 @@
 import path from "node:path";
 import { expect } from "chai";
+import { z } from "zod";
 import { Controller } from "@antelopejs/interface-api";
 import { Schema } from "@antelopejs/interface-database";
 import {
@@ -23,7 +24,7 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
-import { readJson } from "../internal/http";
+import { listResponseSchema, readJson } from "../internal/http";
 import { getSchemaInstance, listRequest, request } from "../utils";
 
 const currentTestName = path
@@ -44,9 +45,9 @@ class Page extends Table {
 }
 class PageModel extends BasicDataModel(Page, pageTableName) {}
 
-interface ListResponse {
-  results: { title: string; url: string }[];
-}
+const listSchema = listResponseSchema(
+  z.looseObject({ title: z.string(), url: z.string() }),
+);
 
 async function seedPages() {
   await RegisterSchema(schemaName);
@@ -182,7 +183,7 @@ describe("List route - filter comparisons", () => {
     });
 
     expect(response.status, await response.clone().text()).to.equal(200);
-    const data = await readJson<ListResponse>(response);
+    const data = await readJson(listSchema, response);
     expect(data.results.map(({ title }) => title)).to.eql(["alpha"]);
   });
 
@@ -194,7 +195,7 @@ describe("List route - filter comparisons", () => {
     });
 
     expect(response.status, await response.clone().text()).to.equal(200);
-    const data = await readJson<ListResponse>(response);
+    const data = await readJson(listSchema, response);
     expect(data.results.map(({ title }) => title)).to.eql(["beta"]);
   });
 
@@ -206,7 +207,7 @@ describe("List route - filter comparisons", () => {
     });
 
     expect(response.status, await response.clone().text()).to.equal(200);
-    const data = await readJson<ListResponse>(response);
+    const data = await readJson(listSchema, response);
     expect(data.results.map(({ title }) => title)).to.eql(["alpha"]);
   });
 
@@ -218,7 +219,7 @@ describe("List route - filter comparisons", () => {
     });
 
     expect(response.status, await response.clone().text()).to.equal(200);
-    const data = await readJson<ListResponse>(response);
+    const data = await readJson(listSchema, response);
     expect(data.results.map(({ title }) => title)).to.eql(["alpha"]);
   });
 });

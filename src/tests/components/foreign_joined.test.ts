@@ -1,5 +1,6 @@
 import path from "node:path";
 import { expect } from "chai";
+import { z } from "zod";
 import { Controller } from "@antelopejs/interface-api";
 import { Schema } from "@antelopejs/interface-database";
 import { GetMetadata } from "@antelopejs/interface-core";
@@ -75,15 +76,18 @@ class Shelf extends Table {
 }
 class ShelfModel extends BasicDataModel(Shelf, shelfTableName) {}
 
-interface ShelfListed {
-  _id: string;
-  book: {
-    _id: string;
-    title: string;
-    authorId: string;
-    authorName: string | null;
-  } | null;
-}
+const shelfListedSchema = z.looseObject({
+  _id: z.string(),
+  book: z
+    .looseObject({
+      _id: z.string(),
+      title: z.string(),
+      authorName: z.string().nullable(),
+    })
+    .nullable(),
+});
+
+const shelfListSchema = z.looseObject({ results: z.array(shelfListedSchema) });
 
 const orphanBookId = "orphan-book-id";
 
@@ -203,7 +207,7 @@ async function expectResolvesJoinedLabelInList() {
 
   const response = await listRequest(getFunctionName(), {});
   expect(response.status).to.equal(200);
-  const data = await readJson<{ results: ShelfListed[] }>(response);
+  const data = await readJson(shelfListSchema, response);
 
   const alpha = data.results.find((s) => s.book?.title === "Alpha Rising");
   expect(alpha, "row for Alpha Rising").to.not.equal(undefined);
@@ -223,7 +227,7 @@ async function expectReturnsNullForOrphanRelation() {
 
   const response = await listRequest(getFunctionName(), {});
   expect(response.status).to.equal(200);
-  const data = await readJson<{ results: ShelfListed[] }>(response);
+  const data = await readJson(shelfListSchema, response);
 
   const resolved = data.results.filter((s) => s.book?.title);
   expect(resolved).to.have.lengthOf(2);
@@ -240,7 +244,7 @@ async function expectResolvesJoinedLabelInGet() {
     const text = await response.text();
     throw new Error(`get failed (${response.status}): ${text}`);
   }
-  const shelf = await readJson<ShelfListed>(response);
+  const shelf = await readJson(shelfListedSchema, response);
   expect(shelf.book?.title).to.equal("Alpha Rising");
   expect(shelf.book?.authorName).to.equal("Alice Carter");
 }
@@ -253,6 +257,6 @@ async function expectReturnsNullForOrphanRelationInGet() {
     const text = await response.text();
     throw new Error(`get orphan failed (${response.status}): ${text}`);
   }
-  const shelf = await readJson<ShelfListed>(response);
+  const shelf = await readJson(shelfListedSchema, response);
   expect(shelf.book, "orphan relation value in get").to.equal(null);
 }

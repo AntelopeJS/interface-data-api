@@ -1,5 +1,6 @@
 import path from "node:path";
 import { expect } from "chai";
+import { z } from "zod";
 import { Controller } from "@antelopejs/interface-api";
 import type { SchemaInstance } from "@antelopejs/interface-database";
 import { Access, AccessMode, ModelReference } from "../../metadata";
@@ -50,6 +51,14 @@ class User extends Table {
   declare age: number;
 }
 class UserModel extends BasicDataModel(User, userTableName) {}
+
+const userRowSchema = z.looseObject({
+  _id: z.string().optional(),
+  email: z.string().optional(),
+  password: z.string().optional(),
+  name: z.string().optional(),
+  age: z.number().optional(),
+});
 let database: SchemaInstance<any>;
 
 const defaultUserDataset: Partial<User> = {
@@ -115,7 +124,7 @@ async function expectReadInReadWriteField() {
 
   const response = await getRequest(getFunctionName(), { id });
   expect(response.status).to.equal(200);
-  const data = await readJson<User>(response);
+  const data = await readJson(userRowSchema, response);
   expect(data.name).to.equal(defaultUserDataset.name);
   expect(data.age).to.equal(defaultUserDataset.age);
   expect(data.email).to.equal(defaultUserDataset.email);
@@ -147,7 +156,7 @@ async function expectReadInWriteOnlyField() {
 
   const response = await getRequest(getFunctionName(), { id });
   expect(response.status).to.equal(200);
-  const data = await readJson<User>(response);
+  const data = await readJson(userRowSchema, response);
   expect(data.password).to.equal(undefined);
 }
 
@@ -175,7 +184,7 @@ async function expectReadInReadOnlyField() {
 
   const response = await getRequest(getFunctionName(), { id });
   expect(response.status).to.equal(200);
-  const data = await readJson<User>(response);
+  const data = await readJson(userRowSchema, response);
   expect(data.email).to.equal(defaultUserDataset.email);
 }
 

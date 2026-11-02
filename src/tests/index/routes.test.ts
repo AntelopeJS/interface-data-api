@@ -1,5 +1,6 @@
 import path from "node:path";
 import { expect } from "chai";
+import { z } from "zod";
 import { Controller, type RequestContext } from "@antelopejs/interface-api";
 import { Schema } from "@antelopejs/interface-database";
 import {
@@ -54,6 +55,16 @@ class User extends Table {
   declare age: number;
 }
 class UserModel extends BasicDataModel(User, userTableName) {}
+
+const userRowSchema = z.looseObject({
+  _id: z.string(),
+  email: z.string().optional(),
+  password: z.string().optional(),
+  name: z.string().optional(),
+  age: z.number().optional(),
+});
+
+const userListSchema = z.looseObject({ results: z.array(userRowSchema) });
 
 const validUserDataset = {
   default: {
@@ -188,10 +199,10 @@ async function validateUserUsingResponse(
   id: string,
   validDataset: Partial<User>,
 ) {
-  const data = await readJson<{ results: User[] }>(response);
+  const data = await readJson(userListSchema, response);
   expect(response.status).to.equal(200);
 
-  let found: User | undefined;
+  let found: z.infer<typeof userRowSchema> | undefined;
   if (data.results && Array.isArray(data.results)) {
     for (const user of data.results) {
       if (user._id === id) {
@@ -213,7 +224,7 @@ async function validateUserUsingModel(
 }
 
 async function validateUser(
-  user: User | undefined,
+  user: Partial<User> | undefined,
   validDataset: Partial<User>,
   id?: string,
 ) {
@@ -267,7 +278,7 @@ async function expectUsingRouteNew() {
     getFunctionName(),
     validUserDataset.default,
   );
-  const created = await readJson<User>(response);
+  const created = await readJson(userRowSchema, response);
   expect(created._id).to.be.a("string");
   expect(created.name).to.equal(validUserDataset.default.name);
   expect(created.email).to.equal(validUserDataset.default.email);
@@ -292,7 +303,7 @@ async function expectUsingRouteEdit() {
     validUserDataset.alternative,
     { id },
   );
-  const stored = await readJson<User>(response);
+  const stored = await readJson(userRowSchema, response);
   expect(stored._id).to.equal(id);
   expect(stored.name).to.equal(validUserDataset.alternative.name);
   expect(stored.email).to.equal(validUserDataset.alternative.email);
@@ -345,7 +356,8 @@ async function expectWritesParsedBodyAsHanded() {
     },
   );
 
-  const created = await readJson<User>(
+  const created = await readJson(
+    userRowSchema,
     await newRequest(getFunctionName(), validUserDataset.alternative),
   );
   expect(created.name).to.equal(stampedName);
@@ -354,7 +366,8 @@ async function expectWritesParsedBodyAsHanded() {
     name: stampedName,
   });
 
-  const edited = await readJson<User>(
+  const edited = await readJson(
+    userRowSchema,
     await editRequest(getFunctionName(), { age: 51 }, { id }),
   );
   expect(edited.name).to.equal(stampedName);
