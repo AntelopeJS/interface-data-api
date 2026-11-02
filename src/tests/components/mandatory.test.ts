@@ -19,14 +19,13 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
-import { readJson } from "../internal/http";
+import { createdRowSchema, readJson } from "../internal/http";
 import {
   editRequest,
   getFunctionName,
   getSchemaInstance,
   newRequest,
   request,
-  type CreatedRow,
   validateObject,
 } from "../utils";
 
@@ -165,7 +164,7 @@ async function expectNewWithAllMandatoryFields() {
     totalAmount: validOrderDataset.default.totalAmount,
   });
   expect(response.status).to.equal(200);
-  const created = await readJson<CreatedRow>(response);
+  const created = await readJson(createdRowSchema, response);
   expect(created._id).to.be.a("string");
   const order = await orderModel.get(created._id);
   expect(order).to.not.equal(undefined);

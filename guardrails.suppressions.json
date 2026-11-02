@@ -1,7 +1,7 @@
 {
   "rules": {
     "anti-slop/no-unsafe-dictionary-type": 1,
-    "typescript/no-unsafe-return": 2
+    "typescript/no-unsafe-return": 1
   },
   "tsExpectError": 5,
   "tsIgnore": 0,

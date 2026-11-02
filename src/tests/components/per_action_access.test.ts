@@ -1,5 +1,6 @@
 import path from "node:path";
 import { expect } from "chai";
+import { z } from "zod";
 import { Controller } from "@antelopejs/interface-api";
 import {
   DataController,
@@ -23,14 +24,13 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
-import { readJson } from "../internal/http";
+import { createdRowSchema, readJson } from "../internal/http";
 import {
   editRequest,
   getFunctionName,
   getRequest,
   getSchemaInstance,
   newRequest,
-  type CreatedRow,
 } from "../utils";
 
 const currentTestName = path
@@ -57,6 +57,14 @@ class User extends Table {
   declare age: number;
 }
 class UserModel extends BasicDataModel(User, userTableName) {}
+
+const userRowSchema = z.looseObject({
+  _id: z.string().optional(),
+  email: z.string().optional(),
+  name: z.string().optional(),
+  role: z.string().optional(),
+  age: z.number().optional(),
+});
 
 const defaultUserDataset: Partial<User> = {
   name: "Jean Test",
@@ -127,7 +135,7 @@ async function expectWritableInNewReadOnlyInEdit() {
 
   const getResponse = await getRequest(getFunctionName(), { id });
   expect(getResponse.status).to.equal(200);
-  const data = await readJson<User>(getResponse);
+  const data = await readJson(userRowSchema, getResponse);
   expect(data.role).to.equal("admin");
 
   await editRequest(getFunctionName(), { role: "user" }, { id });
@@ -143,7 +151,7 @@ async function expectReadOnlyGloballyReadWriteInNew() {
 
   const newResponse = await newRequest(getFunctionName(), defaultUserDataset);
   expect(newResponse.status).to.equal(200);
-  const created = await readJson<CreatedRow>(newResponse);
+  const created = await readJson(createdRowSchema, newResponse);
   const newUser = await userModel.get(created._id);
   expect(newUser?.age).to.equal(30);
 
@@ -153,6 +161,6 @@ async function expectReadOnlyGloballyReadWriteInNew() {
 
   const getResponse = await getRequest(getFunctionName(), { id });
   expect(getResponse.status).to.equal(200);
-  const getData = await readJson<User>(getResponse);
+  const getData = await readJson(userRowSchema, getResponse);
   expect(getData.age).to.equal(30);
 }

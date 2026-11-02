@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { z } from "zod";
 import { Controller } from "@antelopejs/interface-api";
 import { Schema } from "@antelopejs/interface-database";
 import {
@@ -22,7 +23,7 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
-import { readJson } from "../internal/http";
+import { listResponseSchema, readJson } from "../internal/http";
 import { getSchemaInstance, listRequest } from "../utils";
 
 const tableName = "prototype-named-filter-rows";
@@ -38,9 +39,7 @@ class Row extends Table {
 Field("string")(Row.prototype, "valueOf");
 class RowModel extends BasicDataModel(Row, tableName) {}
 
-interface ListResponse {
-  results: { title: string }[];
-}
+const listSchema = listResponseSchema(z.looseObject({ title: z.string() }));
 
 async function createController(testName: string) {
   @RegisterDataController()
@@ -80,7 +79,7 @@ describe("List route - a field named like an Object.prototype member", () => {
     const response = await listRequest("valueof-plain");
 
     expect(response.status, await response.clone().text()).to.equal(200);
-    const data = await readJson<ListResponse>(response);
+    const data = await readJson(listSchema, response);
     expect(data.results.map(({ title }) => title)).to.have.members([
       "alpha",
       "beta",
@@ -95,7 +94,7 @@ describe("List route - a field named like an Object.prototype member", () => {
     });
 
     expect(response.status, await response.clone().text()).to.equal(200);
-    const data = await readJson<ListResponse>(response);
+    const data = await readJson(listSchema, response);
     expect(data.results.map(({ title }) => title)).to.eql(["alpha"]);
   });
 });
