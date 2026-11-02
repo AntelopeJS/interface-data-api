@@ -6,7 +6,7 @@ import type {
   RowFields,
 } from "../metadata";
 import { isFunction } from "./guards";
-import { prototypeOf } from "./prototypes";
+import { fieldsOf, prototypeOf } from "./prototypes";
 
 export async function ReadProperties(
   obj: DataControllerInstance,
@@ -17,7 +17,7 @@ export async function ReadProperties(
 ) {
   const readable =
     meta.readable[action ?? "_default"] ?? meta.readable._default;
-  const instance = { ...obj };
+  const instance = fieldsOf({ ...obj });
   const res: RowFields = {};
   for (const [key, field] of readable.props) {
     if (onlyList && !field.listable) {

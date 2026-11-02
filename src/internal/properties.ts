@@ -7,7 +7,7 @@ import type {
   RowFields,
   WritableAccessFields,
 } from "../metadata";
-import { prototypeOf } from "./prototypes";
+import { fieldsOf, prototypeOf } from "./prototypes";
 
 function writableInBody(
   writable: WritableAccessFields,
@@ -20,7 +20,7 @@ function writableInBody(
 }
 
 function writeTargetDefaults(
-  instance: Parameters<typeof Query.WriteProperties>[0],
+  instance: RowFields,
   meta: DataAPIMeta,
   dbData: RowFields,
 ) {
@@ -47,7 +47,7 @@ export function WriteProperties(
   const writable = existingDBData
     ? writableInBody(actionWritable, bodyData)
     : actionWritable;
-  const instance = { ...obj };
+  const instance = fieldsOf({ ...obj });
   const dbData: RowFields = existingDBData || {};
   Object.setPrototypeOf(dbData, prototypeOf(meta.tableClass));
   if (!existingDBData) {
