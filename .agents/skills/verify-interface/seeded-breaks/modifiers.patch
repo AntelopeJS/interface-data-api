@@ -1,0 +1,13 @@
+diff --git a/src/internal/validation.ts b/src/internal/validation.ts
+index 29bfdb8..ac364d1 100644
+--- a/src/internal/validation.ts
++++ b/src/internal/validation.ts
+@@ -74,7 +74,7 @@ export function Unlock(
+   for (const [modifier, field] of meta.modifierKeys.entries()) {
+     const keyed: KeyedModifier = modifier;
+     const key = fieldsOf(obj)[field];
+-    unlock(dbData, keyed, undefined, key);
++    unlock(dbData, keyed, undefined);
+     for (const [foreign, fieldData] of Object.entries(meta.fields)) {
+       const related = dbData[foreign];
+       if (fieldData.foreign && isObject(related)) {

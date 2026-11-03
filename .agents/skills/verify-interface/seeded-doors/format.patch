@@ -1,0 +1,13 @@
+diff --git a/src/components.ts b/src/components.ts
+index 96c65d8..b06c6c3 100644
+--- a/src/components.ts
++++ b/src/components.ts
+@@ -502,7 +502,7 @@ export namespace Validation {
+   };
+ 
+   /** The `code` of a 400 naming the mandatory fields a body lacks. */
+-  export const MISSING_MANDATORY_FIELDS = "missing_mandatory_fields";
++  export const MISSING_MANDATORY_FIELDS = "missing_fields";
+   /** The `code` of a 400 naming the fields whose validator refused the value. */
+   export const INVALID_FIELD_TYPES = "invalid_field_types";
+ 

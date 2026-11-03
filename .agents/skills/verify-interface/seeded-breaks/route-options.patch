@@ -1,0 +1,13 @@
+diff --git a/src/components.ts b/src/components.ts
+index 96c65d8..6ac76af 100644
+--- a/src/components.ts
++++ b/src/components.ts
+@@ -111,7 +111,7 @@ export namespace Parameters {
+     const result: Partial<T> = { ...GetOptionOverrides(reqCtx) };
+     for (const key in dynamic) {
+       const extractor = dynamic[key];
+-      if (!extractor || (key in result && !combinesWithOptions(extractor))) {
++      if (!extractor) {
+         continue;
+       }
+       const value = extractor(reqCtx, meta, key);
