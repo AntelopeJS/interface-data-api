@@ -15,7 +15,7 @@ export const ORDERS = `d.verify__users.insertMany([
 d.verify__order_items.insertMany([{ _id: "i1", name: "Widget", price: 9.99 }, { _id: "i2", name: "Gadget", price: 24.99 }]);
 d.verify_auth__accounts.insertMany([{ _id: "a1", login: "alice-login" }]);
 d.verify__orders.insertMany([
-  { _id: "o1", userId: "u1", userEmail: "bob@gmail.com", ownerLogin: "a1", tagged: "u2", items: ["i1", "i2"], itemsAll: ["i1"], total: 99 },
+  { _id: "o1", userId: "u1", userEmail: "bob@gmail.com", ownerLogin: "a1", tagged: "u2", byEmail: "bob@gmail.com", items: ["i1", "i2"], itemsAll: ["i1"], total: 99 },
   { _id: "o2", userId: "nobody", userEmail: "nobody@x.io", ownerLogin: "zz", tagged: "u1", items: [], itemsAll: [], total: 5 },
 ]);`;
 

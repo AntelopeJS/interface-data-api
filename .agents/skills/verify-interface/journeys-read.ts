@@ -70,6 +70,7 @@ const foreignResolve = shopJourney("a foreign key field answers the referenced r
       total: 99,
     }),
   ]);
+  context.expect(one.folder, [equal("an index without pluck resolves the whole record", pick(pick(one.json, "byEmail"), "name"), "Bob")]);
   const missing = await shop.request("order o2", "GET", "/orders/get?id=o2");
   context.expect(missing.folder, [
     status(missing, 200),

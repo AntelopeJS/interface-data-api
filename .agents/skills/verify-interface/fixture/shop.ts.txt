@@ -318,6 +318,9 @@ class Order extends Table {
   @Relation({ to: () => OrderItem, many: true })
   declare items: string[];
 
+  @Field("string")
+  declare byEmail: string;
+
   @Field(["string"])
   declare itemsAll: string[];
 
@@ -367,6 +370,11 @@ class _OrderAPI extends DataController(
   @Access(AccessMode.ReadWrite)
   @Foreign(OrderItem, undefined, true, ["name", "price"])
   declare items: OrderItem[];
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  @Foreign(User, "email")
+  declare byEmail: User;
 
   @Listable()
   @Access(AccessMode.ReadWrite)

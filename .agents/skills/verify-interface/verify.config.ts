@@ -25,10 +25,10 @@ const config: VerifyConfig<typeof DataApi> = {
       why: "the new, edit and delete routes write and remove rows in the consumer's database; a delete that removes a row nobody named cannot be undone",
     },
     format: {
-      globs: ["src/components.ts", "src/internal/validation.ts", "src/internal/list.ts"],
+      globs: ["src/components.ts", "src/internal/validation.ts"],
       funnels: [],
-      containments: ["validation/mandatory-and-validators", "listing/pagination"],
-      why: "the 400 bodies (code and fields) and the list envelope (results, total, offset, limit) are what clients parse",
+      containments: ["validation/mandatory-and-validators"],
+      why: "the 400 bodies (code and fields) are what clients parse",
     },
     contract: {
       globs: ["src/index.ts", "src/metadata.ts", "src/components.ts", "package.json"],
