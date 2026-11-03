@@ -27,10 +27,10 @@ The package runs in your module and has no implementing module of its own. The p
 
 ## Install
 
-Add the package and the interfaces your controllers import to your module.
+Add the package and its peer interfaces to your module.
 
 ```bash
-pnpm add @antelopejs/interface-data-api @antelopejs/interface-api @antelopejs/interface-database-decorators
+pnpm add @antelopejs/interface-data-api @antelopejs/interface-api @antelopejs/interface-api-util @antelopejs/interface-core @antelopejs/interface-database @antelopejs/interface-database-decorators
 ```
 
 Then add the implementations to the project.
