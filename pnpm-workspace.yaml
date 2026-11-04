@@ -1,4 +1,0 @@
-overrides:
-  "@antelopejs/interface-api": "0.2.0"
-  "@antelopejs/interface-api-util": "0.3.0"
-  "@antelopejs/api": "file:.campaign/tgz/antelopejs-api-6afe3e2.tgz"

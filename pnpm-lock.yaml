@@ -4,26 +4,21 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  '@antelopejs/interface-api': 0.2.0
-  '@antelopejs/interface-api-util': 0.3.0
-  '@antelopejs/api': file:.campaign/tgz/antelopejs-api-6afe3e2.tgz
-
 importers:
 
   .:
     devDependencies:
       '@antelopejs/api':
-        specifier: file:.campaign/tgz/antelopejs-api-6afe3e2.tgz
-        version: file:.campaign/tgz/antelopejs-api-6afe3e2.tgz(@antelopejs/core@1.20.0)
+        specifier: ^1.7.0
+        version: 1.7.0(@antelopejs/core@1.20.0)
       '@antelopejs/core':
         specifier: ~1.20.0
         version: 1.20.0
       '@antelopejs/interface-api':
-        specifier: 0.2.0
+        specifier: '>=0.2.0 <1.0.0'
         version: 0.2.0(@antelopejs/interface-core@0.4.0)
       '@antelopejs/interface-api-util':
-        specifier: 0.3.0
+        specifier: ^0.3.0
         version: 0.3.0(@antelopejs/interface-api@0.2.0(@antelopejs/interface-core@0.4.0))(@antelopejs/interface-core@0.4.0)
       '@antelopejs/interface-core':
         specifier: ^0.4.0
@@ -91,9 +86,8 @@ importers:
 
 packages:
 
-  '@antelopejs/api@file:.campaign/tgz/antelopejs-api-6afe3e2.tgz':
-    resolution: {integrity: sha512-M+L2u8CwdSJb/U/yCCqk/XXx3RmuNmYlUV//U3Z41w/05DrT79iIFViUBZhuy3gKrTOiEZVbJ5DVA0XEq1I4Ug==, tarball: file:.campaign/tgz/antelopejs-api-6afe3e2.tgz}
-    version: 1.6.0
+  '@antelopejs/api@1.7.0':
+    resolution: {integrity: sha512-1FlpkyVc7lkqJXl+qXWPqZv46ttjj/0ZA3iwgY/KISGoORmnu46HzQKwx9fGOCB4ZMUy2esL4M3oplmdpibgNg==}
     peerDependencies:
       '@antelopejs/core': '>=1.17.0 <2'
     peerDependenciesMeta:
@@ -108,7 +102,7 @@ packages:
   '@antelopejs/interface-api-util@0.3.0':
     resolution: {integrity: sha512-9XGBY3rJk/uwJVpEuazVCeehYHtL4llCtyIT/6YAIkUK7ib0bJFGTqj74ni0KRlbH+jtPp4FU6XyUJL5SVxf+Q==}
     peerDependencies:
-      '@antelopejs/interface-api': 0.2.0
+      '@antelopejs/interface-api': '>=0.3.0 <1.0.0'
       '@antelopejs/interface-core': '>=0.2.4 <1.0.0'
 
   '@antelopejs/interface-api@0.2.0':
@@ -122,7 +116,7 @@ packages:
   '@antelopejs/interface-database-decorators@0.2.0':
     resolution: {integrity: sha512-+lMsG19Kq52hDSiSe+FRMB9weAd3A2IO+9yVrxcQpX9OZRUg/14wIwPeYFIb8ylLS7W39CT0yH9kb7ADPENwBw==}
     peerDependencies:
-      '@antelopejs/interface-api': 0.2.0
+      '@antelopejs/interface-api': '>=0.0.15 <1.0.0'
       '@antelopejs/interface-core': '>=0.2.4 <1.0.0'
       '@antelopejs/interface-database': '>=0.1.11 <1.0.0'
 
@@ -2823,7 +2817,7 @@ packages:
 
 snapshots:
 
-  '@antelopejs/api@file:.campaign/tgz/antelopejs-api-6afe3e2.tgz(@antelopejs/core@1.20.0)':
+  '@antelopejs/api@1.7.0(@antelopejs/core@1.20.0)':
     dependencies:
       '@antelopejs/interface-api': 0.2.0(@antelopejs/interface-core@0.4.0)
       '@antelopejs/interface-api-util': 0.3.0(@antelopejs/interface-api@0.2.0(@antelopejs/interface-core@0.4.0))(@antelopejs/interface-core@0.4.0)
