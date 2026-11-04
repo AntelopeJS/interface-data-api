@@ -11,6 +11,8 @@ journeys:
   - issue-90-edit-index
   - no-mandatory-strings
   - no-pluck-strings
+  - no-model-500
+  - option-beats-query
 ---
 
 # route-options
@@ -24,6 +26,8 @@ A route is customized with `DefaultRoutes.WithOptions`; its options win over the
 - `issue-90-edit-index`: fails on purpose until [#90](https://github.com/AntelopeJS/interface-data-api/issues/90) is fixed: an `edit` with the `index` option updates the row the index found.
 - `no-mandatory-strings`: `noMandatory` skips the mandatory check for any non-empty string, `"false"` included, on `edit` and on `new`, and not for `""` or when absent.
 - `no-pluck-strings`: `noPluck` skips the pluck-mode check only when true.
+- `no-model-500`: a controller whose model reference holds no model answers 500.
+- `option-beats-query`: a route option beats a query parameter of the same name, nested `WithOptions` keep the inner options and endpoint, and the key name is not served when an endpoint renames it.
 
 ## How to get to it (user POV)
 

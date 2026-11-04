@@ -10,6 +10,7 @@ journeys:
   - foreign-raw
   - issue-93-multi-foreign
   - no-foreign-strings
+  - foreign-declaration-throws
 ---
 
 # foreign
@@ -22,6 +23,7 @@ A field that holds a key of another table answers the record it points to.
 - `foreign-raw`: the `noForeign` route option answers the raw keys of single references on a get and on a list.
 - `issue-93-multi-foreign`: fails on purpose until [#93](https://github.com/AntelopeJS/interface-data-api/issues/93) is fixed: a multi reference answers `null` for a missing element and raw ids with `noForeign`.
 - `no-foreign-strings`: the Get `noForeign` option skips resolving for any non-empty string, `"false"` included, and not for `""` or when absent; the List option is a boolean.
+- `foreign-declaration-throws`: `@Foreign` throws at declaration for a schema mismatch between the class and the `schema` parameter, and for a string table name with no class registered in that schema.
 
 ## How to get to it (user POV)
 

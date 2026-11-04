@@ -234,7 +234,7 @@ const effectiveModes = shopJourney("GetEffectiveMode answers the mode each actio
 const declarationErrors = shopJourney("DataController refuses a table class whose schema is not registered", async (shop) => {
   const { context } = shop;
   const declared = await shop.request("declare a controller on an unregistered table", "GET", "/users/declarations");
-  context.expect(declared.folder, [status(declared, 200), equal("the declaration throws", declared.json, ["Non-existent Database Schema"])]);
+  context.expect(declared.folder, [status(declared, 200), equal("the declarations throw", declared.json, ["Non-existent Database Schema", "Unregistered Database Table"])]);
 });
 
 const exportsRuntime: Journey = {

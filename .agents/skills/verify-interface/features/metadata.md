@@ -3,6 +3,7 @@ covers:
   - src/metadata.ts
   - src/internal/field-types.ts
   - src/internal/tables.ts
+  - src/index.ts
 docs:
   - docs/4.access-rights.md
   - docs/2.data-controllers.md
@@ -11,6 +12,8 @@ journeys:
   - declaration-errors
   - exports-runtime
   - consumer-compiles
+  - derived-own-model
+  - foreign-target-meta
 ---
 
 # metadata
@@ -23,6 +26,8 @@ A module author reads field metadata and declares controllers with the decorator
 - `declaration-errors`: `DataController` throws `Non-existent Database Schema` for a table class whose schema is not registered.
 - `exports-runtime`: the packed `metadata` entry exports `AccessMode` as 1, 2 and 3 and `FilterValuesOf`, which reads a single filter and a list of filters as a list.
 - `consumer-compiles`: a module written from the docs, with every decorator and route helper, compiles in strict mode against the packed declarations.
+- `derived-own-model`: a controller derived from another that declares its own `@ModelReference` reads its own model; one that declares none inherits the parent's.
+- `foreign-target-meta`: `@Foreign` given the target controller's metadata resolves the target's `@Joined` fields.
 
 ## How to get to it (user POV)
 

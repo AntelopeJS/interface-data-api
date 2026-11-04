@@ -133,6 +133,38 @@ const userDeclarationErrors = (): string[] => {
   } catch (error) {
     messages.push(error instanceof Error ? error.message : "thrown");
   }
+  try {
+    class Unheld extends Author {}
+    DataController(Unheld, {}, Controller("/unheld"));
+    messages.push("declared");
+  } catch (error) {
+    messages.push(error instanceof Error ? error.message : "thrown");
+  }
+  return messages;
+};
+
+const foreignDeclarationErrors = (): string[] => {
+  const messages: string[] = [];
+  try {
+    class Mismatch extends DataController(Author, {}, Controller("/mismatch")) {
+      @Access(AccessMode.ReadOnly)
+      @Foreign(Account, undefined, false, undefined, SCHEMA)
+      declare owner: Account;
+    }
+    messages.push(Mismatch.name ? "declared" : "declared");
+  } catch (error) {
+    messages.push(error instanceof Error ? error.message : "thrown");
+  }
+  try {
+    class Ghost extends DataController(Author, {}, Controller("/ghost")) {
+      @Access(AccessMode.ReadOnly)
+      @Foreign("ghost", undefined, false, undefined, AUTH_SCHEMA)
+      declare owner: Account;
+    }
+    messages.push(Ghost.name ? "declared" : "declared");
+  } catch (error) {
+    messages.push(error instanceof Error ? error.message : "thrown");
+  }
   return messages;
 };
 
@@ -751,6 +783,61 @@ class _OverridesAPI extends DataController(User, { get: DefaultRoutes.Get, list:
   @Access(AccessMode.WriteOnly, { list: AccessMode.ReadOnly })
   declare nickname: string;
 }
+
+@RegisterDataController()
+class _OwnModelAPI extends DataController(Author, { get: DefaultRoutes.Get }, Controller("/own-model", _UserAPI)) {
+  @ModelReference()
+  @Model(AuthorModel)
+  declare ownAuthorModel: AuthorModel;
+
+  @Access(AccessMode.ReadOnly)
+  declare name: string;
+}
+
+@RegisterDataController()
+class _NoModelAPI extends DataController(Author, { get: DefaultRoutes.Get }, Controller("/no-model")) {
+  @ModelReference()
+  declare missingModel: AuthorModel;
+
+  @Access(AccessMode.ReadOnly)
+  declare name: string;
+}
+
+@RegisterTable("shelves", SCHEMA)
+class Shelf extends Table {
+  declare _id: string;
+
+  @Field("string")
+  @Relation({ to: () => Book })
+  declare bookId: string;
+}
+class ShelfModel extends BasicDataModel(Shelf, "shelves") {}
+
+@RegisterDataController()
+class _ShelfAPI extends DataController(Shelf, { get: DefaultRoutes.Get }, Controller("/shelves")) {
+  @ModelReference()
+  @Model(ShelfModel)
+  declare shelfModel: ShelfModel;
+
+  @Access(AccessMode.ReadOnly)
+  declare _id: string;
+
+  @Access(AccessMode.ReadOnly)
+  @Foreign(Book, undefined, false, ["title", "authorName"], undefined, GetDataControllerMeta(Object.create(_BookAPI.prototype)))
+  declare bookId: Book;
+}
+
+@RegisterDataController()
+class _OptionRoutesAPI extends DataController(
+  User,
+  {
+    nested: DefaultRoutes.WithOptions(DefaultRoutes.WithOptions(DefaultRoutes.List, { maxPage: 2 }), { pluckMode: "minimal" }),
+    sorted: DefaultRoutes.WithOptions(DefaultRoutes.List, { sortKey: "name", sortDirection: "desc" }),
+    nestedEdit: DefaultRoutes.WithOptions(DefaultRoutes.WithOptions(DefaultRoutes.Edit, {}, "patch2"), { noMandatory: "true" }),
+    foreignDeclarations: { func: foreignDeclarationErrors, args: [], method: "get" },
+  },
+  Controller("/option-routes", _UserAPI),
+) {}
 
 export async function construct(): Promise<void> {
   await RegisterSchema(AUTH_SCHEMA);
