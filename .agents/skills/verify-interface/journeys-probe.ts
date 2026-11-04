@@ -1,7 +1,7 @@
 import { equal } from "@antelopejs/tooling-configs/verify";
 
 import { holds, keysOf, pick, results, seed, shopJourney, status, stored, text } from "./harness.ts";
-import { ORDERS, PROBES, USERS } from "./seeds.ts";
+import { ORDERS, OVERRIDES, PROBES, USERS } from "./seeds.ts";
 
 const guardSemantics = shopJourney("a get guard allows on a normal return, runs with the controller and the parsed parameters, and is skipped for a missing row", async (shop) => {
   const { context } = shop;
@@ -77,13 +77,11 @@ const listUnknown = shopJourney("a list route with noPluck answers for a mode no
   context.expect(unknown.folder, [status(unknown, 404)]);
 });
 
-const listableAlone = shopJourney("a field that is only @Listable is never answered, and a skipped mandatory check still runs the validators", async (shop) => {
+const listableAlone = shopJourney("a field that is only @Listable is never answered", async (shop) => {
   const { context } = shop;
   await seed(shop, USERS);
   const list = await shop.request("list", "GET", "/users/list");
   context.expect(list.folder, [equal("@Listable alone grants no access", results(list).some((row) => keysOf(row).includes("secretNote")), false)]);
-  const invalid = await shop.request("quickEdit with an invalid email", "PUT", "/users/quickEdit?id=u1", { body: '{"email":"not-an-email"}' });
-  context.expect(invalid.folder, [status(invalid, 400), equal("noMandatory leaves the validators on", invalid.json, { code: "invalid_field_types", fields: ["email"] })]);
 });
 
 const editAnswersForeign = shopJourney("edit answers the stored record with its foreign fields resolved", async (shop) => {
@@ -91,6 +89,43 @@ const editAnswersForeign = shopJourney("edit answers the stored record with its 
   await seed(shop, ORDERS);
   const edited = await shop.request("edit an order", "PUT", "/orders/edit?id=o1", { body: '{"total":100}' });
   context.expect(edited.folder, [status(edited, 200), ...holds(edited, { total: 100, userId: { _id: "u1", name: "Alice", email: "alice@example.com" } })]);
+});
+
+const readOverrides = shopJourney("a per-action read override hides or grants a field on get and on list, and GetEffectiveMode agrees", async (shop) => {
+  const { context } = shop;
+  await seed(shop, OVERRIDES);
+  const got = await shop.request("get", "GET", "/overrides/get?id=u1");
+  const gotKeys = keysOf(got.json);
+  context.expect(got.folder, [
+    status(got, 200),
+    equal("a get override to write-only hides the field on get", gotKeys.includes("email"), false),
+    equal("a field readable by default and write-only on list is read on get", pick(got.json, "name"), "Alice"),
+    equal("a write-only field with a get override to read-only is read on get", pick(got.json, "notes"), "note1"),
+    equal("a write-only field without a get override stays out of get", gotKeys.includes("nickname"), false),
+  ]);
+  const listed = await shop.request("list", "GET", "/overrides/list");
+  const first = results(listed).find((row) => pick(row, "_id") === "u1") ?? null;
+  const listedKeys = keysOf(first);
+  context.expect(listed.folder, [
+    status(listed, 200),
+    equal("a list override to write-only hides the field on list", listedKeys.includes("name"), false),
+    equal("a field readable by default and write-only on get is listed", pick(first, "email"), "alice@example.com"),
+    equal("a write-only field with a list override to read-only is listed", pick(first, "nickname"), "al"),
+    equal("a write-only field without a list override stays out of list", listedKeys.includes("notes"), false),
+  ]);
+  const modes = await shop.request("effective modes", "GET", "/overrides/modes");
+  context.expect(modes.folder, [
+    ...holds(modes, {
+      email: { get: 2, list: 1, new: 1, edit: 1 },
+      name: { get: 1, list: 2, new: 1, edit: 1 },
+      notes: { get: 1, list: 2, new: 2, edit: 2 },
+      nickname: { get: 2, list: 1, new: 2, edit: 2 },
+    }),
+  ]);
+  const created = await shop.request("new reads its own overrides", "POST", "/overrides/new", { body: '{"notes":"fresh","nickname":"nn"}' });
+  context.expect(created.folder, [status(created, 200)]);
+  const row = await stored(shop, "read the created row", "verify__users", '{ notes: "fresh" }');
+  context.expect(row.folder, [equal("a write-only field is written on new", pick(row.rows[0] ?? null, "nickname"), "nn")]);
 });
 
 const issue90 = shopJourney("fails on purpose until #90 is fixed: edit with the index option updates the row the index found", async (shop) => {
@@ -119,6 +154,61 @@ const issue93 = shopJourney("fails on purpose until #93 is fixed: a multi refere
   context.expect(raw.folder, [equal("#93: noForeign answers the raw ids of a multi reference", pick(raw.json, "itemsAll"), ["i1", "ghost"])]);
 });
 
+const noForeignStrings = shopJourney("the Get noForeign option skips resolving for any non-empty string, false included, and the List one is a boolean", async (shop) => {
+  const { context } = shop;
+  await seed(shop, ORDERS);
+  const cases: [string, string, string | { _id: string; name: string; email: string }][] = [
+    ["noForeign absent", "/orders/get?id=o1", { _id: "u1", name: "Alice", email: "alice@example.com" }],
+    ["noForeign true", "/orders/raw?id=o1", "u1"],
+    ["noForeign the string false", "/orders/rawFalse?id=o1", "u1"],
+    ["noForeign the empty string", "/orders/rawEmpty?id=o1", { _id: "u1", name: "Alice", email: "alice@example.com" }],
+  ];
+  for (const [name, path, expected] of cases) {
+    const answer = await shop.request(name, "GET", path);
+    context.expect(answer.folder, [status(answer, 200), equal(`${name}: userId`, pick(answer.json, "userId"), expected)]);
+  }
+  const listTrue = await shop.request("list noForeign true", "GET", "/orders/rawList");
+  context.expect(listTrue.folder, [equal("list noForeign true answers the raw key", pick(results(listTrue)[0] ?? null, "userId"), "u1")]);
+  const listFalse = await shop.request("list noForeign false", "GET", "/orders/listForeignFalse");
+  context.expect(listFalse.folder, [equal("list noForeign false resolves", pick(results(listFalse)[0] ?? null, "userId"), { _id: "u1", name: "Alice", email: "alice@example.com" })]);
+});
+
+const noMandatoryStrings = shopJourney("the noMandatory option skips the mandatory check for any non-empty string, false included, on edit and on new", async (shop) => {
+  const { context } = shop;
+  await seed(shop, USERS);
+  const edits: [string, string, number][] = [
+    ["edit with noMandatory absent", "/users/edit?id=u1", 400],
+    ["edit with noMandatory true", "/users/quickEdit?id=u1", 200],
+    ["edit with noMandatory the string false", "/users/falseSkip?id=u2", 200],
+    ["edit with noMandatory the empty string", "/users/emptySkip?id=u3", 400],
+  ];
+  for (const [name, path, code] of edits) {
+    const answer = await shop.request(name, "PUT", path, { body: '{"status":null}' });
+    context.expect(answer.folder, [status(answer, code)]);
+  }
+  const creates: [string, string, number][] = [
+    ["new with noMandatory absent", "/users/new", 400],
+    ["new with noMandatory true", "/users/newSkip", 200],
+    ["new with noMandatory the string false", "/users/newSkipFalse", 200],
+    ["new with noMandatory the empty string", "/users/newSkipEmpty", 400],
+  ];
+  for (const [name, path, code] of creates) {
+    const answer = await shop.request(name, "POST", path, { body: '{"name":"Zed"}' });
+    context.expect(answer.folder, [status(answer, code)]);
+  }
+  const rows = await stored(shop, "read the users", "verify__users");
+  context.expect(rows.folder, [equal("only the two skipped creates wrote a row", rows.rows.length, 7)]);
+});
+
+const noPluckStrings = shopJourney("the noPluck option skips the pluck-mode check only when it is true", async (shop) => {
+  const { context } = shop;
+  await seed(shop, PROBES);
+  const on = await shop.request("noPluck true", "GET", "/probes/plain");
+  context.expect(on.folder, [status(on, 200)]);
+  const off = await shop.request("noPluck false", "GET", "/probes/plainFalse");
+  context.expect(off.folder, [status(off, 400), equal("the mode is checked", off.body, "No fields found for pluckMode 'nothing'")]);
+});
+
 export const PROBE_JOURNEYS = {
   "guard-semantics": guardSemantics,
   "new-row-shape": newRowContents,
@@ -127,6 +217,10 @@ export const PROBE_JOURNEYS = {
   "list-unknown": listUnknown,
   "listable-alone": listableAlone,
   "edit-answers-foreign": editAnswersForeign,
+  "read-overrides": readOverrides,
+  "no-foreign-strings": noForeignStrings,
+  "no-mandatory-strings": noMandatoryStrings,
+  "no-pluck-strings": noPluckStrings,
   "issue-90-edit-index": issue90,
   "issue-92-getter-mode": issue92,
   "issue-93-multi-foreign": issue93,

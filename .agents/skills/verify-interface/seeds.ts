@@ -40,3 +40,9 @@ export const PROBES = `d.verify__probes.insertMany([
   { _id: "p1", kind: "a", title: "One", origin: "seed", trace: "seed", tag: "A", score: 5 },
   { _id: "p2", kind: "b", title: "Two", origin: "seed", trace: "seed", tag: "B", score: 7 },
 ]);`;
+
+/** Two users whose notes and nickname are stored, for the per-action read overrides. */
+export const OVERRIDES = `d.verify__users.insertMany([
+  { _id: "u1", email: "alice@example.com", name: "Alice", password: "p1", notes: "note1", nickname: "al" },
+  { _id: "u2", email: "bob@gmail.com", name: "Bob", password: "p2", notes: "note2", nickname: "bo" },
+]);`;

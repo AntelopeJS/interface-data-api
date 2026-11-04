@@ -90,6 +90,8 @@ const crudErrors = shopJourney("a missing id, an unknown record and a bad body a
   }
   const unknownDelete = await shop.request("delete an unknown id", "DELETE", "/users/delete?id=ghost");
   context.expect(unknownDelete.folder, [status(unknownDelete, 200)]);
+  const invalid = await shop.request("quickEdit with an invalid email", "PUT", "/users/quickEdit?id=u1", { body: '{"email":"not-an-email"}' });
+  context.expect(invalid.folder, [status(invalid, 400), equal("a route that skips the mandatory check still runs the validators", invalid.json, { code: INVALID, fields: ["email"] })]);
   const rows = await stored(shop, "count the rows", "verify__users");
   context.expect(rows.folder, [equal("no failed request wrote anything", rows.rows.length, 5)]);
 });

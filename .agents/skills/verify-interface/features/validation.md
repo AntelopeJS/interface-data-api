@@ -8,7 +8,6 @@ docs:
 journeys:
   - mandatory-and-validators
   - parsed-values
-  - unstorable-body
   - error-codes
 ---
 
@@ -20,7 +19,6 @@ journeys:
 
 - `mandatory-and-validators`: a body missing mandatory fields answers `{ code: "missing_mandatory_fields", fields }` with every field, the mandatory check runs before the validators, invalid values answer `{ code: "invalid_field_types", fields }` with every failing field (a sync regex, a range and an async validator), a refused write stores nothing, an edit keeps a mandatory field absent from the body and refuses one cleared with `""` or `null`.
 - `parsed-values`: a validator that returns a zod-style parse result makes `new` and `edit` store the parsed `Date`, and a failed parse answers the invalid-types body.
-- `unstorable-body`: a route that hands `Validation.ParseBody` a parsed body holding a `bigint` answers 400 and writes nothing.
 - `error-codes`: the packed `components` entry exports `Validation.MISSING_MANDATORY_FIELDS` and `Validation.INVALID_FIELD_TYPES` with the codes the bodies carry.
 
 ## How to get to it (user POV)

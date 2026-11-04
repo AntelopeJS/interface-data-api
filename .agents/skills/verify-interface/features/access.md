@@ -7,6 +7,7 @@ docs:
 journeys:
   - access-modes
   - listable-alone
+  - read-overrides
 ---
 
 # access
@@ -17,6 +18,7 @@ journeys:
 
 - `access-modes`: a write-only field is never answered and is stored, a field with no `@Access` is never answered and never written, a read-only field is answered and ignored in a body, and a per-action override (`role` writable on `new` and read-only on `edit`, `age` the other way) decides what `new` and `edit` store; MongoDB shows each case.
 - `listable-alone`: a field that is only `@Listable` never appears in a response, and a route that skips the mandatory check still runs the validators.
+- `read-overrides`: `@Access(mode, { get, list })` hides a field on one action and grants it on the other, in both directions (readable by default and write-only on an action, write-only by default and read-only on an action), `new` writes a write-only field, and `GetEffectiveMode` answers what the routes apply.
 
 ## How to get to it (user POV)
 

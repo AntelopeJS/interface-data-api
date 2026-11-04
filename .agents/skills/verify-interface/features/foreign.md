@@ -2,13 +2,14 @@
 covers:
   - src/internal/foreign.ts
   - src/internal/table-reference.ts
+  - src/index.ts
 docs:
   - docs/7.foreign-keys.md
 journeys:
   - foreign-resolve
   - foreign-raw
-  - edit-answers-foreign
   - issue-93-multi-foreign
+  - no-foreign-strings
 ---
 
 # foreign
@@ -19,8 +20,8 @@ A field that holds a key of another table answers the record it points to.
 
 - `foreign-resolve`: `@Foreign` answers the referenced record in place of the key: with `pluck`, through a secondary `index`, by table name, across schemas, and as an array (`multi`); a key that matches nothing answers `null`.
 - `foreign-raw`: the `noForeign` route option answers the raw keys of single references on a get and on a list.
-- `edit-answers-foreign`: `edit` answers the stored record with its foreign fields resolved.
 - `issue-93-multi-foreign`: fails on purpose until [#93](https://github.com/AntelopeJS/interface-data-api/issues/93) is fixed: a multi reference answers `null` for a missing element and raw ids with `noForeign`.
+- `no-foreign-strings`: the Get `noForeign` option skips resolving for any non-empty string, `"false"` included, and not for `""` or when absent; the List option is a boolean.
 
 ## How to get to it (user POV)
 

@@ -14,6 +14,8 @@ journeys:
   - crud-subset
   - new-row-shape
   - edit-setters
+  - edit-answers-foreign
+  - unstorable-body
 ---
 
 # crud
@@ -27,6 +29,8 @@ A client calls the five default routes of a data controller and the table follow
 - `crud-subset`: a controller that declares only `get`, `list` and `new` answers 404 on `edit` and `delete`; `WithOptions(Edit, options, "patch")` serves under `patch` and not under its key; a controller derived with `Controller("/staff", UserAPI)` reads through the inherited model reference.
 - `new-row-shape`: `new` answers its `_id` on a controller whose `_id` has no `@Access`, starts from the defaults the controller class declares, and runs every writable setter, with `undefined` for a field absent from the body.
 - `edit-setters`: `edit` runs the setters of the fields present in the body and no other, and the class defaults do not overwrite stored fields.
+- `edit-answers-foreign`: `edit` answers the stored record with its foreign fields resolved.
+- `unstorable-body`: a route that hands `Validation.ParseBody` a parsed body holding a `bigint` answers 400 and writes nothing.
 
 ## How to get to it (user POV)
 
