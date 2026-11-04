@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.6.1
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.6.0...v0.6.1)
+
+### 🏡 Chore
+
+- Land the cleanup campaign on main ([#105](https://github.com/AntelopeJS/interface-data-api/pull/105))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](http://github.com/Upd4ting))
+
 ## v0.6.0
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.5.0...v0.6.0)
