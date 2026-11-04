@@ -9,6 +9,8 @@
 
 CRUD REST endpoints generated from a database table: declare a data controller and its fields, and get `get`, `list`, `new`, `edit` and `delete` routes with access rules, validation and pagination.
 
+Part of [AntelopeJS](https://github.com/AntelopeJS/antelopejs). Used by [AntelopeJS DMS](https://github.com/AntelopeJS/dms), the open-source back office for your PostgreSQL, MongoDB or RethinkDB database.
+
 ## What it offers
 
 - `DataController` and `@RegisterDataController()` turn a table class into a controller with the default routes you pick from `DefaultRoutes`.
