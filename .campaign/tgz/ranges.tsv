@@ -1,7 +1,6 @@
 @antelopejs/interface-database-decorators	package.json	devDependencies	^0.1.10
 @antelopejs/interface-database-decorators	package.json	pnpm.overrides	
 @antelopejs/interface-database-decorators	pnpm-workspace.yaml	overrides	
-@antelopejs/interface-api	package.json	devDependencies	^0.3.0
 @antelopejs/interface-api	package.json	pnpm.overrides	
 @antelopejs/interface-api	pnpm-workspace.yaml	overrides	
 @antelopejs/interface-api-util	package.json	devDependencies	^0.1.3
