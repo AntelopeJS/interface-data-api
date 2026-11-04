@@ -9,6 +9,8 @@
 
 The AntelopeJS interface that generates CRUD REST endpoints from a database table. Declare a data controller and its fields, and it serves the `get`, `list`, `new`, `edit` and `delete` routes with access rules, validation and pagination.
 
+Part of [AntelopeJS](https://github.com/AntelopeJS/antelopejs). Used by [AntelopeJS DMS](https://github.com/AntelopeJS/dms), the open-source back office for your PostgreSQL, MongoDB or RethinkDB database.
+
 ## What it offers
 
 - `DataController` and `@RegisterDataController()` turn a table class into a controller with the default routes you pick from `DefaultRoutes`.
