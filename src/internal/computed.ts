@@ -8,7 +8,7 @@ import {
   type ValueProxy,
 } from "@antelopejs/interface-database";
 
-import type { ComputedFieldData, DataAPIMeta } from "../metadata";
+import type { ComputedFieldData, DataAPIMeta, FieldValues } from "../metadata";
 import type { TableRow } from "./tables";
 
 type ComputedEntry = [name: string, computed: ComputedFieldData];
@@ -36,7 +36,7 @@ function buildComputedMappers(
     for (const [name, computed] of entries) {
       merged[name] = computed.expr(row, db);
     }
-    return row.merge(merged);
+    return row.merge(merged).cast<FieldValues>();
   };
   const defaulted = entries.filter(
     ([, computed]) => computed.default !== undefined,
@@ -49,7 +49,7 @@ function buildComputedMappers(
     for (const [name, computed] of defaulted) {
       merged[name] = row.key(name).default(computed.default);
     }
-    return row.merge(merged);
+    return row.merge(merged).cast<FieldValues>();
   };
   return [mergeExpressions, applyDefaults];
 }
@@ -86,7 +86,15 @@ export function Computed(
   }
   const mappers = buildComputedMappers(db, entries);
   if (IsStream(query)) {
-    return mappers.reduce((stream, mapper) => stream.map(mapper), query);
+    let stream = query;
+    for (const mapper of mappers) {
+      stream = stream.map(mapper);
+    }
+    return stream;
   }
-  return mappers.reduce((datum, mapper) => datum.do(mapper), query);
+  let datum = query;
+  for (const mapper of mappers) {
+    datum = datum.do(mapper);
+  }
+  return datum;
 }

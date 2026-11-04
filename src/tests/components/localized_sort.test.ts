@@ -1,5 +1,6 @@
 import path from "node:path";
 import { expect } from "chai";
+import { z } from "zod";
 import { Controller, Parameter } from "@antelopejs/interface-api";
 import { Schema } from "@antelopejs/interface-database";
 import {
@@ -48,10 +49,9 @@ class Fruit extends Table.with(LocalizationModifier) {
 }
 class FruitModel extends BasicDataModel(Fruit, fruitTableName) {}
 
-interface FruitListed {
-  code: string;
-  name: string;
-}
+const fruitListSchema = z.looseObject({
+  results: z.array(z.looseObject({ code: z.string(), name: z.string() })),
+});
 
 const fruits = [
   { code: "apple", name: { en: "Apple", fr: "Pomme" } },
@@ -112,7 +112,7 @@ async function _sortedCodes(
     sortDirection,
   });
   expect(response.status).to.equal(200);
-  const data = await readJson<{ results: FruitListed[] }>(response);
+  const data = await readJson(fruitListSchema, response);
   return data.results.map((fruit) => fruit.code);
 }
 

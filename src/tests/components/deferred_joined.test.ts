@@ -106,6 +106,7 @@ class _DeferredJoinedTestAPI extends DataController(
 
 interface BookListed {
   _id: string;
+  _internal?: unknown;
   authorId: string;
   title: string;
   name: string | null;
@@ -189,9 +190,7 @@ async function _seedTables(): Promise<ListHarness> {
   ];
   await bookModel.insert(booksDataset);
 
-  const thisObj: _DeferredJoinedTestAPI = Object.create(
-    _DeferredJoinedTestAPI.prototype,
-  );
+  const thisObj = new _DeferredJoinedTestAPI();
   return { thisObj, model: bookModel };
 }
 

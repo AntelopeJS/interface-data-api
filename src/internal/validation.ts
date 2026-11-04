@@ -1,20 +1,36 @@
 /** @internal @packageDocumentation */
 
 import { assert } from "@antelopejs/interface-api-util";
+import type { Constructible } from "@antelopejs/interface-database-decorators/common";
 import type { ValueProxy } from "@antelopejs/interface-database";
 import {
   fromDatabase,
+  lock,
+  type OneWayModifier,
   toPlainData,
   unlock,
   unlockrequest,
 } from "@antelopejs/interface-database-decorators/modifiers/common";
 
 import type { Validation } from "../components";
-import type { DataAPIMeta } from "../metadata";
+import type {
+  DataAPIMeta,
+  DataControllerInstance,
+  RowFields,
+} from "../metadata";
+import { fieldsOf } from "./prototypes";
 import { isFieldValues, isObject } from "./guards";
 
 type RequestBody = Validation.RequestBody;
 type WrittenBody = Validation.WrittenBody;
+
+/**
+ * A modifier a controller keys, handed what the controller holds as its key.
+ * `ContainerModifier` declares its key a string, and a controller holds none on
+ * a request that does not send it (a missing language header): the modifier
+ * then finds nothing under the key.
+ */
+type KeyedModifier = Constructible<OneWayModifier<any, [key: unknown]>>;
 
 export function ParseBody(body: WrittenBody): RequestBody {
   let data: unknown = body;
@@ -29,7 +45,24 @@ export function ParseBody(body: WrittenBody): RequestBody {
   return data;
 }
 
-export function Unlock(obj: any, meta: DataAPIMeta, dbData: any) {
+export function Lock(
+  obj: DataControllerInstance,
+  meta: DataAPIMeta,
+  data: RowFields,
+  written: string[],
+) {
+  for (const [modifier, field] of meta.modifierKeys.entries()) {
+    const keyed: KeyedModifier = modifier;
+    const key = fieldsOf(obj)[field];
+    lock(data, keyed, written, key);
+  }
+}
+
+export function Unlock(
+  obj: DataControllerInstance,
+  meta: DataAPIMeta,
+  dbData: RowFields,
+) {
   for (const [name, field] of Object.entries(meta.fields)) {
     if (field.foreign && isObject(dbData[name]) && field.foreign[1]) {
       const foreignSchema = field.foreign[1];
@@ -39,18 +72,20 @@ export function Unlock(obj: any, meta: DataAPIMeta, dbData: any) {
     }
   }
   for (const [modifier, field] of meta.modifierKeys.entries()) {
-    const key = obj[field];
-    unlock(dbData, modifier, undefined, key);
+    const keyed: KeyedModifier = modifier;
+    const key = fieldsOf(obj)[field];
+    unlock(dbData, keyed, undefined, key);
     for (const [foreign, fieldData] of Object.entries(meta.fields)) {
-      if (fieldData.foreign && isObject(dbData[foreign])) {
-        unlock(dbData[foreign], modifier, undefined, key);
+      const related = dbData[foreign];
+      if (fieldData.foreign && isObject(related)) {
+        unlock(related, keyed, undefined, key);
       }
     }
   }
 }
 
 export function UnlockRequest<T extends {}, K extends keyof T>(
-  obj: any,
+  obj: DataControllerInstance,
   meta: DataAPIMeta,
   row: ValueProxy<T>,
   field: K,
@@ -58,10 +93,10 @@ export function UnlockRequest<T extends {}, K extends keyof T>(
   const modifiers = Array.from(meta.modifierKeys.entries()).map(
     ([modifier, field]) => ({
       modifier,
-      args: [obj[field]],
+      args: [fieldsOf(obj)[field]],
     }),
   );
-  return unlockrequest(meta.tableClass, row, field, modifiers);
+  return unlockrequest<T, K>(meta.tableClass, row, field, modifiers);
 }
 
 export function ClearInternal(
@@ -101,9 +136,10 @@ export function ClearInternal(
               return null;
             }
           }
-          const plainPlucked: ReturnType<typeof toPlainData> = {};
+          const plainPlucked: RowFields = {};
           for (const key of foreign[4]) {
-            plainPlucked[key] = plain[key];
+            const value: unknown = plain[key];
+            plainPlucked[key] = value;
           }
           return plainPlucked;
         };

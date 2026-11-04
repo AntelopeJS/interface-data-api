@@ -1,26 +1,26 @@
-# @antelopejs/interface-data-api
+# `@antelopejs/interface-data-api`
 
 <div align="center">
-<a href="https://www.npmjs.com/package/@antelopejs/interface-data-api"><img alt="npm" src="https://img.shields.io/npm/v/@antelopejs/interface-data-api?style=for-the-badge&labelColor=000000&color=000000"></a>
-<a href="./LICENSE"><img alt="License" src="https://img.shields.io/npm/l/@antelopejs/interface-data-api?style=for-the-badge&labelColor=000000&color=000000"></a>
-<a href="https://discord.gg/g4pFt6eXqu"><img alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a>
-<a href="https://interfaces.antelopejs.com/docs/data-api"><img alt="Docs" src="https://img.shields.io/badge/Docs-18181B?style=for-the-badge&color=000000"></a>
+<a href="https://www.npmjs.com/package/@antelopejs/interface-data-api"><img data-illustration alt="npm" src="https://img.shields.io/npm/v/@antelopejs/interface-data-api?style=for-the-badge&labelColor=000000&color=000000"></a>
+<a href="./LICENSE"><img data-illustration alt="License" src="https://img.shields.io/npm/l/@antelopejs/interface-data-api?style=for-the-badge&labelColor=000000&color=000000"></a>
+<a href="https://discord.gg/g4pFt6eXqu"><img data-illustration alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a>
+<a href="https://interfaces.antelopejs.com/docs/data-api"><img data-illustration alt="Docs" src="https://img.shields.io/badge/Docs-18181B?style=for-the-badge&color=000000"></a>
 </div>
 
-CRUD REST endpoints generated from a database table: declare a data controller and its fields, and get `get`, `list`, `new`, `edit` and `delete` routes with access rules, validation and pagination.
+The AntelopeJS interface that generates CRUD REST endpoints from a database table. Declare a data controller and its fields, and it serves the `get`, `list`, `new`, `edit` and `delete` routes with access rules, validation and pagination.
 
 Part of [AntelopeJS](https://github.com/AntelopeJS/antelopejs). Used by [AntelopeJS DMS](https://github.com/AntelopeJS/dms), the open-source back office for your PostgreSQL, MongoDB or RethinkDB database.
 
 ## What it offers
 
 - `DataController` and `@RegisterDataController()` turn a table class into a controller with the default routes you pick from `DefaultRoutes`.
-- `@Access`, `@Mandatory` and `@Validator` decide which fields each route reads and writes, and check them.
+- `@Access` decides which fields each route reads and writes. `@Mandatory` and `@Validator` check the written values.
 - `@Listable`, `@Sortable` and `@Filter` shape the paginated `list` route.
 - `@Foreign`, `@Joined` and `@Computed` resolve references, flatten remote fields and add values computed in the database.
 
 ## Implementations
 
-The package runs in your module and has no implementing module of its own. The project needs modules that implement the interfaces it builds on:
+The package runs in your module and has no implementing module of its own. The project needs modules that implement the interfaces it builds on.
 
 | Interface                        | Module                                                                                                                               |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
@@ -29,13 +29,13 @@ The package runs in your module and has no implementing module of its own. The p
 
 ## Install
 
-Add the package and the interfaces your controllers import to your module:
+Add the package and its peer interfaces to your module.
 
 ```bash
-pnpm add @antelopejs/interface-data-api @antelopejs/interface-api @antelopejs/interface-database-decorators
+pnpm add @antelopejs/interface-data-api @antelopejs/interface-api @antelopejs/interface-api-util @antelopejs/interface-core @antelopejs/interface-database @antelopejs/interface-database-decorators
 ```
 
-Then add the implementations to the project:
+Then add the implementations to the project.
 
 ```bash
 ajs project modules add @antelopejs/api @antelopejs/mongodb
@@ -103,7 +103,7 @@ export async function construct() {
 }
 ```
 
-The controller serves `GET /tasks/get?id=`, `GET /tasks/list`, `POST /tasks/new`, `PUT /tasks/edit?id=` and `DELETE /tasks/delete?id=`. Fields without `@Access` stay out of every response.
+The controller serves `GET /tasks/get?id=`, `GET /tasks/list`, `POST /tasks/new`, `PUT /tasks/edit?id=` and `DELETE /tasks/delete?id=`. A field without `@Access` stays out of every response and every write, unless `@Joined` or `@Computed` makes it read-only.
 
 ## Documentation
 
@@ -121,23 +121,23 @@ The controller serves `GET /tasks/get?id=`, `GET /tasks/list`, `POST /tasks/new`
 
 ## Compatibility
 
-Use with `@antelopejs/core` 1.x and the following peer dependencies:
+The package declares these `@antelopejs/*` peer dependencies.
 
 <!-- antelopejs-docs-compat:start -->
 
 | Package                                     | Supported         | Tested with |
 | ------------------------------------------- | ----------------- | ----------- |
-| `@antelopejs/interface-api`                 | `>=0.0.15 <1.0.0` | `0.0.15`    |
-| `@antelopejs/interface-api-util`            | `>=0.1.3 <1.0.0`  | `0.1.3`     |
-| `@antelopejs/interface-core`                | `>=0.2.4 <1.0.0`  | `0.2.4`     |
-| `@antelopejs/interface-database`            | `>=0.1.10 <1.0.0` | `0.1.11`    |
-| `@antelopejs/interface-database-decorators` | `>=0.1.10 <1.0.0` | `0.1.10`    |
+| `@antelopejs/interface-api`                 | `>=0.3.0 <1.0.0`  | `0.2.0`     |
+| `@antelopejs/interface-api-util`            | `>=0.1.3 <1.0.0`  | `0.3.0`     |
+| `@antelopejs/interface-core`                | `>=0.2.4 <1.0.0`  | `0.4.0`     |
+| `@antelopejs/interface-database`            | `>=0.1.10 <1.0.0` | `0.3.0`     |
+| `@antelopejs/interface-database-decorators` | `>=0.1.10 <1.0.0` | `0.2.0`     |
 
 <!-- antelopejs-docs-compat:end -->
 
 ## Contributing
 
-Read [CONTRIBUTING.md](./CONTRIBUTING.md) before you open a pull request. The local checks are:
+Read [CONTRIBUTING.md](./CONTRIBUTING.md) before you open a pull request. Run the local checks with these commands.
 
 ```bash
 pnpm install

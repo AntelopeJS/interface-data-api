@@ -118,9 +118,11 @@ This exposes `GET /tasks/get?id=`, `GET /tasks/list`, `POST /tasks/new`, `PUT /t
 - `list` responds `{ results, total, offset, limit }`. `limit` defaults to 10 and is capped at 100
   (`maxPage`). Sorting uses `sortKey`/`sortDirection` query params and requires `@Sortable` on the
   field (400 otherwise). List responses only include `@Listable` fields unless `noPluck` is set.
-- Filters come from `filter_<name>=<mode>:<value>` query params (plain value means `eq`); modes are
-  `eq|ne|gt|ge|lt|le` (the default filter compares the raw query-string value — pass a custom filter
-  function to cast for numeric ranges). Only fields declared with `@Filter()` are filterable.
+- Filters come from `filter_<name>=<mode>:<value>` query params (plain value means `eq`). `mode` is
+  text: the default filter accepts `eq|ne|gt|ge|lt|le` and answers 400 for anything else (it compares
+  the raw query-string value — pass a custom filter function to cast for numeric ranges), and a custom
+  filter receives it unchecked and defines its own modes. Only fields declared with `@Filter()` are
+  filterable.
   Repeating a field's filter (`filter_age=ge:18&filter_age=lt:65`) keeps the rows passing them all;
   the route then receives a list of tuples for it (`FieldFilter`, read with `FilterValuesOf`).
 - `@Joined` and `@Computed` fields are materialized in-database, so `@Sortable` and `@Filter()` work
@@ -134,6 +136,10 @@ This exposes `GET /tasks/get?id=`, `GET /tasks/list`, `POST /tasks/new`, `PUT /t
 - A custom list route reads its page with `Query.ListPage(db, meta, query, options)` (`offset`,
   `limit`, `filters`, `sortKey`, `pluck`, `noForeign`, `deferredJoined`): joined, then computed, then
   foreign, then pluck.
+- A route is `DataControllerCallback<O, R, A>`: `A` is the tuple `func` receives, one element per
+  `args` entry. The default routes declare theirs (`Get` takes `[RequestContext, GetParameters]`), so a
+  wrapper generic over `[RequestContext, P, ...Rest]` calls `route.func.call(this, ctx, params, ...rest)`
+  typed; without `A` its parameters are not checked.
 - `new` answers the created row as `get` reads it, with its `_id`; `edit` answers the stored row after
   the update. Both accept a body already parsed (`Validation.WrittenBody`), so a wrapping route can
   amend it before the write.

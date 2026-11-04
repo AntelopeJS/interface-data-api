@@ -2,6 +2,7 @@
 
 import { assert } from "@antelopejs/interface-api-util";
 import type { Constructible } from "@antelopejs/interface-database-decorators/common";
+import type { DataModel } from "@antelopejs/interface-database-decorators/model";
 import type {
   SchemaInstance,
   Table,
@@ -9,10 +10,31 @@ import type {
 } from "@antelopejs/interface-database";
 import type { TableClass } from "@antelopejs/interface-database-decorators/table";
 
-import type { ComputedFieldData } from "../metadata";
-import { isFunction, isString } from "./guards";
+import type { ComputedFieldData, RowFields } from "../metadata";
+import { isFunction, isObject, isString } from "./guards";
 
 export type TableRow = Parameters<ComputedFieldData["expr"]>[0];
+
+/**
+ * The database model a controller holds under its `@ModelReference` field,
+ * typed by the table rows it reads.
+ */
+export type ModelInstance = InstanceType<DataModel<RowFields>> & {
+  constructor: DataModel<RowFields>;
+};
+
+/** Whether a value is a database model: its table, and its row conversion. */
+export function isModelInstance(value: unknown): value is ModelInstance {
+  return (
+    isObject(value) &&
+    "table" in value &&
+    isObject(value.table) &&
+    "database" in value &&
+    isObject(value.database) &&
+    "fromDatabase" in value.constructor &&
+    isFunction(value.constructor.fromDatabase)
+  );
+}
 
 export interface TableTargetReference {
   table: string;
@@ -58,8 +80,8 @@ export function pluckedTable(
   return table.pluck("_internal", ...fields) as Table<any>;
 }
 
-export function Get(
-  table: Table<any>,
+export function Get<T extends object>(
+  table: Table<T>,
   id: string | ValueProxy<string>,
   index?: string,
 ) {

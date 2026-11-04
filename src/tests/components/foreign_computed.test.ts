@@ -1,5 +1,6 @@
 import path from "node:path";
 import { expect } from "chai";
+import { z } from "zod";
 import { Controller } from "@antelopejs/interface-api";
 import { Schema } from "@antelopejs/interface-database";
 import {
@@ -26,7 +27,7 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
-import { readJson } from "../internal/http";
+import { listResponseSchema, readJson } from "../internal/http";
 import {
   getFunctionName,
   getRequest,
@@ -66,17 +67,15 @@ class Member extends Table {
 }
 class MemberModel extends BasicDataModel(Member, memberTableName) {}
 
-interface MemberListed {
-  _id: string;
-  label: string;
-  team: { _id: string; name: string };
-  teammates: number;
-}
+const memberListedSchema = z.looseObject({
+  _id: z.string(),
+  label: z.string(),
+  team: z.looseObject({ _id: z.string(), name: z.string() }),
+  teammates: z.number(),
+});
 
-interface ListResponse {
-  results: MemberListed[];
-  total: number;
-}
+const listSchema = listResponseSchema(memberListedSchema);
+type ListResponse = z.infer<typeof listSchema>;
 
 describe("Foreign and Computed fields on the same key", () => {
   it("lists the computed value read from the key and the resolved relation", async () =>
@@ -110,7 +109,7 @@ async function _createDataController(testName: string) {
     @Listable()
     @Access(AccessMode.ReadWrite)
     @Filter((_context, proxy, _key, value, mode) =>
-      proxy[mode](parseFloat(value)),
+      mode === "ge" ? proxy.ge(parseFloat(value)) : proxy.lt(parseFloat(value)),
     )
     declare age: number;
 
@@ -122,7 +121,10 @@ async function _createDataController(testName: string) {
     @Listable()
     @Computed(
       (row, db) =>
-        db.table(memberTableName).getAll(row.key("team"), "team").count(),
+        db
+          .table(memberTableName)
+          .getAll(row.key("team").cast<string | number | boolean>(), "team")
+          .count(),
       { default: 0 },
     )
     declare teammates: number;
@@ -163,7 +165,7 @@ async function _list(
 ): Promise<ListResponse> {
   const response = await request(testName, "list", "GET", undefined, query);
   expect(response.status, await response.clone().text()).to.equal(200);
-  return await readJson<ListResponse>(response);
+  return await readJson(listSchema, response);
 }
 
 async function expectListsComputedFromForeignKey() {
@@ -185,7 +187,7 @@ async function expectGetsComputedFromForeignKey() {
 
   const response = await getRequest(getFunctionName(), { id: memberIds[3] });
   expect(response.status).to.equal(200);
-  const member = await readJson<MemberListed>(response);
+  const member = await readJson(memberListedSchema, response);
   expect(member.teammates).to.equal(1);
   expect(member.team).to.deep.equal({ _id: teamIds[1], name: "Blue" });
 }

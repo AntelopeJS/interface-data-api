@@ -24,13 +24,12 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
-import { readJson } from "../internal/http";
+import { createdRowSchema, readJson } from "../internal/http";
 import {
   editRequest,
   getFunctionName,
   getSchemaInstance,
   newRequest,
-  type CreatedRow,
 } from "../utils";
 import { isString } from "../../internal/guards";
 
@@ -132,7 +131,7 @@ async function expectWritesParsedValueOnNew() {
     startsAt,
   });
   expect(response.status).to.equal(200);
-  const { _id: id } = await readJson<CreatedRow>(response);
+  const { _id: id } = await readJson(createdRowSchema, response);
 
   const event = await eventModel.get(id);
   expect(event?.startsAt).to.be.instanceOf(Date);
@@ -166,7 +165,7 @@ async function expectWritesAsyncParsedValue() {
     code: "  launch-26 ",
   });
   expect(response.status).to.equal(200);
-  const { _id: id } = await readJson<CreatedRow>(response);
+  const { _id: id } = await readJson(createdRowSchema, response);
 
   const event = await eventModel.get(id);
   expect(event?.code).to.equal("LAUNCH-26");

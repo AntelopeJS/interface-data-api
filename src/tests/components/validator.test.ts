@@ -17,15 +17,15 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
-import { readJson } from "../internal/http";
+import { createdRowSchema, readJson } from "../internal/http";
 import {
   editRequest,
   getSchemaInstance,
   newRequest,
-  type CreatedRow,
   validateObject,
 } from "../utils";
 import { isNumber, isString } from "../../internal/guards";
+import type { FieldValue } from "../../metadata";
 
 const currentTestName = path
   .basename(__filename)
@@ -173,7 +173,7 @@ interface IncorrectScenario {
 function createIncorrectValidator(
   testName: string,
   fieldName: string,
-  invalidValue: any,
+  invalidValue: FieldValue,
   requestFunction: (
     testName: string,
     data: any,
@@ -230,7 +230,7 @@ function createCorrectValidator(
     if (id) {
       product_fetched = await productModel.get(id);
     } else {
-      const created = await readJson<CreatedRow>(response);
+      const created = await readJson(createdRowSchema, response);
       expect(created._id).to.be.a("string");
       product_fetched = await productModel.get(created._id);
     }
@@ -250,7 +250,7 @@ function createCorrectValidator(
 function createIncorrectValidatorEdit(
   testName: string,
   fieldName: string,
-  invalidValue: any,
+  invalidValue: FieldValue,
   requestFunction: (testName: string, data: any) => Promise<Response>,
 ) {
   return createIncorrectValidator(
@@ -269,7 +269,7 @@ function createIncorrectValidatorEdit(
 function createIncorrectValidatorNew(
   testName: string,
   fieldName: string,
-  invalidValue: any,
+  invalidValue: FieldValue,
   requestFunction: (testName: string, data: any) => Promise<Response>,
 ) {
   return createIncorrectValidator(

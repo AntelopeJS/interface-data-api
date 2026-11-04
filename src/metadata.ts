@@ -7,11 +7,15 @@ import {
 } from "@antelopejs/interface-database-decorators";
 import {
   type Class,
+  type DecoratorTarget,
   MakeMethodAndPropertyDecorator,
   MakePropertyDecorator,
 } from "@antelopejs/interface-core/decorators";
 
-import type { DataControllerCallbackWithOptions } from "./internal/controller-types";
+import type {
+  DataControllerCallbackWithOptions,
+  DataControllerInstance,
+} from "./internal/controller-types";
 import {
   createDefaultFilter,
   type DefaultFilterFunction,
@@ -21,8 +25,6 @@ import type {
   FieldData,
   ComputedExpression,
   ComputedOptions,
-  FilterValue,
-  FieldFilter,
   FilterFunction,
   ForeignOptions,
   ReadableAccessFields,
@@ -31,15 +33,19 @@ import type {
 import {
   listedNames,
   merge,
+  ownEntry,
   rebuildPluck,
   targetJoinedFields,
 } from "./internal/meta-records";
-import { isString } from "./internal/guards";
+import { isClass, isString } from "./internal/guards";
+import { classOf } from "./internal/prototypes";
 import { resolveTableReference } from "./internal/table-reference";
 
+export { FilterValuesOf } from "./internal/filters";
 export type {
   DataControllerCallback,
   DataControllerCallbackWithOptions,
+  DataControllerInstance,
   ExtractCallback,
   DataControllerDef,
   ExtractDefCallbacks,
@@ -52,6 +58,7 @@ export type {
   FieldValidationResult,
   FieldValue,
   FieldValues,
+  RowFields,
   ForeignOptions,
   FieldValidator,
   FieldData,
@@ -91,15 +98,6 @@ export function GetEffectiveMode(
   return field.modeOverrides?.[action] ?? field.mode;
 }
 
-function isFilterList(filter: FieldFilter): filter is FilterValue[] {
-  return Array.isArray(filter[0]);
-}
-
-/** The filters of one field as a list, whether it holds one or several. */
-export function FilterValuesOf(filter: FieldFilter): FilterValue[] {
-  return isFilterList(filter) ? filter : [filter];
-}
-
 /**
  * Metadata Class containing the DataAPI information.
  */
@@ -118,10 +116,10 @@ export class DataAPIMeta {
   public readonly pluck: Record<string, Set<string>> = {};
 
   /** Key of the DataAPI class containing a database table instance. */
-  public modelKey?: PropertyKey;
+  public modelKey?: string;
 
   /** Keys of the DataAPI class containing database modifier keys. */
-  public modifierKeys = new Map<typeof ContainerModifier<any>, PropertyKey>();
+  public modifierKeys = new Map<typeof ContainerModifier<any>, string>();
 
   /** Schema name where the table is registered. */
   public schemaName!: string;
@@ -142,7 +140,12 @@ export class DataAPIMeta {
   public readonly endpoints: Record<string, DataControllerCallbackWithOptions> =
     {};
 
-  constructor(public readonly target: Class) {}
+  /** The controller class. */
+  public readonly target: Class<object>;
+
+  constructor(target: Class) {
+    this.target = target;
+  }
 
   public inherit(parent: DataAPIMeta) {
     merge(parent.filters, this.filters);
@@ -165,7 +168,7 @@ export class DataAPIMeta {
   }
 
   private field(name: string) {
-    if (!(name in this.fields)) {
+    if (!Object.hasOwn(this.fields, name)) {
       this.fields[name] = {};
     }
     return this.fields[name];
@@ -183,34 +186,37 @@ export class DataAPIMeta {
       delete this.writable[key];
     }
 
-    const actions = new Set<string>([DEFAULT_ACTION]);
-    for (const field of Object.values(this.fields)) {
-      if (field.modeOverrides) {
-        for (const action of Object.keys(field.modeOverrides)) {
-          actions.add(action);
-        }
-      }
-    }
+    const actions = new Set([
+      DEFAULT_ACTION,
+      ...Object.values(this.fields).flatMap((field) =>
+        Object.keys(field.modeOverrides ?? {}),
+      ),
+    ]);
 
+    const access = new Map<
+      string,
+      [ReadableAccessFields, WritableAccessFields]
+    >();
     for (const action of actions) {
-      this.readable[action] = { getters: [], props: [] };
-      this.writable[action] = { setters: [], props: [] };
+      const readable: ReadableAccessFields = { getters: [], props: [] };
+      const writable: WritableAccessFields = { setters: [], props: [] };
+      this.readable[action] = readable;
+      this.writable[action] = writable;
+      access.set(action, [readable, writable]);
     }
 
     for (const [key, field] of Object.entries(this.fields)) {
-      for (const action of actions) {
+      for (const [action, [readable, writable]] of access) {
         const effectiveMode = GetEffectiveMode(field, action);
         if (!effectiveMode) {
           continue;
         }
 
         if (effectiveMode & AccessMode.ReadOnly) {
-          const target = field.desc?.get ? "getters" : "props";
-          this.readable[action][target].push([key, field]);
+          readable[field.desc?.get ? "getters" : "props"].push([key, field]);
         }
         if (effectiveMode & AccessMode.WriteOnly) {
-          const target = field.desc?.set ? "setters" : "props";
-          this.writable[action][target].push([key, field]);
+          writable[field.desc?.set ? "setters" : "props"].push([key, field]);
         }
       }
     }
@@ -445,7 +451,7 @@ export class DataAPIMeta {
     const field = this.field(name);
     if (useIndex) {
       const tableMeta = getMetadata(this.tableClass, DatumStaticMetadata);
-      const index = tableMeta.indexes[field.dbName ?? name];
+      const index = ownEntry(tableMeta.indexes, field.dbName ?? name);
       if (index && index.length === 1) {
         field.indexable = true;
       }
@@ -460,7 +466,7 @@ export class DataAPIMeta {
    *
    * @param name Field name
    */
-  public setModelKey(name: PropertyKey) {
+  public setModelKey(name: string) {
     this.modelKey = name;
     return this;
   }
@@ -472,7 +478,7 @@ export class DataAPIMeta {
    * @param modifierClass Modifier
    */
   public setModifierKey(
-    name: PropertyKey,
+    name: string,
     modifierClass: typeof ContainerModifier<any>,
   ) {
     this.modifierKeys.set(modifierClass, name);
@@ -499,12 +505,16 @@ export class DataAPIMeta {
 
 /** Declares a decorated field; a symbol-named property declares none. */
 function onField(
-  target: { constructor: Class },
+  target: DecoratorTarget,
   key: PropertyKey,
   declare: (meta: DataAPIMeta, name: string) => void,
 ) {
   if (!isString(key)) return;
-  declare(GetMetadata(target.constructor, DataAPIMeta), key);
+  const owner = target.constructor;
+  if (!isClass(owner)) {
+    throw new TypeError("A field decorator applies to a class.");
+  }
+  declare(GetMetadata(owner, DataAPIMeta), key);
 }
 
 /**
@@ -698,7 +708,7 @@ const FilterDecoratorFactory = MakePropertyDecorator(
 export function Filter<T extends Record<string, any>>(
   func?: FilterFunction<T, T>,
   useIndex?: boolean,
-): (target: T, propertyKey: string | symbol) => void {
+) {
   return FilterDecoratorFactory(func, useIndex);
 }
 
@@ -706,7 +716,7 @@ export function Filter<T extends Record<string, any>>(
  * Sets which field will contain the reference to the database model instance.
  */
 export const ModelReference = MakePropertyDecorator((target, key) => {
-  GetMetadata(target.constructor, DataAPIMeta).setModelKey(key);
+  onField(target, key, (meta, name) => meta.setModelKey(name));
 });
 
 /**
@@ -716,17 +726,14 @@ export const ModelReference = MakePropertyDecorator((target, key) => {
  */
 export const ModifierKey = MakePropertyDecorator(
   (target, key, modifierClass: typeof ContainerModifier<any>) => {
-    GetMetadata(target.constructor, DataAPIMeta).setModifierKey(
-      key,
-      modifierClass,
+    onField(target, key, (meta, name) =>
+      meta.setModifierKey(name, modifierClass),
     );
   },
 );
 
-export function GetDataControllerMeta(thisObj: any): DataAPIMeta {
-  return GetMetadata(
-    Object.getPrototypeOf(thisObj).constructor,
-    DataAPIMeta,
-    true,
-  );
+export function GetDataControllerMeta(
+  thisObj: DataControllerInstance,
+): DataAPIMeta {
+  return GetMetadata(classOf(thisObj), DataAPIMeta, true);
 }

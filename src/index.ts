@@ -21,28 +21,31 @@ import {
   Route,
 } from "@antelopejs/interface-api";
 
+import type { WriteDocument } from "@antelopejs/interface-database/common";
+
 import { Parameters, Query, Validation } from "./components";
+import { isWriteDocument, isWriteValue } from "./internal/guards";
+import { prototypeOf } from "./internal/prototypes";
 import {
   DataAPIMeta,
   type DataControllerCallback,
   type DataControllerCallbackWithOptions,
   type DataControllerDef,
+  type DataControllerInstance,
   type ExtractDefCallbacks,
-  type FieldValues,
   GetDataControllerMeta,
+  type RowFields,
 } from "./metadata";
 
 export {
   type DataControllerCallback,
   type DataControllerCallbackWithOptions,
   type DataControllerDef,
+  type DataControllerInstance,
   type ExtractCallback,
   type ExtractDefCallbacks,
   GetDataControllerMeta,
 } from "./metadata";
-
-/** The controller a data route runs on: an instance of a class built by {@link DataController}. */
-export type DataControllerInstance = InstanceType<ControllerClass>;
 
 abstract class TableHolder<C extends Class> {
   table!: InstanceType<C>;
@@ -81,58 +84,65 @@ export function DataController<
         ? { endpoint: key, callback: val }
         : { endpoint: key, ...val };
     meta.addEndpoint(key, entry);
-    c.prototype[key] = entry.callback.func;
+    Object.assign(c.prototype, { [key]: entry.callback.func });
   }
   // SAFETY: for every own key of def, the loop above installs the function ExtractCallback<P[key]> names (def[key].func, or def[key].callback.func for an entry with options) on c.prototype, which covers the members of ExtractDefCallbacks<P>; c extends base and declares table itself.
-  return c as any;
+  return c as Class<ExtractDefCallbacks<P> & TableHolder<C>> & Base;
 }
 
 export const RegisterDataController =
   (): ClassDecorator<ControllerClass> => (target) => {
     const meta = GetMetadata(target, DataAPIMeta);
+    const prototype = prototypeOf(target);
     for (const [key, entry] of Object.entries(meta.endpoints)) {
       for (let i = 0; i < entry.callback.args.length; ++i) {
         const arg = entry.callback.args[i];
         if (Array.isArray(arg)) {
           for (const step of arg) {
-            step(target.prototype, key, i);
+            step(prototype, key, i);
           }
         } else {
-          arg(target.prototype, key, i);
+          arg(prototype, key, i);
         }
       }
-      const meta = GetMetadata(target, ControllerMeta);
-      const fullLocation = `${meta.location}/${entry.endpoint ?? key}`.replace(
-        /\/+/g,
-        "/",
-      );
+      const controllerMeta = GetMetadata(target, ControllerMeta);
+      const fullLocation =
+        `${target.location}/${entry.endpoint ?? key}`.replace(/\/+/g, "/");
       RegisterRoute({
-        callback: (ctx) => {
+        callback: (ctx: Parameters.DataRequestContext) => {
           ctx.dataAPIEntry = entry;
         },
         location: fullLocation,
         method: entry.callback.method,
         mode: "prefix",
         parameters: [{ provider: (ctx) => ctx, modifiers: [] }],
-        properties: meta.computed_props,
-        proto: target.prototype,
+        properties: controllerMeta.computed_props,
+        controller: target,
       });
-      Route("handler", entry.callback.method, entry.endpoint)(
-        target.prototype,
-        key,
-        {
-          value: entry.callback.func,
-        },
-      );
+      Route("handler", entry.callback.method, entry.endpoint)(prototype, key, {
+        value: entry.callback.func,
+      });
     }
   };
+
+/** The row a route writes, refused before the write when a field holds a value no database stores. */
+function writtenRow(row: RowFields): WriteDocument {
+  if (isWriteDocument(row)) {
+    return row;
+  }
+  const [field] =
+    Object.entries(row).find(([, value]) => !isWriteValue(value)) ?? [];
+  throw new TypeError(
+    `Field '${field}' holds a bigint, a symbol or a function, which no database stores`,
+  );
+}
 
 export namespace DefaultRoutes {
   /** Receives the loaded, unlocked model before readable fields are selected. Throw to deny the read. */
   export type GetGuard = (
     this: DataControllerInstance,
     ctx: RequestContext,
-    current: FieldValues,
+    current: RowFields,
     params: Parameters.GetParameters,
   ) => void | Promise<void>;
 
@@ -236,6 +246,7 @@ export namespace DefaultRoutes {
     const results = await Promise.all(
       dbResult.map((entry) => {
         const entryInstance = model.constructor.fromDatabase(entry);
+        assert(entryInstance, 500, "The database answered an empty row.");
         Validation.Unlock(this, meta, entryInstance);
         return Query.ReadProperties(this, meta, entryInstance, "list");
       }),
@@ -270,7 +281,7 @@ export namespace DefaultRoutes {
 
     const model = Query.GetModel(this, meta);
     triggerEvent(dbData, "insert");
-    const [id] = await model.table.insert(dbData);
+    const [id] = await model.table.insert(writtenRow(dbData));
 
     const created = await readRow(this, meta, { params: { id } });
     return { _id: id, ...created };
@@ -305,7 +316,7 @@ export namespace DefaultRoutes {
     Validation.Lock(this, meta, dbData);
 
     triggerEvent(dbData, "update");
-    await model.table.get(params.id).update(dbData);
+    await model.table.get(params.id).update(writtenRow(dbData));
 
     return readRow(this, meta, {
       params: { id: params.id, index: params.index },
@@ -333,7 +344,11 @@ export namespace DefaultRoutes {
   Object.defineProperty(editRow, "name", { value: "edit" });
   Object.defineProperty(deleteRows, "name", { value: "delete" });
 
-  export const Get = {
+  export const Get: DataControllerCallback<
+    Parameters.GetParameters,
+    RowFields,
+    [RequestContext, Parameters.GetParameters]
+  > = {
     func: getRow,
     args: [Context(), Parameters.Get()],
     method: "get",
@@ -348,16 +363,24 @@ export namespace DefaultRoutes {
    */
   export function WithGetGuard(
     guard: GetGuard,
-  ): DataControllerCallback<Parameters.GetParameters> {
+  ): DataControllerCallback<
+    Parameters.GetParameters,
+    RowFields,
+    [RequestContext, Parameters.GetParameters]
+  > {
     return {
       ...Get,
-      func: function (ctx, params) {
+      func: function (this: DataControllerInstance, ctx, params) {
         return getRow.call(this, ctx, params, guard);
       },
     };
   }
 
-  export const List = {
+  export const List: DataControllerCallback<
+    Parameters.ListParameters,
+    Awaited<ReturnType<typeof listRows>>,
+    [RequestContext, Parameters.ListParameters]
+  > = {
     func: listRows,
     args: [Context(), Parameters.List()],
     method: "get",
@@ -366,17 +389,29 @@ export namespace DefaultRoutes {
    * Answers the created row with its `_id`, even when `get` does not read
    * `_id`: the caller needs it to name the row it created.
    */
-  export const New = {
+  export const New: DataControllerCallback<
+    Parameters.NewParameters,
+    Awaited<ReturnType<typeof newRow>>,
+    [RequestContext, Parameters.NewParameters, Validation.WrittenBody]
+  > = {
     func: newRow,
     args: [Context(), Parameters.New(), RawBody()],
     method: "post",
   };
-  export const Edit = {
+  export const Edit: DataControllerCallback<
+    Parameters.EditParameters,
+    Awaited<ReturnType<typeof editRow>>,
+    [RequestContext, Parameters.EditParameters, Validation.WrittenBody]
+  > = {
     func: editRow,
     args: [Context(), Parameters.Edit(), RawBody()],
     method: "put",
   };
-  export const Delete = {
+  export const Delete: DataControllerCallback<
+    Parameters.DeleteParameters,
+    Awaited<ReturnType<typeof deleteRows>>,
+    [RequestContext, Parameters.DeleteParameters]
+  > = {
     func: deleteRows,
     args: [Context(), Parameters.Delete()],
     method: "delete",
@@ -390,11 +425,13 @@ export namespace DefaultRoutes {
     delete: Delete,
   } as const;
 
-  export function WithOptions<O>(
-    callback: DataControllerCallback<O> | DataControllerCallbackWithOptions<O>,
+  export function WithOptions<O, R, A extends unknown[]>(
+    callback:
+      | DataControllerCallback<O, R, A>
+      | DataControllerCallbackWithOptions<O, R, A>,
     options?: Partial<O>,
     endpoint?: string,
-  ): DataControllerCallbackWithOptions<O> {
+  ): DataControllerCallbackWithOptions<O, R, A> {
     if ("func" in callback) {
       return {
         endpoint,

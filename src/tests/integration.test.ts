@@ -1,7 +1,12 @@
 import { expect } from "chai";
+import { z } from "zod";
 import { toPlainData } from "@antelopejs/interface-database-decorators/modifiers/common";
 
-import { type ListResponse, readJson } from "./internal/http";
+import {
+  createdRowSchema,
+  listResponseSchema,
+  readJson,
+} from "./internal/http";
 import "./internal/shop-api";
 import {
   cleanTables,
@@ -16,13 +21,23 @@ import {
   listRequest,
   newRequest,
   request,
-  type CreatedRow,
   validateObject,
 } from "./utils";
 
 function plainRow(row: Product | Customer | undefined) {
   return row ? toPlainData(row) : {};
 }
+
+const customerSchema = z.looseObject({
+  _id: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  email: z.string(),
+  city: z.string(),
+});
+const productSchema = z.looseObject({ _id: z.string() });
+const customerListSchema = listResponseSchema(customerSchema);
+const productListSchema = listResponseSchema(productSchema);
 
 describe("Integration tests", () => {
   before(async () => {
@@ -68,13 +83,13 @@ async function expectCustomerWorkflow() {
 
   const createResponse = await newRequest("customers", newCustomer);
   expect(createResponse.status).to.equal(200);
-  const created = await readJson<CreatedRow>(createResponse);
+  const created = await readJson(createdRowSchema, createResponse);
   expect(created._id).to.be.a("string");
   const createdIds = [created._id];
 
   const getResponse = await getRequest("customers", { id: createdIds[0] });
   expect(getResponse.status).to.equal(200);
-  const customer = await readJson<Customer>(getResponse);
+  const customer = await readJson(customerSchema, getResponse);
   await validateObject(customer, newCustomer, [
     "firstName",
     "lastName",
@@ -102,8 +117,17 @@ async function expectCustomerWorkflow() {
     limit: "2",
   });
   expect(listResponse.status).to.equal(200);
-  const listData = await readJson<{ results: Customer[] }>(listResponse);
+  const listData = await readJson(customerListSchema, listResponse);
   expect(listData.results).to.have.length(2);
+
+  const [ascending, unknownDirection] = await Promise.all(
+    ["asc", "sideways"].map((sortDirection) =>
+      listRequest("customers", { sortKey: "registrationDate", sortDirection }),
+    ),
+  );
+  expect(await readJson(z.unknown(), unknownDirection)).to.deep.equal(
+    await readJson(z.unknown(), ascending),
+  );
 }
 
 async function expectProductWorkflow() {
@@ -125,7 +149,7 @@ async function expectProductWorkflow() {
 
   const createResponse = await newRequest("products", newProduct);
   expect(createResponse.status).to.equal(200);
-  const createdIds = [(await readJson<CreatedRow>(createResponse))._id];
+  const createdIds = [(await readJson(createdRowSchema, createResponse))._id];
 
   const stockUpdate = { ...newProduct, stockQuantity: 25 };
   const updateResponse = await editRequest("products", stockUpdate, {
@@ -142,14 +166,14 @@ async function expectProductWorkflow() {
     limit: "3",
   });
   expect(listResponse.status).to.equal(200);
-  const listData = await readJson<{ results: Product[] }>(listResponse);
+  const listData = await readJson(productListSchema, listResponse);
   expect(listData.results).to.have.length(3);
 
   const categoryResponse = await listRequest("products", {
     category: "electronics",
   });
   expect(categoryResponse.status).to.equal(200);
-  const categoryData = await readJson<ListResponse<Product>>(categoryResponse);
+  const categoryData = await readJson(productListSchema, categoryResponse);
   expect(categoryData.results.length).to.be.greaterThan(0);
 }
 
@@ -173,7 +197,7 @@ async function expectOrderWorkflow() {
 
   const orderResponse = await newRequest("orders", orderData);
   expect(orderResponse.status).to.equal(200);
-  const orderIds = [(await readJson<CreatedRow>(orderResponse))._id];
+  const orderIds = [(await readJson(createdRowSchema, orderResponse))._id];
 
   const orderItem1 = {
     orderId: orderIds[0],
@@ -274,7 +298,7 @@ async function expectSearchAndFilters() {
     sortDirection: "desc",
   });
   expect(categoryResponse.status).to.equal(200);
-  const categoryData = await readJson<ListResponse<Product>>(categoryResponse);
+  const categoryData = await readJson(productListSchema, categoryResponse);
   expect(categoryData.results.length).to.be.greaterThan(0);
 
   const activeCustomersResponse = await listRequest("customers", {
@@ -283,7 +307,8 @@ async function expectSearchAndFilters() {
     sortDirection: "desc",
   });
   expect(activeCustomersResponse.status).to.equal(200);
-  const activeCustomersData = await readJson<ListResponse<Customer>>(
+  const activeCustomersData = await readJson(
+    customerListSchema,
     activeCustomersResponse,
   );
   expect(activeCustomersData.results.length).to.be.greaterThan(0);
@@ -293,8 +318,7 @@ async function expectSearchAndFilters() {
     offset: "1",
   });
   expect(paginatedResponse.status).to.equal(200);
-  const paginatedData =
-    await readJson<ListResponse<Product>>(paginatedResponse);
+  const paginatedData = await readJson(productListSchema, paginatedResponse);
   expect(paginatedData.results).to.have.length(2);
   expect(paginatedData.total).to.be.greaterThan(2);
 
@@ -329,8 +353,10 @@ async function expectClientPreferences() {
     sortDirection: "asc",
   });
   expect(electronicsResponse.status).to.equal(200);
-  const electronicsData =
-    await readJson<ListResponse<Product>>(electronicsResponse);
+  const electronicsData = await readJson(
+    productListSchema,
+    electronicsResponse,
+  );
   expect(electronicsData.results.length).to.be.greaterThan(0);
 
   const loyaltyUpdate = { ...plainRow(updatedCustomer), loyaltyPoints: 200 };

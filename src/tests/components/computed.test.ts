@@ -1,5 +1,6 @@
 import path from "node:path";
 import { expect } from "chai";
+import { z } from "zod";
 import { Controller } from "@antelopejs/interface-api";
 import { GetMetadata } from "@antelopejs/interface-core";
 import { Schema } from "@antelopejs/interface-database";
@@ -29,7 +30,7 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
-import { readJson } from "../internal/http";
+import { listResponseSchema, readJson } from "../internal/http";
 import {
   editRequest,
   getFunctionName,
@@ -68,19 +69,19 @@ class Device extends Table {
 }
 class DeviceModel extends BasicDataModel(Device, deviceTableName) {}
 
-interface GroupListed {
-  _id: string;
-  name: string;
-  devices_count: number;
-  display_name: string;
-}
+const groupListedSchema = z.looseObject({
+  _id: z.string(),
+  name: z.string(),
+  devices_count: z.number(),
+  display_name: z.string(),
+});
 
-interface ListResponse {
-  results: GroupListed[];
-  total: number;
-  offset: number;
-  limit: number;
-}
+const listSchema = listResponseSchema(groupListedSchema);
+type GroupListedFields = Pick<
+  z.infer<typeof groupListedSchema>,
+  "name" | "devices_count" | "display_name"
+>;
+type ListResponse = z.infer<typeof listSchema>;
 
 const groupsDataset: Partial<Group>[] = [
   { name: "Alpha" },
@@ -134,7 +135,10 @@ async function _createDataController(testName: string) {
     @Listable()
     @Computed(
       (row, db) =>
-        db.table(deviceTableName).getAll(row.key("_id"), "group_id").count(),
+        db
+          .table(deviceTableName)
+          .getAll(row.key("_id").cast<string | number | boolean>(), "group_id")
+          .count(),
       { default: 0 },
     )
     @Sortable()
@@ -184,7 +188,7 @@ async function _listGroups(
     const text = await response.text();
     throw new Error(`list failed (${response.status}): ${text}`);
   }
-  return await readJson<ListResponse>(response);
+  return await readJson(listSchema, response);
 }
 
 async function expectStoresComputedMetadata() {
@@ -226,7 +230,7 @@ async function expectGetsRowWithComputedValues() {
     const text = await response.text();
     throw new Error(`get failed (${response.status}): ${text}`);
   }
-  const group = await readJson<GroupListed>(response);
+  const group = await readJson(groupListedSchema, response);
   expect(group.name).to.equal("Alpha");
   expect(group.devices_count).to.equal(3);
   expect(group.display_name).to.equal("Alpha!");
@@ -306,9 +310,8 @@ async function expectIgnoresComputedFieldsOnEdit() {
   });
   expect(response.status).to.equal(200);
 
-  const updatedGroup: Partial<GroupListed> | undefined = await groupModel.get(
-    groupIds[0],
-  );
+  const updatedGroup: Partial<GroupListedFields> | undefined =
+    await groupModel.get(groupIds[0]);
   expect(updatedGroup?.name).to.equal("Alpha Prime");
   expect(updatedGroup?.devices_count).to.equal(undefined);
   expect(updatedGroup?.display_name).to.equal(undefined);

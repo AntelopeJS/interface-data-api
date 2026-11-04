@@ -102,7 +102,11 @@ export function Foreign(
               return foreignObject.default(null);
             });
         } else {
-          let foreignObject: Datum<any> = Get(remote, obj.key(name), index);
+          let foreignObject: Datum<any> = Get(
+            remote,
+            obj.key(name).cast<string>(),
+            index,
+          );
           if (targetJoined && targetJoined.length > 0) {
             foreignObject = applyForeignJoinedDatum(
               db,

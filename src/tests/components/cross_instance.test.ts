@@ -164,7 +164,7 @@ async function OtherInstanceListsTest() {
     db,
   );
   const listed = OtherComponents.Query.Foreign(db, meta, sorted);
-  const rows: ListedCustomer[] = await listed.run();
+  const rows = await listed.cast<ListedCustomer>().run();
   expect(await total.run()).to.equal(2);
   expect(
     rows.map(({ name, owner, ownerName }) => [name, owner?.name, ownerName]),
@@ -181,7 +181,7 @@ async function OtherInstanceDecoratesStreamTest() {
   const stream = Customer.table().orderBy("name");
   const withForeign = OtherComponents.Query.Foreign(db, meta, stream);
   const decorated = OtherComponents.Query.Computed(db, meta, withForeign);
-  const rows: ListedCustomer[] = await decorated.run();
+  const rows = await decorated.cast<ListedCustomer>().run();
   expect(
     rows.map(({ name, owner, label }) => [name, owner?.name, label]),
   ).to.deep.equal([

@@ -70,7 +70,7 @@ export function splitJoinedFields(
 ): JoinedFieldSplit {
   const split: JoinedFieldSplit = { filter: new Set(), sort: new Set() };
   const filterNames = Object.keys(meta.filters).filter(
-    (name) => filters && name in filters,
+    (name) => filters && Object.hasOwn(filters, name),
   );
   const hasComputedFilter = filterNames.some(
     (name) => meta.fields[name]?.computed,

@@ -1,5 +1,6 @@
 import path from "node:path";
 import { expect } from "chai";
+import { z } from "zod";
 import { Controller, Parameter } from "@antelopejs/interface-api";
 import { Schema } from "@antelopejs/interface-database";
 import {
@@ -25,14 +26,13 @@ import {
 } from "@antelopejs/interface-database-decorators";
 
 import { URL_BASE } from "../constants";
-import { readJson } from "../internal/http";
+import { createdRowSchema, readJson } from "../internal/http";
 import {
   editRequest,
   getFunctionName,
   getRequest,
   getSchemaInstance,
   newRequest,
-  type CreatedRow,
 } from "../utils";
 
 const currentTestName = path
@@ -68,10 +68,10 @@ class Article extends Table.with(LocalizationModifier) {
 }
 class ArticleModel extends BasicDataModel(Article, articleTableName) {}
 
-interface LocalizedArticle {
-  title: string;
-  summary: string;
-}
+const localizedArticleSchema = z.looseObject({
+  title: z.string(),
+  summary: z.string(),
+});
 
 const storedArticle: Partial<Article> = {
   reference: "ART-001",
@@ -178,14 +178,14 @@ async function _createLocalizedArticle(testName: string) {
     locale: allLocales,
   });
   expect(response.status).to.equal(200);
-  const { _id: id } = await readJson<CreatedRow>(response);
+  const { _id: id } = await readJson(createdRowSchema, response);
   return id;
 }
 
 async function _getLocalized(testName: string, id: string, locale: string) {
   const response = await getRequest(testName, { id, locale });
   expect(response.status).to.equal(200);
-  return await readJson<LocalizedArticle>(response);
+  return await readJson(localizedArticleSchema, response);
 }
 
 async function _rawRequest(
@@ -286,7 +286,7 @@ async function expectRunsEverySetterOnNew() {
     reference: "ART-003",
   });
   expect(response.status).to.equal(200);
-  const { _id: id } = await readJson<CreatedRow>(response);
+  const { _id: id } = await readJson(createdRowSchema, response);
 
   const article = await articleModel.get(id);
   expect(article?.slug).to.equal(defaultSlug);
