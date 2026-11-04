@@ -2,10 +2,12 @@
 covers:
   - src/internal/joined.ts
   - src/internal/deferred-joined-stream.ts
+  - src/metadata.ts
 docs:
   - docs/10.joined.md
 journeys:
   - joined-read
+  - joined-access
 ---
 
 # joined
@@ -15,6 +17,7 @@ A list or get answers one field of another table at the top level of the row.
 ## Sub-features
 
 - `joined-read`: `@Joined` flattens a remote field onto the row (same schema and across schemas), a missing remote row joins as `null`, the list sorts and filters on the joined value in the database, and the field is read-only: an edit that sends it stores nothing.
+- `joined-access`: an `@Access` written above `@Joined` replaces its read-only mode.
 
 ## How to get to it (user POV)
 

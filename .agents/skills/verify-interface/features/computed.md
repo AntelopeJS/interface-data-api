@@ -1,10 +1,12 @@
 ---
 covers:
   - src/internal/computed.ts
+  - src/metadata.ts
 docs:
   - docs/11.computed.md
 journeys:
   - computed-read
+  - computed-access
 ---
 
 # computed
@@ -14,6 +16,7 @@ A row answers a value the database computes.
 ## Sub-features
 
 - `computed-read`: `@Computed` merges a per-row `count()` subquery and a row-local expression; `default` turns the null aggregate of an empty set into 0, the list sorts and pages on the aggregate with the same total on every page, filters on it, and the field is read-only.
+- `computed-access`: an `@Access` written above `@Computed` replaces its read-only mode, on get and on list.
 
 ## How to get to it (user POV)
 

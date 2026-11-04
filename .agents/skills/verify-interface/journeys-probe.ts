@@ -1,7 +1,7 @@
 import { equal } from "@antelopejs/tooling-configs/verify";
 
 import { holds, ids, keysOf, pick, results, seed, shopJourney, status, stored, text } from "./harness.ts";
-import { BOOKS, ORDERS, OVERRIDES, PROBES, USERS } from "./seeds.ts";
+import { BOOKS, DOCUMENTS, GROUPS, ORDERS, OVERRIDES, PROBES, USERS } from "./seeds.ts";
 
 const guardSemantics = shopJourney("a get guard allows on a normal return, runs with the controller and the parsed parameters, and is skipped for a missing row", async (shop) => {
   const { context } = shop;
@@ -265,6 +265,64 @@ const routeFiltersListOnly = shopJourney("a route's forced filters constrain the
   context.expect(inactive.folder, [status(inactive, 200, "route filters do not restrict get"), ...holds(inactive, { name: "Bob" })]);
 });
 
+const emptyForms = shopJourney("edit refuses a mandatory field cleared with null, an empty string or an empty array, and accepts it absent", async (shop) => {
+  const { context } = shop;
+  await seed(shop, USERS);
+  const missing = { code: "missing_mandatory_fields", fields: ["email"] };
+  const absent = await shop.request("email absent", "PUT", "/users/edit?id=u1", { body: '{"name":"Alice2"}' });
+  context.expect(absent.folder, [status(absent, 200, "an absent mandatory field keeps its value")]);
+  for (const [name, body] of [["null", '{"email":null}'], ["an empty string", '{"email":""}'], ["an empty array", '{"email":[]}']] as const) {
+    const cleared = await shop.request(`email cleared with ${name}`, "PUT", "/users/edit?id=u1", { body });
+    context.expect(cleared.folder, [status(cleared, 400), equal(`${name} counts as empty`, cleared.json, missing)]);
+  }
+  const object = await shop.request("email set to an empty object", "PUT", "/users/edit?id=u1", { body: '{"email":{}}' });
+  context.expect(object.folder, [status(object, 400), equal("an empty object is not a clearing value, so the validator refuses it", object.json, { code: "invalid_field_types", fields: ["email"] })]);
+  const row = await stored(shop, "read u1", "verify__users", '{ _id: "u1" }');
+  context.expect(row.folder, [equal("no refused edit changed the email", pick(row.rows[0] ?? null, "email"), "alice@example.com")]);
+});
+
+const mandatoryBeforeValidators = shopJourney("the mandatory check answers before any validator, on new and on edit", async (shop) => {
+  const { context } = shop;
+  await seed(shop, USERS);
+  const created = await shop.request("new with a missing mandatory field and an invalid value", "POST", "/users/new", { body: '{"name":"Zed","age":500}' });
+  context.expect(created.folder, [status(created, 400), equal("new answers the mandatory code", created.json, { code: "missing_mandatory_fields", fields: ["email", "password"] })]);
+  const edited = await shop.request("edit clearing a mandatory field with an invalid value", "PUT", "/users/edit?id=u1", { body: '{"email":null,"nickname":"taken"}' });
+  context.expect(edited.folder, [status(edited, 400), equal("edit answers the mandatory code", edited.json, { code: "missing_mandatory_fields", fields: ["email"] })]);
+});
+
+const holeyBody = shopJourney("a parsed body that holds an undefined array element answers 400", async (shop) => {
+  const { context } = shop;
+  await seed(shop, DOCUMENTS);
+  const holey = await shop.request("new through a route that sets [undefined]", "POST", "/holey-docs/holey", { body: '{"title":"x"}' });
+  context.expect(holey.folder, [status(holey, 400, "an undefined array element answers 400")]);
+  const rows = await stored(shop, "count the documents", "verify__documents");
+  context.expect(rows.folder, [equal("nothing was written", rows.rows.length, 2)]);
+});
+
+const joinedAccess = shopJourney("an @Access written above @Joined replaces its read-only mode", async (shop) => {
+  const { context } = shop;
+  await seed(shop, BOOKS);
+  const got = await shop.request("get a book", "GET", "/joined-access/get?id=b1");
+  context.expect(got.folder, [status(got, 200), ...holds(got, { title: "Nana" }), equal("the later write-only @Access hides the joined field", keysOf(got.json).includes("authorName"), false)]);
+});
+
+const computedAccess = shopJourney("an @Access written above @Computed replaces its read-only mode", async (shop) => {
+  const { context } = shop;
+  await seed(shop, GROUPS);
+  const got = await shop.request("get a group", "GET", "/computed-access/get?id=g1");
+  context.expect(got.folder, [status(got, 200), ...holds(got, { name: "Alpha" }), equal("the later write-only @Access hides the computed field on get", keysOf(got.json).includes("devices_count"), false)]);
+  const listed = await shop.request("list the groups", "GET", "/computed-access/list");
+  context.expect(listed.folder, [equal("and on list", results(listed).some((row) => keysOf(row).includes("devices_count")), false)]);
+});
+
+const foreignUnplucked = shopJourney("a foreign key without pluck answers the whole target row, whatever the target controller's @Access says", async (shop) => {
+  const { context } = shop;
+  await seed(shop, ORDERS);
+  const one = await shop.request("order o1", "GET", "/orders/get?id=o1");
+  const target = pick(one.json, "byEmail");
+  context.expect(one.folder, [status(one, 200), equal("the target's name", pick(target, "name"), "Bob"), equal("the target's stored password is not hidden by the users controller's @Access", pick(target, "password"), "p2")]);
+});
+
 export const PROBE_JOURNEYS = {
   "guard-semantics": guardSemantics,
   "new-row-shape": newRowContents,
@@ -283,6 +341,12 @@ export const PROBE_JOURNEYS = {
   "option-beats-query": optionBeatsQuery,
   "foreign-declaration-throws": foreignDeclarationThrows,
   "route-filters-list-only": routeFiltersListOnly,
+  "empty-forms": emptyForms,
+  "mandatory-before-validators": mandatoryBeforeValidators,
+  "holey-body": holeyBody,
+  "joined-access": joinedAccess,
+  "computed-access": computedAccess,
+  "foreign-unplucked": foreignUnplucked,
   "issue-90-edit-index": issue90,
   "issue-92-getter-mode": issue92,
   "issue-93-multi-foreign": issue93,

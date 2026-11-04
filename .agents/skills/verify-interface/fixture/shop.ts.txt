@@ -839,6 +839,55 @@ class _OptionRoutesAPI extends DataController(
   Controller("/option-routes", _UserAPI),
 ) {}
 
+@RegisterDataController()
+class _JoinedAccessAPI extends DataController(Book, { get: DefaultRoutes.Get }, Controller("/joined-access")) {
+  @ModelReference()
+  @Model(BookModel)
+  declare joinedAccessModel: BookModel;
+
+  @Access(AccessMode.ReadOnly)
+  declare title: string;
+
+  @Access(AccessMode.WriteOnly)
+  @Joined({ table: Author, localKey: "authorId", remoteField: "name" })
+  declare authorName: string;
+}
+
+@RegisterDataController()
+class _ComputedAccessAPI extends DataController(Group, { get: DefaultRoutes.Get, list: DefaultRoutes.List }, Controller("/computed-access")) {
+  @ModelReference()
+  @Model(GroupModel)
+  declare computedAccessModel: GroupModel;
+
+  @Listable()
+  @Access(AccessMode.ReadOnly)
+  declare name: string;
+
+  @Listable()
+  @Access(AccessMode.WriteOnly)
+  @Computed((row, db) => db.table("devices").filter((device) => device.key("group_id").eq(row.key("_id"))).count(), { default: 0 })
+  declare devices_count: number;
+}
+
+const holeyNew = {
+  ...DefaultRoutes.New,
+  func: function (this: DataControllerInstance, ctx: RequestContext, params: Parameters.NewParameters, body: Buffer) {
+    const parsed = Validation.ParseBody(body);
+    Reflect.set(parsed, "title", [undefined]);
+    return DefaultRoutes.New.func.call(this, ctx, params, parsed);
+  },
+};
+
+@RegisterDataController()
+class _HoleyDocsAPI extends DataController(DocumentRow, { holey: holeyNew }, Controller("/holey-docs")) {
+  @ModelReference()
+  @Model(DocumentModel)
+  declare holeyDocumentModel: DocumentModel;
+
+  @Access(AccessMode.ReadWrite)
+  declare title: string;
+}
+
 export async function construct(): Promise<void> {
   await RegisterSchema(AUTH_SCHEMA);
   await RegisterSchema(SCHEMA);

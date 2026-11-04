@@ -11,6 +11,7 @@ journeys:
   - issue-93-multi-foreign
   - no-foreign-strings
   - foreign-declaration-throws
+  - foreign-unplucked
 ---
 
 # foreign
@@ -24,6 +25,7 @@ A field that holds a key of another table answers the record it points to.
 - `issue-93-multi-foreign`: fails on purpose until [#93](https://github.com/AntelopeJS/interface-data-api/issues/93) is fixed: a multi reference answers `null` for a missing element and raw ids with `noForeign`.
 - `no-foreign-strings`: the Get `noForeign` option skips resolving for any non-empty string, `"false"` included, and not for `""` or when absent; the List option is a boolean.
 - `foreign-declaration-throws`: `@Foreign` throws at declaration for a schema mismatch between the class and the `schema` parameter, and for a string table name with no class registered in that schema.
+- `foreign-unplucked`: a foreign key without `pluck` answers the whole target row, including fields the target controller's `@Access` hides.
 
 ## How to get to it (user POV)
 
