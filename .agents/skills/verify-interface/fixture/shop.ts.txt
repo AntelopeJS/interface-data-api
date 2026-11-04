@@ -606,6 +606,106 @@ class _DocumentAPI extends DataController(
   declare source: string;
 }
 
+@RegisterTable("probes", SCHEMA)
+class ProbeRow extends Table {
+  declare _id: string;
+
+  @Index()
+  @Field("string")
+  declare kind: string;
+
+  @Field("string")
+  declare title: string;
+
+  @Field("string")
+  declare origin: string;
+
+  @Field("string")
+  declare trace: string;
+
+  @Index()
+  @Field("string")
+  declare tag: string;
+
+  @Field("number")
+  declare score: number;
+}
+class ProbeModel extends BasicDataModel(ProbeRow, "probes") {}
+
+const lenientGuard = DefaultRoutes.WithGetGuard(function (this: DataControllerInstance) {
+  return Promise.resolve(false) as unknown as Promise<void>;
+});
+
+const ownedGuard = DefaultRoutes.WithGetGuard(function (this: DataControllerInstance) {
+  assert(this instanceof _ProbeAPI, 500, "guard without the controller");
+});
+
+const paramsGuard = DefaultRoutes.WithGetGuard(function (_ctx, _current, params) {
+  assert(params.id === "p1", 500, "guard without the parsed parameters");
+});
+
+const alwaysThrowsGuard = DefaultRoutes.WithGetGuard(function () {
+  assert(false, 500, "the guard ran");
+});
+
+const titleThisFilter: FilterFunction<Record<string, unknown>> = (context, proxy, _key, raw) =>
+  proxy.eq(context.this instanceof _ProbeAPI ? raw : "__no_controller__");
+
+const upperTagFilter: FilterFunction<Record<string, unknown>> = (_context, proxy, _key, raw) => proxy.eq(raw.toUpperCase());
+
+@RegisterDataController()
+class _ProbeAPI extends DataController(
+  ProbeRow,
+  {
+    ...DefaultRoutes.All,
+    lenient: lenientGuard,
+    owned: ownedGuard,
+    withParams: paramsGuard,
+    alwaysThrows: alwaysThrowsGuard,
+    plain: DefaultRoutes.WithOptions(DefaultRoutes.List, { pluckMode: "nothing", noPluck: true }),
+    slugEdit: DefaultRoutes.WithOptions(DefaultRoutes.Edit, { index: "tag" }),
+  },
+  Controller("/probes"),
+) {
+  @ModelReference()
+  @Model(ProbeModel)
+  declare probeModel: ProbeModel;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  @Filter()
+  declare kind: string;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  @Filter(titleThisFilter, false)
+  declare title: string;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  @Filter(upperTagFilter)
+  declare tag: string;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  @Filter()
+  declare score: number;
+
+  @Listable()
+  @Access(AccessMode.ReadOnly)
+  origin = "class-default";
+
+  @Listable()
+  @Access(AccessMode.ReadOnly)
+  declare trace: string;
+
+  @Access(AccessMode.WriteOnly)
+  set mark(value: string | undefined) {
+    const row: unknown = Reflect.get(this, "table");
+    if (typeof row === "object" && row !== null) Reflect.set(row, "trace", value === undefined ? "setter-ran-for-absent" : `mark:${value}`);
+  }
+}
+
 export async function construct(): Promise<void> {
   await RegisterSchema(AUTH_SCHEMA);
   await RegisterSchema(SCHEMA);

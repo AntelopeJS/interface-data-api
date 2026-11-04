@@ -6,6 +6,8 @@ docs:
   - docs/3.routes.md
 journeys:
   - option-overrides
+  - list-unknown
+  - issue-90-edit-index
 ---
 
 # route-options
@@ -15,6 +17,8 @@ A route is customized with `DefaultRoutes.WithOptions`; its options win over the
 ## Sub-features
 
 - `option-overrides`: `maxPage` caps the `limit` of a query and is the page size without one, `noMandatory` as a route option lets a mandatory field be cleared while the plain route refuses it, any non-empty string (`"false"` included) turns the option on, `index` reads through a secondary index, `noPluck` still answers only readable fields, and a `pluckMode` no field declares answers `No fields found for pluckMode 'nothing'`.
+- `list-unknown`: a list route with `noPluck` answers 200 for a `pluckMode` no field declares, and a URL no route matches answers 404.
+- `issue-90-edit-index`: fails on purpose until [#90](https://github.com/AntelopeJS/interface-data-api/issues/90) is fixed: an `edit` with the `index` option updates the row the index found.
 
 ## How to get to it (user POV)
 

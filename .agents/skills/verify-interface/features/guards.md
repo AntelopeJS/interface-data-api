@@ -7,6 +7,7 @@ journeys:
   - get-guard
   - amend-body
   - custom-route
+  - guard-semantics
 ---
 
 # guards
@@ -18,6 +19,7 @@ A module guards a read, amends a body or adds a route beyond CRUD.
 - `get-guard`: `DefaultRoutes.WithGetGuard` denies a read by throwing (the stored discriminator never appears in the answer), a missing row answers 404 without the guard, and a plain `get` route is not guarded.
 - `amend-body`: a route that wraps `new`, parses the body with `Validation.ParseBody` and stamps a field stores the stamped value, while the plain `new` stores what was sent.
 - `custom-route`: a route declared with `func`, `args` and `method` is served next to the defaults.
+- `guard-semantics`: `WithGetGuard` allows the read on a normal return even of `false`, runs with the controller as `this` and the parsed Get parameters, runs for a stored row, and is skipped for a missing one (404).
 
 ## How to get to it (user POV)
 

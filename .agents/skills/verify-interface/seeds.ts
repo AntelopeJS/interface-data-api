@@ -34,3 +34,9 @@ d.verify__devices.insertMany([{ _id: "d1", group_id: "g1" }, { _id: "d2", group_
 
 /** An invoice and a memo in the table the guarded route reads. */
 export const DOCUMENTS = `d.verify__documents.insertMany([{ _id: "x1", title: "Bill", documentType: "invoice" }, { _id: "x2", title: "Memo", documentType: "memo" }]);`;
+
+/** Two probe rows: a kind, a title, an upper-case tag, a numeric score, and a trace the setter overwrites. */
+export const PROBES = `d.verify__probes.insertMany([
+  { _id: "p1", kind: "a", title: "One", origin: "seed", trace: "seed", tag: "A", score: 5 },
+  { _id: "p2", kind: "b", title: "Two", origin: "seed", trace: "seed", tag: "B", score: 7 },
+]);`;

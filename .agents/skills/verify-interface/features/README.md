@@ -18,18 +18,18 @@ One file per feature. `covers:` lists the source globs it owns, `docs:` the page
 | [metadata](metadata.md) | A module author reads metadata and declares controllers. | effective-modes, declaration-errors, exports-runtime, consumer-compiles |
 | [smoke](smoke.md) | The fixed journey every verdict runs. | every-function, smoke-roundtrip |
 
+## Known issues, driven on purpose
+
+Three journeys fail on head and cite their issue: `issue-90-edit-index` ([#90](https://github.com/AntelopeJS/interface-data-api/issues/90)), `issue-92-getter-mode` ([#92](https://github.com/AntelopeJS/interface-data-api/issues/92)) and `issue-93-multi-foreign` ([#93](https://github.com/AntelopeJS/interface-data-api/issues/93)). A verdict that runs their features is FAIL until the issue is fixed; the fix turns the journey green.
+
 ## Not driven
 
 Every documented behaviour of the README, `docs/` and the TSDoc has a journey above, or a row here with the reason.
 
 | Behaviour | Why no journey drives it |
 |---|---|
-| Multi-reference element that matches nothing answers `null` (docs/7) | Fails on head: it answers `{}`. Drafted as an issue; a journey would make every foreign verdict FAIL. |
-| `noForeign` answers raw ids for a multi reference (docs/7) | Fails on head: the ids become character-index objects. Drafted as an issue. |
-| A list mode a getter does not declare omits the getter (docs/6) | `/people/brief` still lists the getter. Drafted as an issue. |
 | `Unregistered Database Table` (docs/2) | Needs a registered schema that lacks the table class; `@RegisterTable` registers the table. |
 | Class metadata and `schema` option name different schemas, the declaration throws (docs/7, docs/10) | Needs a table class whose metadata names a second schema; declaration-time only, no route reaches it. |
-| Edit `index` option (docs/3) | The `get` index option is driven; the edit variant needs a second unique index column in the fixture. |
 | `@Joined` `remoteIndex` (docs/10) | Needs an indexed non-key column on the remote table. |
 | `@Foreign` `targetMeta` joined fields (docs/7) | Needs a second data controller's metadata passed to the decorator. |
 | `Query.List` and `Query.ListPage` composed by a custom route, deferred lookup order, bare `count()` skips lookups, `changes()` (docs/10) | Advanced composition by internal helpers; the default list route is driven for the same joined and computed fields. |

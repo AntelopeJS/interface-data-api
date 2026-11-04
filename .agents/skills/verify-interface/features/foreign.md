@@ -7,6 +7,8 @@ docs:
 journeys:
   - foreign-resolve
   - foreign-raw
+  - edit-answers-foreign
+  - issue-93-multi-foreign
 ---
 
 # foreign
@@ -17,6 +19,8 @@ A field that holds a key of another table answers the record it points to.
 
 - `foreign-resolve`: `@Foreign` answers the referenced record in place of the key: with `pluck`, through a secondary `index`, by table name, across schemas, and as an array (`multi`); a key that matches nothing answers `null`.
 - `foreign-raw`: the `noForeign` route option answers the raw keys of single references on a get and on a list.
+- `edit-answers-foreign`: `edit` answers the stored record with its foreign fields resolved.
+- `issue-93-multi-foreign`: fails on purpose until [#93](https://github.com/AntelopeJS/interface-data-api/issues/93) is fixed: a multi reference answers `null` for a missing element and raw ids with `noForeign`.
 
 ## How to get to it (user POV)
 
@@ -32,4 +36,4 @@ Each journey compiles the consumer in `fixture/shop.ts.txt`, starts `ajs project
 
 ## Gotchas
 
-- Two documented behaviours of multi references fail on head and are not asserted: a missing element answers `{}` and not `null`, and `noForeign` answers character-index objects and not the raw ids. Both are drafted as issues.
+- A missing element of a multi reference answers `{}` and `noForeign` spreads its ids into character-index objects: [#93](https://github.com/AntelopeJS/interface-data-api/issues/93), driven by `issue-93-multi-foreign`.

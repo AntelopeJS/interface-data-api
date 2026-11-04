@@ -2,6 +2,7 @@
 covers:
   - src/index.ts
   - src/internal/controller-types.ts
+  - src/internal/properties.ts
 docs:
   - README.md
   - docs/1.introduction.md
@@ -11,6 +12,8 @@ journeys:
   - crud-lifecycle
   - crud-errors
   - crud-subset
+  - new-row-shape
+  - edit-setters
 ---
 
 # crud
@@ -22,6 +25,8 @@ A client calls the five default routes of a data controller and the table follow
 - `crud-lifecycle`: `new`, `get`, `edit` and `delete` on the `users` controller change exactly the rows they name: the write-only password is stored but never answered, the age allowed on `new` is stored, an edit keeps the fields it was not sent, and a delete of two ids and one that does not exist leaves every other row; MongoDB shows each write.
 - `crud-errors`: `Missing id.` (400), `Not Found` (404), `Invalid JSON body.` and `The request body must be a JSON object.` (400) on every route that reads them, a delete of an unknown id answers 200, and no refused request writes a row.
 - `crud-subset`: a controller that declares only `get`, `list` and `new` answers 404 on `edit` and `delete`; `WithOptions(Edit, options, "patch")` serves under `patch` and not under its key; a controller derived with `Controller("/staff", UserAPI)` reads through the inherited model reference.
+- `new-row-shape`: `new` answers its `_id` on a controller whose `_id` has no `@Access`, starts from the defaults the controller class declares, and runs every writable setter, with `undefined` for a field absent from the body.
+- `edit-setters`: `edit` runs the setters of the fields present in the body and no other, and the class defaults do not overwrite stored fields.
 
 ## How to get to it (user POV)
 

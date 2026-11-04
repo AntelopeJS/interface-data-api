@@ -2,6 +2,7 @@ import { Controller } from "@antelopejs/interface-api";
 import type { VerifyConfig } from "@antelopejs/tooling-configs/verify";
 
 import type * as DataApi from "../../../src/index.ts";
+import { PROBE_JOURNEYS } from "./journeys-probe.ts";
 import { READ_JOURNEYS } from "./journeys-read.ts";
 import { WRITE_JOURNEYS } from "./journeys-write.ts";
 
@@ -106,7 +107,7 @@ const config: VerifyConfig<typeof DataApi> = {
       ),
     },
   },
-  journeys: { ...WRITE_JOURNEYS, ...READ_JOURNEYS },
+  journeys: { ...WRITE_JOURNEYS, ...READ_JOURNEYS, ...PROBE_JOURNEYS },
 };
 
 export default config;

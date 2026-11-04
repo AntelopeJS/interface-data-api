@@ -6,6 +6,7 @@ docs:
   - docs/4.access-rights.md
 journeys:
   - access-modes
+  - listable-alone
 ---
 
 # access
@@ -15,6 +16,7 @@ journeys:
 ## Sub-features
 
 - `access-modes`: a write-only field is never answered and is stored, a field with no `@Access` is never answered and never written, a read-only field is answered and ignored in a body, and a per-action override (`role` writable on `new` and read-only on `edit`, `age` the other way) decides what `new` and `edit` store; MongoDB shows each case.
+- `listable-alone`: a field that is only `@Listable` never appears in a response, and a route that skips the mandatory check still runs the validators.
 
 ## How to get to it (user POV)
 

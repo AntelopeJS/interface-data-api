@@ -2,6 +2,7 @@
 covers:
   - src/internal/validation.ts
   - src/internal/guards.ts
+  - src/components.ts
 docs:
   - docs/5.validators.md
 journeys:

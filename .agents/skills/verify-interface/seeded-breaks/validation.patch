@@ -1,15 +1,11 @@
 diff --git a/src/components.ts b/src/components.ts
-index 96c65d8..e4e83c0 100644
 --- a/src/components.ts
 +++ b/src/components.ts
-@@ -497,9 +497,7 @@ export namespace Validation {
-     [action: string]: typeof isAbsentFromBody;
+@@ -571,7 +571,6 @@
+         invalid.push(name);
+       }
+     }
+-    rejectFields(INVALID_FIELD_TYPES, invalid);
+     return parsed;
    }
  
--  const MISSING_MANDATORY_FIELD_CHECKS: MissingFieldChecks = {
--    edit: isClearedByBody,
--  };
-+  const MISSING_MANDATORY_FIELD_CHECKS: MissingFieldChecks = {};
- 
-   /** The `code` of a 400 naming the mandatory fields a body lacks. */
-   export const MISSING_MANDATORY_FIELDS = "missing_mandatory_fields";
