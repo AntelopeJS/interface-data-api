@@ -1,6 +1,6 @@
 ---
 name: formal-field-access
-description: Bounded exhaustive check of field exposure and write gating in @antelopejs/interface-data-api (AccessMode, @Access overrides, @Listable, @Computed, @Joined, derived controllers), run against the real decorators, ReadProperties and WriteProperties. Use when a change touches src/metadata.ts, src/internal/read-properties.ts, src/internal/properties.ts or src/internal/meta-records.ts, or when a change to access modes, descriptors, pluck or metadata inheritance needs proof that no field leaks and no body key bypasses its access.
+description: Bounded exhaustive check of field exposure and write gating in @antelopejs/interface-data-api (AccessMode, @Access overrides, @Listable, @Computed, @Joined, derived controllers), run against the real decorators, ReadProperties and WriteProperties. Use when a change touches src/metadata.ts, src/components.ts, src/index.ts, src/internal/read-properties.ts, src/internal/properties.ts, src/internal/meta-records.ts or src/internal/prototypes.ts, or when a change to access modes, descriptors, pluck or metadata inheritance needs proof that no field leaks and no body key bypasses its access.
 ---
 
 # Formal check: field exposure and write gating
