@@ -1,0 +1,14 @@
+diff --git a/src/internal/properties.ts b/src/internal/properties.ts
+index c4a526e..c8ef08d 100644
+--- a/src/internal/properties.ts
++++ b/src/internal/properties.ts
+@@ -42,8 +42,7 @@ export function WriteProperties(
+   action?: string,
+   existingDBData?: Parameters<typeof Query.WriteProperties>[4],
+ ) {
+-  const actionWritable =
+-    meta.writable[action ?? "_default"] ?? meta.writable._default;
++  const actionWritable = meta.writable._default;
+   const writable = existingDBData
+     ? writableInBody(actionWritable, bodyData)
+     : actionWritable;

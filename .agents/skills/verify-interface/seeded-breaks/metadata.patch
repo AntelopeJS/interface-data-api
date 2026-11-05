@@ -1,0 +1,13 @@
+diff --git a/src/metadata.ts b/src/metadata.ts
+index e7a8bc2..245e24f 100644
+--- a/src/metadata.ts
++++ b/src/metadata.ts
+@@ -95,7 +95,7 @@ export function GetEffectiveMode(
+   action?: string,
+ ): AccessMode | undefined {
+   if (!action || action === DEFAULT_ACTION) return field.mode;
+-  return field.modeOverrides?.[action] ?? field.mode;
++  return field.mode;
+ }
+ 
+ /**

@@ -1,0 +1,899 @@
+/**
+ * The consumer module of the verification journeys: data controllers over a small shop schema, written the way
+ * the docs of this package show them. A journey compiles it against the packed declarations and loads it in
+ * `ajs project dev` next to `@antelopejs/api` and `@antelopejs/mongodb`.
+ *
+ * @packageDocumentation
+ */
+import { Context, Controller, Parameter } from "@antelopejs/interface-api";
+import type { RequestContext } from "@antelopejs/interface-api";
+import { assert } from "@antelopejs/interface-api-util";
+import {
+  BasicDataModel,
+  Field,
+  Index,
+  LocalizationModifier,
+  Localized,
+  Model,
+  RegisterSchema,
+  RegisterTable,
+  Relation,
+  Table,
+} from "@antelopejs/interface-database-decorators";
+import { DataController, DefaultRoutes, GetDataControllerMeta, RegisterDataController } from "@antelopejs/interface-data-api";
+import type { DataControllerInstance } from "@antelopejs/interface-data-api";
+import { Parameters, Validation } from "@antelopejs/interface-data-api/components";
+import {
+  Access,
+  AccessMode,
+  Computed,
+  Filter,
+  Foreign,
+  GetEffectiveMode,
+  Joined,
+  Listable,
+  Mandatory,
+  ModelReference,
+  ModifierKey,
+  Optional,
+  Sortable,
+  Validator,
+} from "@antelopejs/interface-data-api/metadata";
+import type { FilterFunction } from "@antelopejs/interface-data-api/metadata";
+import { z } from "zod";
+
+const SCHEMA = "verify";
+const AUTH_SCHEMA = "verify_auth";
+
+const COMPARISONS = ["eq", "ne", "gt", "ge", "lt", "le"] as const;
+type Comparison = (typeof COMPARISONS)[number];
+
+function isComparison(mode: string): mode is Comparison {
+  return COMPARISONS.some((comparison) => comparison === mode);
+}
+
+/** The numeric filter of docs/8.filters.md. */
+const numberFilter: FilterFunction<Record<string, unknown>> = (_context, proxy, _key, raw, mode) => {
+  const value = Number(raw);
+  assert(raw.trim() !== "" && Number.isFinite(value), 400, "Invalid number");
+  assert(isComparison(mode), 400, "Invalid comparison");
+  return proxy[mode](value);
+};
+
+/** The email-domain filter of docs/8.filters.md: equality only, with the domain escaped. */
+const emailDomainFilter: FilterFunction<Record<string, unknown>> = (_context, proxy, _key, raw, mode) => {
+  assert(mode === "eq", 400, "Only equality is supported for email domains");
+  const escaped = raw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return proxy.match(`@${escaped}$`);
+}
+
+const EMAIL = /^[\w](\.?[\w-]+)*@(?:[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}$/;
+const startsAtSchema = z.coerce.date();
+
+@RegisterTable("accounts", AUTH_SCHEMA)
+class Account extends Table {
+  declare _id: string;
+
+  @Field("string")
+  declare login: string;
+}
+class AccountModel extends BasicDataModel(Account, "accounts") {}
+
+@RegisterTable("users", SCHEMA)
+class User extends Table {
+  declare _id: string;
+
+  @Index()
+  @Field("string")
+  declare email: string;
+
+  @Field("string")
+  declare name: string;
+
+  @Field("string")
+  declare password: string;
+
+  @Field("string")
+  declare role: string;
+
+  @Field("number")
+  declare age: number;
+
+  @Field("string")
+  declare status: string;
+
+  @Field("string")
+  declare createdAt: string;
+
+  @Field("string")
+  declare biography: string;
+
+  @Field("string")
+  declare internalNotes: string;
+
+  @Field("string")
+  declare nickname: string;
+
+  @Field("string")
+  declare notes: string;
+
+  @Field("string")
+  declare secretNote: string;
+
+  @Field("date")
+  declare startsAt: Date;
+}
+class UserModel extends BasicDataModel(User, "users") {}
+
+const userDeclarationErrors = (): string[] => {
+  const messages: string[] = [];
+  try {
+    DataController(class Bogus {}, {}, Controller("/bogus"));
+    messages.push("declared");
+  } catch (error) {
+    messages.push(error instanceof Error ? error.message : "thrown");
+  }
+  try {
+    class Unheld extends Author {}
+    DataController(Unheld, {}, Controller("/unheld"));
+    messages.push("declared");
+  } catch (error) {
+    messages.push(error instanceof Error ? error.message : "thrown");
+  }
+  return messages;
+};
+
+const foreignDeclarationErrors = (): string[] => {
+  const messages: string[] = [];
+  try {
+    class Mismatch extends DataController(Author, {}, Controller("/mismatch")) {
+      @Access(AccessMode.ReadOnly)
+      @Foreign(Account, undefined, false, undefined, SCHEMA)
+      declare owner: Account;
+    }
+    messages.push(Mismatch.name ? "declared" : "declared");
+  } catch (error) {
+    messages.push(error instanceof Error ? error.message : "thrown");
+  }
+  try {
+    class Ghost extends DataController(Author, {}, Controller("/ghost")) {
+      @Access(AccessMode.ReadOnly)
+      @Foreign("ghost", undefined, false, undefined, AUTH_SCHEMA)
+      declare owner: Account;
+    }
+    messages.push(Ghost.name ? "declared" : "declared");
+  } catch (error) {
+    messages.push(error instanceof Error ? error.message : "thrown");
+  }
+  return messages;
+};
+
+const UserExtras = {
+  quickEdit: DefaultRoutes.WithOptions(DefaultRoutes.Edit, { noMandatory: "true" }),
+  falseSkip: DefaultRoutes.WithOptions(DefaultRoutes.Edit, { noMandatory: "false" }),
+  emptySkip: DefaultRoutes.WithOptions(DefaultRoutes.Edit, { noMandatory: "" }),
+  newSkip: DefaultRoutes.WithOptions(DefaultRoutes.New, { noMandatory: "true" }),
+  newSkipFalse: DefaultRoutes.WithOptions(DefaultRoutes.New, { noMandatory: "false" }),
+  newSkipEmpty: DefaultRoutes.WithOptions(DefaultRoutes.New, { noMandatory: "" }),
+  detailed: DefaultRoutes.WithOptions(DefaultRoutes.List, { pluckMode: "detailed" }),
+  minimal: DefaultRoutes.WithOptions(DefaultRoutes.List, { pluckMode: "minimal" }),
+  capped: DefaultRoutes.WithOptions(DefaultRoutes.List, { maxPage: 3 }),
+  activeOnly: DefaultRoutes.WithOptions(DefaultRoutes.List, { filters: { status: ["active", "eq"] } }),
+  unplucked: DefaultRoutes.WithOptions(DefaultRoutes.List, { noPluck: true }),
+  missingMode: DefaultRoutes.WithOptions(DefaultRoutes.List, { pluckMode: "nothing" }),
+  byEmail: DefaultRoutes.WithOptions(DefaultRoutes.Get, { index: "email" }),
+  search: {
+    func: async () => ({ results: [] }),
+    args: [Context(), Parameters.List()],
+    method: "get",
+  },
+  modes: {
+    func: function (this: DataControllerInstance) {
+      const meta = GetDataControllerMeta(this);
+      const answer: Record<string, Record<string, number | undefined>> = {};
+      for (const field of ["role", "age", "password", "_id"]) {
+        answer[field] = {};
+        for (const action of ["get", "list", "new", "edit"]) {
+          answer[field][action] = GetEffectiveMode(meta.fields[field], action);
+        }
+      }
+      return answer;
+    },
+    args: [Context()],
+    method: "get",
+  },
+  declarations: {
+    func: userDeclarationErrors,
+    args: [],
+    method: "get",
+  },
+};
+
+@RegisterDataController()
+class _UserAPI extends DataController(User, { ...DefaultRoutes.All, ...UserExtras }, Controller("/users")) {
+  @ModelReference()
+  @Model(UserModel)
+  declare userModel: UserModel;
+
+  @Listable()
+  @Listable(true, "minimal")
+  @Access(AccessMode.ReadOnly)
+  @Sortable()
+  declare _id: string;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  @Mandatory("new", "edit")
+  @Validator((value) => typeof value === "string" && EMAIL.test(value))
+  @Filter(emailDomainFilter, false)
+  declare email: string;
+
+  @Listable()
+  @Listable(true, "detailed")
+  @Listable(false, "minimal")
+  @Access(AccessMode.ReadWrite)
+  @Mandatory("new")
+  @Sortable({ noIndex: true })
+  @Filter()
+  declare name: string;
+
+  @Access(AccessMode.WriteOnly)
+  @Mandatory("new")
+  declare password: string;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite, { edit: AccessMode.ReadOnly })
+  @Filter()
+  declare role: string;
+
+  @Listable()
+  @Access(AccessMode.ReadOnly, { new: AccessMode.ReadWrite })
+  @Validator((value) => typeof value === "number" && value >= 0 && value <= 120)
+  @Sortable({ noIndex: true })
+  @Filter(numberFilter, false)
+  declare age: number;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  @Mandatory("edit")
+  @Filter()
+  declare status: string;
+
+  @Listable()
+  @Access(AccessMode.ReadOnly)
+  declare createdAt: string;
+
+  @Access(AccessMode.ReadOnly)
+  declare biography: string;
+
+  @Listable(true, "detailed")
+  @Access(AccessMode.ReadOnly)
+  declare internalNotes: string;
+
+  @Access(AccessMode.ReadWrite)
+  @Validator(async (value) => typeof value === "string" && value !== "taken")
+  declare nickname: string;
+
+  @Access(AccessMode.ReadWrite)
+  @Optional()
+  declare notes: string;
+
+  @Access(AccessMode.ReadWrite)
+  @Validator((value) => startsAtSchema.safeParseAsync(value))
+  declare startsAt: Date;
+
+  @Listable()
+  declare secretNote: string;
+}
+
+@RegisterDataController()
+class _PeopleAPI extends DataController(
+  User,
+  { get: DefaultRoutes.Get, list: DefaultRoutes.List, brief: DefaultRoutes.WithOptions(DefaultRoutes.List, { pluckMode: "brief" }) },
+  Controller("/people"),
+) {
+  @ModelReference()
+  @Model(UserModel)
+  declare userModel: UserModel;
+
+  @Listable()
+  @Listable(true, "brief")
+  @Access(AccessMode.ReadOnly)
+  declare _id: string;
+
+  @Listable()
+  @Access(AccessMode.ReadOnly)
+  declare name: string;
+
+  @Access(AccessMode.ReadOnly)
+  declare email: string;
+
+  @Listable(["name", "email"])
+  @Access(AccessMode.ReadOnly)
+  get fullName(): string {
+    return `${this.name} <${this.email}>`;
+  }
+}
+
+@RegisterDataController()
+class _StaffAPI extends DataController(User, { get: DefaultRoutes.Get }, Controller("/staff", _UserAPI)) {
+  @Access(AccessMode.ReadOnly)
+  declare name: string;
+}
+
+@RegisterTable("order_items", SCHEMA)
+class OrderItem extends Table {
+  declare _id: string;
+
+  @Field("string")
+  declare name: string;
+
+  @Field("number")
+  declare price: number;
+}
+class OrderItemModel extends BasicDataModel(OrderItem, "order_items") {}
+
+@RegisterTable("orders", SCHEMA)
+class Order extends Table {
+  declare _id: string;
+
+  @Field("string")
+  @Relation({ to: () => User })
+  declare userId: string;
+
+  @Field("string")
+  declare userEmail: string;
+
+  @Field("string")
+  declare ownerLogin: string;
+
+  @Field("string")
+  declare tagged: string;
+
+  @Field(["string"])
+  @Relation({ to: () => OrderItem, many: true })
+  declare items: string[];
+
+  @Field("string")
+  declare byEmail: string;
+
+  @Field(["string"])
+  declare itemsAll: string[];
+
+  @Field(["string"])
+  declare labels: string[];
+
+  @Field("number")
+  declare total: number;
+}
+class OrderModel extends BasicDataModel(Order, "orders") {}
+
+@RegisterDataController()
+class _OrderAPI extends DataController(
+  Order,
+  { ...DefaultRoutes.All, raw: DefaultRoutes.WithOptions(DefaultRoutes.Get, { noForeign: "true" }), rawList: DefaultRoutes.WithOptions(DefaultRoutes.List, { noForeign: true }), rawFalse: DefaultRoutes.WithOptions(DefaultRoutes.Get, { noForeign: "false" }), rawEmpty: DefaultRoutes.WithOptions(DefaultRoutes.Get, { noForeign: "" }), listForeignFalse: DefaultRoutes.WithOptions(DefaultRoutes.List, { noForeign: false }) },
+  Controller("/orders"),
+) {
+  @ModelReference()
+  @Model(OrderModel)
+  declare orderModel: OrderModel;
+
+  @Listable()
+  @Access(AccessMode.ReadOnly)
+  declare _id: string;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  @Foreign(User, undefined, false, ["_id", "name", "email"])
+  declare userId: User;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  @Foreign(User, "email", false, ["name"])
+  declare userEmail: User;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  @Foreign(Account, undefined, false, undefined, AUTH_SCHEMA)
+  declare ownerLogin: Account;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  @Foreign("users", undefined, false, ["name"])
+  declare tagged: User;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  @Foreign(OrderItem, undefined, true, ["name", "price"])
+  declare items: OrderItem[];
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  @Foreign(User, "email")
+  declare byEmail: User;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  @Foreign(OrderItem, undefined, true)
+  declare itemsAll: OrderItem[];
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  declare labels: string[];
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  declare total: number;
+}
+
+@RegisterTable("authors", SCHEMA)
+class Author extends Table {
+  declare _id: string;
+
+  @Field("string")
+  declare name: string;
+}
+
+class AuthorModel extends BasicDataModel(Author, "authors") {}
+
+@RegisterDataController()
+class _AuthorAPI extends DataController(
+  Author,
+  {
+    get: DefaultRoutes.Get,
+    list: DefaultRoutes.List,
+    new: DefaultRoutes.New,
+    quick: DefaultRoutes.WithOptions(DefaultRoutes.Edit, { noMandatory: "true" }, "patch"),
+  },
+  Controller("/authors"),
+) {
+  @ModelReference()
+  @Model(AuthorModel)
+  declare authorModel: AuthorModel;
+
+  @Listable()
+  @Access(AccessMode.ReadOnly)
+  declare _id: string;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  @Mandatory("new", "edit")
+  declare name: string;
+}
+
+@RegisterTable("books", SCHEMA)
+class Book extends Table {
+  declare _id: string;
+
+  @Field("string")
+  @Relation({ to: () => Author })
+  declare authorId: string;
+
+  @Field("string")
+  declare title: string;
+
+  @Field("string")
+  declare accountId: string;
+}
+class BookModel extends BasicDataModel(Book, "books") {}
+
+@RegisterDataController()
+class _BookAPI extends DataController(Book, DefaultRoutes.All, Controller("/books")) {
+  @ModelReference()
+  @Model(BookModel)
+  declare bookModel: BookModel;
+
+  @Listable()
+  @Access(AccessMode.ReadOnly)
+  declare _id: string;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  declare authorId: string;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  @Sortable({ noIndex: true })
+  declare title: string;
+
+  @Listable()
+  @Sortable()
+  @Filter()
+  @Joined({ table: Author, localKey: "authorId", remoteField: "name" })
+  declare authorName: string;
+
+  @Listable()
+  @Joined({ table: "accounts", localKey: "accountId", remoteField: "login", schema: AUTH_SCHEMA })
+  declare accountLogin: string;
+}
+
+@RegisterTable("groups", SCHEMA)
+class Group extends Table {
+  declare _id: string;
+
+  @Field("string")
+  declare name: string;
+}
+class GroupModel extends BasicDataModel(Group, "groups") {}
+
+@RegisterTable("devices", SCHEMA)
+class Device extends Table {
+  declare _id: string;
+
+  @Index()
+  @Field("string")
+  @Relation({ to: () => Group })
+  declare group_id: string;
+}
+
+@RegisterDataController()
+class _GroupAPI extends DataController(Group, DefaultRoutes.All, Controller("/groups")) {
+  @ModelReference()
+  @Model(GroupModel)
+  declare groupModel: GroupModel;
+
+  @Listable()
+  @Access(AccessMode.ReadOnly)
+  declare _id: string;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  @Sortable({ noIndex: true })
+  declare name: string;
+
+  @Listable()
+  @Computed((row, db) => db.table("devices").filter((device) => device.key("group_id").eq(row.key("_id"))).count(), { default: 0 })
+  @Sortable()
+  @Filter(numberFilter, false)
+  declare devices_count: number;
+
+  @Listable()
+  @Computed((row) => row.key("name").concat("!"))
+  declare display_name: string;
+}
+
+@RegisterTable("articles", SCHEMA)
+class Article extends Table.with(LocalizationModifier) {
+  declare _id: string;
+
+  @Localized()
+  @Field("string")
+  declare title: string;
+}
+class ArticleModel extends BasicDataModel(Article, "articles") {}
+
+/** The get guard of docs/3.routes.md on a modifier-held field: an article answers only in a language it has a title in. */
+const translatedGet = DefaultRoutes.WithGetGuard(async function (_ctx, current) {
+  assert(typeof current.title === "string", 404, "Not Found");
+});
+
+@RegisterDataController()
+class _ArticleAPI extends DataController(Article, { ...DefaultRoutes.All, translated: translatedGet }, Controller("/articles")) {
+  @ModelReference()
+  @Model(ArticleModel)
+  declare articleModel: ArticleModel;
+
+  @Parameter("x-content-language", "header")
+  @ModifierKey(LocalizationModifier)
+  declare language: string;
+
+  @Listable()
+  @Access(AccessMode.ReadOnly)
+  declare _id: string;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  @Sortable({ noIndex: true })
+  declare title: string;
+}
+
+@RegisterTable("documents", SCHEMA)
+class DocumentRow extends Table {
+  declare _id: string;
+
+  @Field("string")
+  declare title: string;
+
+  @Field("string")
+  declare documentType: string;
+
+  @Field("string")
+  declare source: string;
+}
+class DocumentModel extends BasicDataModel(DocumentRow, "documents") {}
+
+const invoiceGet = DefaultRoutes.WithGetGuard(async function (_ctx, current) {
+  assert(current.documentType === "invoice", 404, "Not Found");
+});
+
+const stampedNew = {
+  ...DefaultRoutes.New,
+  func: function (this: DataControllerInstance, ctx: RequestContext, params: Parameters.NewParameters, body: Buffer) {
+    const parsed = Validation.ParseBody(body);
+    parsed.source = "import";
+    return DefaultRoutes.New.func.call(this, ctx, params, parsed);
+  },
+};
+
+const unstorableNew = {
+  ...DefaultRoutes.New,
+  func: function (this: DataControllerInstance, ctx: RequestContext, params: Parameters.NewParameters, body: Buffer) {
+    const parsed = Validation.ParseBody(body);
+    Reflect.set(parsed, "title", () => 1);
+    return DefaultRoutes.New.func.call(this, ctx, params, parsed);
+  },
+};
+
+@RegisterDataController()
+class _DocumentAPI extends DataController(
+  DocumentRow,
+  { ...DefaultRoutes.All, unstorable: unstorableNew, invoice: DefaultRoutes.WithOptions(invoiceGet, { noForeign: "true" }), stamped: stampedNew },
+  Controller("/documents"),
+) {
+  @ModelReference()
+  @Model(DocumentModel)
+  declare documentModel: DocumentModel;
+
+  @Listable()
+  @Access(AccessMode.ReadOnly)
+  declare _id: string;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  declare title: string;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  declare source: string;
+}
+
+@RegisterTable("probes", SCHEMA)
+class ProbeRow extends Table {
+  declare _id: string;
+
+  @Index()
+  @Field("string")
+  declare kind: string;
+
+  @Field("string")
+  declare title: string;
+
+  @Field("string")
+  declare origin: string;
+
+  @Field("string")
+  declare trace: string;
+
+  @Index()
+  @Field("string")
+  declare tag: string;
+
+  @Field("number")
+  declare score: number;
+}
+class ProbeModel extends BasicDataModel(ProbeRow, "probes") {}
+
+const lenientGuard = DefaultRoutes.WithGetGuard(function (this: DataControllerInstance) {
+  return Promise.resolve(false) as unknown as Promise<void>;
+});
+
+const ownedGuard = DefaultRoutes.WithGetGuard(function (this: DataControllerInstance) {
+  assert(this instanceof _ProbeAPI, 500, "guard without the controller");
+});
+
+const paramsGuard = DefaultRoutes.WithGetGuard(function (_ctx, _current, params) {
+  assert(params.id === "p1", 500, "guard without the parsed parameters");
+});
+
+const alwaysThrowsGuard = DefaultRoutes.WithGetGuard(function () {
+  assert(false, 500, "the guard ran");
+});
+
+const titleThisFilter: FilterFunction<Record<string, unknown>> = (context, proxy, _key, raw) =>
+  proxy.eq(context.this instanceof _ProbeAPI ? raw : "__no_controller__");
+
+const upperTagFilter: FilterFunction<Record<string, unknown>> = (_context, proxy, _key, raw) => proxy.eq(raw.toUpperCase());
+
+@RegisterDataController()
+class _ProbeAPI extends DataController(
+  ProbeRow,
+  {
+    ...DefaultRoutes.All,
+    lenient: lenientGuard,
+    owned: ownedGuard,
+    withParams: paramsGuard,
+    alwaysThrows: alwaysThrowsGuard,
+    plain: DefaultRoutes.WithOptions(DefaultRoutes.List, { pluckMode: "nothing", noPluck: true }),
+    plainFalse: DefaultRoutes.WithOptions(DefaultRoutes.List, { pluckMode: "nothing", noPluck: false }),
+    slugEdit: DefaultRoutes.WithOptions(DefaultRoutes.Edit, { index: "tag" }),
+  },
+  Controller("/probes"),
+) {
+  @ModelReference()
+  @Model(ProbeModel)
+  declare probeModel: ProbeModel;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  @Filter()
+  declare kind: string;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  @Filter(titleThisFilter, false)
+  declare title: string;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  @Filter(upperTagFilter)
+  declare tag: string;
+
+  @Listable()
+  @Access(AccessMode.ReadWrite)
+  @Filter()
+  declare score: number;
+
+  @Listable()
+  @Access(AccessMode.ReadOnly)
+  origin = "class-default";
+
+  @Listable()
+  @Access(AccessMode.ReadOnly)
+  declare trace: string;
+
+  @Access(AccessMode.WriteOnly)
+  set mark(value: string | undefined) {
+    const row: unknown = Reflect.get(this, "table");
+    if (typeof row === "object" && row !== null) Reflect.set(row, "trace", value === undefined ? "setter-ran-for-absent" : `mark:${value}`);
+  }
+}
+
+const overrideModes = {
+  func: function (this: DataControllerInstance) {
+    const meta = GetDataControllerMeta(this);
+    const answer: Record<string, Record<string, number | undefined>> = {};
+    for (const field of ["email", "name", "notes", "nickname"]) {
+      answer[field] = {};
+      for (const action of ["get", "list", "new", "edit"]) answer[field][action] = GetEffectiveMode(meta.fields[field], action);
+    }
+    return answer;
+  },
+  args: [Context()],
+  method: "get",
+};
+
+@RegisterDataController()
+class _OverridesAPI extends DataController(User, { get: DefaultRoutes.Get, list: DefaultRoutes.List, new: DefaultRoutes.New, edit: DefaultRoutes.Edit, modes: overrideModes }, Controller("/overrides")) {
+  @ModelReference()
+  @Model(UserModel)
+  declare userModel: UserModel;
+
+  @Listable()
+  @Access(AccessMode.ReadOnly)
+  declare _id: string;
+
+  @Listable()
+  @Access(AccessMode.ReadOnly, { get: AccessMode.WriteOnly })
+  declare email: string;
+
+  @Listable()
+  @Access(AccessMode.ReadOnly, { list: AccessMode.WriteOnly })
+  declare name: string;
+
+  @Listable()
+  @Access(AccessMode.WriteOnly, { get: AccessMode.ReadOnly })
+  declare notes: string;
+
+  @Listable()
+  @Access(AccessMode.WriteOnly, { list: AccessMode.ReadOnly })
+  declare nickname: string;
+}
+
+@RegisterDataController()
+class _OwnModelAPI extends DataController(Author, { get: DefaultRoutes.Get }, Controller("/own-model", _UserAPI)) {
+  @ModelReference()
+  @Model(AuthorModel)
+  declare ownAuthorModel: AuthorModel;
+
+  @Access(AccessMode.ReadOnly)
+  declare name: string;
+}
+
+@RegisterDataController()
+class _NoModelAPI extends DataController(Author, { get: DefaultRoutes.Get }, Controller("/no-model")) {
+  @ModelReference()
+  declare missingModel: AuthorModel;
+
+  @Access(AccessMode.ReadOnly)
+  declare name: string;
+}
+
+@RegisterTable("shelves", SCHEMA)
+class Shelf extends Table {
+  declare _id: string;
+
+  @Field("string")
+  @Relation({ to: () => Book })
+  declare bookId: string;
+}
+class ShelfModel extends BasicDataModel(Shelf, "shelves") {}
+
+@RegisterDataController()
+class _ShelfAPI extends DataController(Shelf, { get: DefaultRoutes.Get }, Controller("/shelves")) {
+  @ModelReference()
+  @Model(ShelfModel)
+  declare shelfModel: ShelfModel;
+
+  @Access(AccessMode.ReadOnly)
+  declare _id: string;
+
+  @Access(AccessMode.ReadOnly)
+  @Foreign(Book, undefined, false, ["title", "authorName"], undefined, GetDataControllerMeta(Object.create(_BookAPI.prototype)))
+  declare bookId: Book;
+}
+
+@RegisterDataController()
+class _OptionRoutesAPI extends DataController(
+  User,
+  {
+    nested: DefaultRoutes.WithOptions(DefaultRoutes.WithOptions(DefaultRoutes.List, { maxPage: 2 }), { pluckMode: "minimal" }),
+    sorted: DefaultRoutes.WithOptions(DefaultRoutes.List, { sortKey: "name", sortDirection: "desc" }),
+    nestedEdit: DefaultRoutes.WithOptions(DefaultRoutes.WithOptions(DefaultRoutes.Edit, {}, "patch2"), { noMandatory: "true" }),
+    foreignDeclarations: { func: foreignDeclarationErrors, args: [], method: "get" },
+  },
+  Controller("/option-routes", _UserAPI),
+) {}
+
+@RegisterDataController()
+class _JoinedAccessAPI extends DataController(Book, { get: DefaultRoutes.Get }, Controller("/joined-access")) {
+  @ModelReference()
+  @Model(BookModel)
+  declare joinedAccessModel: BookModel;
+
+  @Access(AccessMode.ReadOnly)
+  declare title: string;
+
+  @Access(AccessMode.WriteOnly)
+  @Joined({ table: Author, localKey: "authorId", remoteField: "name" })
+  declare authorName: string;
+}
+
+@RegisterDataController()
+class _ComputedAccessAPI extends DataController(Group, { get: DefaultRoutes.Get, list: DefaultRoutes.List }, Controller("/computed-access")) {
+  @ModelReference()
+  @Model(GroupModel)
+  declare computedAccessModel: GroupModel;
+
+  @Listable()
+  @Access(AccessMode.ReadOnly)
+  declare name: string;
+
+  @Listable()
+  @Access(AccessMode.WriteOnly)
+  @Computed((row, db) => db.table("devices").filter((device) => device.key("group_id").eq(row.key("_id"))).count(), { default: 0 })
+  declare devices_count: number;
+}
+
+const holeyNew = {
+  ...DefaultRoutes.New,
+  func: function (this: DataControllerInstance, ctx: RequestContext, params: Parameters.NewParameters, body: Buffer) {
+    const parsed = Validation.ParseBody(body);
+    Reflect.set(parsed, "title", [undefined]);
+    return DefaultRoutes.New.func.call(this, ctx, params, parsed);
+  },
+};
+
+@RegisterDataController()
+class _HoleyDocsAPI extends DataController(DocumentRow, { holey: holeyNew }, Controller("/holey-docs")) {
+  @ModelReference()
+  @Model(DocumentModel)
+  declare holeyDocumentModel: DocumentModel;
+
+  @Access(AccessMode.ReadWrite)
+  declare title: string;
+}
+
+export async function construct(): Promise<void> {
+  await RegisterSchema(AUTH_SCHEMA);
+  await RegisterSchema(SCHEMA);
+}
