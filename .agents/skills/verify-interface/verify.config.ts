@@ -51,6 +51,26 @@ const config: VerifyConfig<typeof DataApi> = {
       why: "the package name and release workflow claim @antelopejs/interface-data-api on npm",
     },
   },
+  formal: [
+    {
+      name: "formal-field-access",
+      covers: [
+        "src/metadata.ts",
+        "src/components.ts",
+        "src/index.ts",
+        "src/internal/read-properties.ts",
+        "src/internal/properties.ts",
+        "src/internal/meta-records.ts",
+        "src/internal/prototypes.ts",
+      ],
+      files: [".agents/skills/formal-field-access/**"],
+      command: ["node", ".agents/skills/formal-field-access/check.mjs", "--full"],
+      baseCommand: ["node", ".agents/skills/formal-field-access/check.mjs"],
+      violation: /^(?:finding|BROKEN|CHANGED|HOLDS) +(\w+)/gm,
+      passing: /(?<=^holds +(?:\w+, )*)(\w+)(?=,| \()/gm,
+      behaviour: { kind: "emit" },
+    },
+  ],
   services: {
     mongo: {
       image: "mongo:7",
