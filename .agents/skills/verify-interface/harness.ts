@@ -18,7 +18,7 @@ const INTERFACES = [
   "@antelopejs/interface-database",
   "@antelopejs/interface-database-decorators",
 ];
-const SHOP_SOURCE = join(import.meta.dirname, "fixture", "shop.ts.txt");
+const SHOP_SOURCE_PARTS = ["shop-1.ts.txt", "shop-2.ts.txt"].map((name) => join(import.meta.dirname, "fixture", name));
 
 /** A JSON value, as the harness checks take it. */
 export type Json = Exclude<Parameters<typeof equal>[1], undefined>;
@@ -86,7 +86,7 @@ async function compileShop(context: JourneyContext, project: string): Promise<vo
     main: "shop.js",
     dependencies: Object.fromEntries(INTERFACES.map((name) => [name, "*"])),
   }, null, 2)}\n`);
-  context.edit("write the shop module source", join(shop, "shop.ts"), readFileSync(SHOP_SOURCE, "utf8"));
+  context.edit("write the shop module source", join(shop, "shop.ts"), SHOP_SOURCE_PARTS.map((part) => readFileSync(part, "utf8")).join(""));
   context.edit("write the link script", join(context.work, "link.cjs"), LINK_SCRIPT);
   const linked = await context.command("link the packed interface", "node", [join(context.work, "link.cjs"), shop, packed, context.repo, ...INTERFACES]);
   context.expect(linked.folder, [exitIs(linked, 0)], { critical: true });

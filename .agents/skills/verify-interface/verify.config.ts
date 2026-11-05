@@ -22,32 +22,27 @@ const config: VerifyConfig<typeof DataApi> = {
     data: {
       globs: ["src/index.ts", "src/components.ts", "src/internal/tables.ts", "src/internal/properties.ts"],
       funnels: [],
-      containments: ["crud/crud-lifecycle"],
       why: "the new, edit and delete routes write and remove rows in the consumer's database; a delete that removes a row nobody named cannot be undone",
     },
     format: {
       globs: ["src/components.ts", "src/internal/validation.ts"],
       funnels: [],
-      containments: ["validation/mandatory-and-validators"],
       why: "the 400 bodies (code and fields) are what clients parse",
     },
     contract: {
       globs: ["src/index.ts", "src/metadata.ts", "src/components.ts", "package.json"],
       funnels: [],
-      containments: [],
       why: "the decorators, DataController and DefaultRoutes are what every module serving a table imports",
     },
     outbound: null,
     exposure: {
       globs: ["src/internal/read-properties.ts", "src/metadata.ts"],
       funnels: [],
-      containments: [],
       why: "the access modes decide which fields a response holds; a write-only field that leaks exposes a secret",
     },
     publish: {
       globs: ["package.json", ".release-it.json", "changelogen.config.json", ".github/workflows/release.yml"],
       funnels: [],
-      containments: [],
       why: "the package name and release workflow claim @antelopejs/interface-data-api on npm",
     },
   },
