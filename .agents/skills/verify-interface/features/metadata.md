@@ -1,9 +1,14 @@
 ---
 covers:
+  - src/index.ts
+  - src/components.ts
   - src/metadata.ts
   - src/internal/field-types.ts
+  - src/internal/filters.ts
+  - src/internal/foreign.ts
+  - src/internal/meta-records.ts
   - src/internal/tables.ts
-  - src/index.ts
+  - src/internal/validation.ts
 docs:
   - docs/4.access-rights.md
   - docs/2.data-controllers.md

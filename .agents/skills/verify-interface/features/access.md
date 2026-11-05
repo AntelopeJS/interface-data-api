@@ -1,7 +1,10 @@
 ---
 covers:
-  - src/internal/read-properties.ts
+  - src/index.ts
+  - src/components.ts
+  - src/metadata.ts
   - src/internal/properties.ts
+  - src/internal/read-properties.ts
 docs:
   - docs/4.access-rights.md
 journeys:

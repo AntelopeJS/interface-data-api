@@ -78,8 +78,8 @@ The check runs the published code: `Query.ReadProperties` and `Query.WriteProper
 | oracle of `@Computed` and `@Joined` | `Computed` (643-647), `setComputed` (305-318), `Joined` (613-627), `setJoined` (330-375), `resolveTableReference` for a table name in the same schema (table-reference.ts:56-72) |
 | the known descriptor, `readable` and `writable` | `onField` (507-518), `recomputeAccess` (181-223), `field` (170-175) |
 | `derived` configuration | `inherit` (150-168), `merge` (meta-records.ts:6-15), `DataController` (index.ts:54-91), `GetDataControllerMeta` (metadata.ts:735-739), `classOf` and `prototypeOf` (prototypes.ts:26-41) |
-| reads | `Query.ReadProperties` (components.ts:347-355), `ReadProperties` (read-properties.ts:11-39), `fieldsOf` (prototypes.ts:14-19); the routes pass `get` (index.ts:180-185) and `list` (251) and never `onlyList` |
-| writes | `Query.WriteProperties` (components.ts:367-381), `WriteProperties`, `writableInBody`, `writeTargetDefaults` (properties.ts:12-66); the routes pass `new` (index.ts:279) and `edit` with the stored row (309-315) |
+| reads | `Query.ReadProperties` (components.ts:347-355), `ReadProperties` (read-properties.ts:11-39), `fieldsOf` (prototypes.ts:14-19); read from the code, not driven: the routes pass `get` (index.ts:180-185) and `list` (251) and never `onlyList` |
+| writes | `Query.WriteProperties` (components.ts:367-381), `WriteProperties`, `writableInBody`, `writeTargetDefaults` (properties.ts:12-66); read from the code, not driven: the routes pass `new` (index.ts:279) and `edit` with the stored row (309-315) |
 
 The sync commit is `a91c1c0` on AntelopeJS/interface-data-api `feat/verify-interface-skill` (PR #91).
 
@@ -89,10 +89,10 @@ The full alphabet is `@Access` with each mode and each of 8 override tables (non
 
 The check leaves out:
 
-- the routes and the database: `pluck` is applied by `ListPage`, not by `ReadProperties`, so a database field a getter's `@Listable([...])` names is answered when it has read access; foreign, joined and computed values, `Validation`, modifiers and `dbName`, which nothing in `src` sets.
+- the routes and the database. From `src/index.ts` the check runs only `DataController`, and from `src/components.ts` only `Query.ReadProperties` and `Query.WriteProperties`. Both files stay in `covers` so that a diff to them reruns the check, but the rest of them is not driven here: which action each route passes, `Validation.Lock` and `Unlock`, the get guard, and `ListPage`, which applies `pluck` (so a database field a getter's `@Listable([...])` names is answered when it has read access). The `verify-interface` features `access`, `modifiers`, `guards` and `listing` drive those through HTTP. Foreign, joined and computed values, modifiers, and `dbName`, which nothing in `src` sets, are left out too.
 - `@Mandatory`, `@Sortable`, `@Validator`, `@Foreign` and `@Filter`, which create the field and record its descriptor without changing access.
 - a class default on a property no decorator names: `writeTargetDefaults` stores defaults only for keys in `meta.fields`, and the oracle follows (`decorated`).
-- getters and setters that read other fields, actions named like `Object.prototype` keys, three levels of inheritance, and more than two siblings.
+- getters and setters that read other fields (the `verify-interface` journey `listing/pluck-modes` drives one), actions named like `Object.prototype` keys, three levels of inheritance, and more than two siblings.
 
 ## Confirm the check can fail
 

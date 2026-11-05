@@ -1,8 +1,14 @@
 ---
 covers:
   - src/index.ts
+  - src/components.ts
+  - src/metadata.ts
   - src/internal/controller-types.ts
+  - src/internal/extractors.ts
+  - src/internal/guards.ts
   - src/internal/properties.ts
+  - src/internal/tables.ts
+  - src/internal/validation.ts
 docs:
   - README.md
   - docs/1.introduction.md

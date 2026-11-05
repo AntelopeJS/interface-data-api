@@ -1,8 +1,12 @@
 ---
 covers:
+  - src/index.ts
+  - src/components.ts
+  - src/metadata.ts
   - src/internal/default-filter.ts
-  - src/internal/list.ts
   - src/internal/filters.ts
+  - src/internal/list.ts
+  - src/internal/meta-records.ts
 docs:
   - docs/8.filters.md
 journeys:

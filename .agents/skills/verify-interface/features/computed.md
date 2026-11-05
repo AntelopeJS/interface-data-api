@@ -1,7 +1,10 @@
 ---
 covers:
-  - src/internal/computed.ts
+  - src/index.ts
+  - src/components.ts
   - src/metadata.ts
+  - src/internal/computed.ts
+  - src/internal/list.ts
 docs:
   - docs/11.computed.md
 journeys:

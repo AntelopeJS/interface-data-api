@@ -1,7 +1,12 @@
 ---
 covers:
+  - src/index.ts
+  - src/components.ts
+  - src/metadata.ts
+  - src/internal/extractors.ts
   - src/internal/list.ts
   - src/internal/meta-records.ts
+  - src/internal/read-properties.ts
 docs:
   - docs/6.listable.md
 journeys:

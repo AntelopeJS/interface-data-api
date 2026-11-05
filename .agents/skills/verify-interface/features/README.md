@@ -1,6 +1,8 @@
 # Feature map
 
-One file per feature. `covers:` lists the source globs it owns, `docs:` the pages a verdict judges, `journeys:` the journeys it runs, and `seeded-breaks/<feature>.patch` the break its journeys must catch. `pnpm exec antelopejs-verify map` checks that every user-facing file is covered.
+One file per feature. `covers:` lists every source file that computes something one of the feature's journeys checks, `docs:` the pages a verdict judges, `journeys:` the journeys it runs, and `seeded-breaks/<feature>.patch` the break its journeys must catch. `pnpm exec antelopejs-verify map` checks that every user-facing file is covered.
+
+`plan` selects a feature only through `covers:`, so a file a journey depends on but its feature does not list is a break no verdict runs. A file goes under every feature whose journeys check its behaviour, not only the feature named after it. `src/index.ts` (the routes pick the action, lock and unlock modifiers, and run the guard), `src/components.ts` (the route parameters and the `Query` and `Validation` steps) and `src/metadata.ts` (every decorator) serve every feature, so every feature lists them. When a journey starts checking a new file, add that file to the journey's feature.
 
 | Feature | What the user does | Journeys |
 |---|---|---|
@@ -14,7 +16,7 @@ One file per feature. `covers:` lists the source globs it owns, `docs:` the page
 | [modifiers](modifiers.md) | A per-request key selects a modifier's value. | localized-key |
 | [joined](joined.md) | A remote field is flattened onto the row. | joined-read |
 | [computed](computed.md) | A row answers a database-computed value. | computed-read |
-| [guards](guards.md) | A module guards a read, amends a body or adds a route. | get-guard, amend-body, custom-route |
+| [guards](guards.md) | A module guards a read, amends a body or adds a route. | get-guard, guard-unlocked, amend-body, custom-route |
 | [metadata](metadata.md) | A module author reads metadata and declares controllers. | effective-modes, declaration-errors, exports-runtime, consumer-compiles |
 | [smoke](smoke.md) | The fixed journey every verdict runs. | every-function, smoke-roundtrip |
 

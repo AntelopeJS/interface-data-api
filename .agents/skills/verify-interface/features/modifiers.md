@@ -1,5 +1,9 @@
 ---
 covers:
+  - src/index.ts
+  - src/components.ts
+  - src/metadata.ts
+  - src/internal/list.ts
   - src/internal/prototypes.ts
   - src/internal/validation.ts
 docs:
@@ -14,7 +18,7 @@ A modifier that needs a per-request value takes it from a controller field.
 
 ## Sub-features
 
-- `localized-key`: `@ModifierKey(LocalizationModifier)` on a field read from the `x-content-language` header selects the language a write stores and a read answers: English on create, French on edit, both kept in MongoDB, an edit without the title keeps both, and a list sorts on the title in the request locale.
+- `localized-key`: `@ModifierKey(LocalizationModifier)` on a field read from the `x-content-language` header selects the language a write stores and a read answers: English on create, French on edit, both kept in MongoDB, an edit without the title keeps both, and a list sorts on the title in the request locale, ascending and descending.
 
 ## How to get to it (user POV)
 

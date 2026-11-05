@@ -562,8 +562,13 @@ class Article extends Table.with(LocalizationModifier) {
 }
 class ArticleModel extends BasicDataModel(Article, "articles") {}
 
+/** The get guard of docs/3.routes.md on a modifier-held field: an article answers only in a language it has a title in. */
+const translatedGet = DefaultRoutes.WithGetGuard(async function (_ctx, current) {
+  assert(typeof current.title === "string", 404, "Not Found");
+});
+
 @RegisterDataController()
-class _ArticleAPI extends DataController(Article, DefaultRoutes.All, Controller("/articles")) {
+class _ArticleAPI extends DataController(Article, { ...DefaultRoutes.All, translated: translatedGet }, Controller("/articles")) {
   @ModelReference()
   @Model(ArticleModel)
   declare articleModel: ArticleModel;

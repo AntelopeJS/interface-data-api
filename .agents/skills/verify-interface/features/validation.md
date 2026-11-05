@@ -1,9 +1,10 @@
 ---
 covers:
-  - src/internal/validation.ts
-  - src/internal/guards.ts
-  - src/components.ts
   - src/index.ts
+  - src/components.ts
+  - src/metadata.ts
+  - src/internal/guards.ts
+  - src/internal/validation.ts
 docs:
   - docs/5.validators.md
 journeys:

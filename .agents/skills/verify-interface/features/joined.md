@@ -1,8 +1,13 @@
 ---
 covers:
-  - src/internal/joined.ts
-  - src/internal/deferred-joined-stream.ts
+  - src/index.ts
+  - src/components.ts
   - src/metadata.ts
+  - src/internal/deferred-joined-stream.ts
+  - src/internal/joined.ts
+  - src/internal/list.ts
+  - src/internal/table-reference.ts
+  - src/internal/tables.ts
 docs:
   - docs/10.joined.md
 journeys:

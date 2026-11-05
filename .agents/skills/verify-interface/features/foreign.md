@@ -1,8 +1,13 @@
 ---
 covers:
-  - src/internal/foreign.ts
-  - src/internal/table-reference.ts
   - src/index.ts
+  - src/components.ts
+  - src/metadata.ts
+  - src/internal/foreign.ts
+  - src/internal/list.ts
+  - src/internal/table-reference.ts
+  - src/internal/tables.ts
+  - src/internal/validation.ts
 docs:
   - docs/7.foreign-keys.md
 journeys:

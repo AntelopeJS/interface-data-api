@@ -1,8 +1,11 @@
 ---
 covers:
-  - src/components.ts
-  - src/internal/extractors.ts
   - src/index.ts
+  - src/components.ts
+  - src/metadata.ts
+  - src/internal/extractors.ts
+  - src/internal/list.ts
+  - src/internal/tables.ts
 docs:
   - docs/3.routes.md
 journeys:

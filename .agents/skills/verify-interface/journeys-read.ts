@@ -148,6 +148,8 @@ const localizedKey = shopJourney("a modifier key read from a header selects the 
   await shop.request("create Alpha in English", "POST", "/articles/new", { body: '{"title":"Alpha"}', headers: [`${LOCALE}: en`] });
   const sorted = await shop.request("sort on the English title", "GET", "/articles/list?sortKey=title", { headers: [`${LOCALE}: en`] });
   context.expect(sorted.folder, [equal("rows sort on the value in the request's locale", results(sorted).map((item) => pick(item, "title")), ["Alpha", "Hello"])]);
+  const descending = await shop.request("sort on the English title, descending", "GET", "/articles/list?sortKey=title&sortDirection=desc", { headers: [`${LOCALE}: en`] });
+  context.expect(descending.folder, [equal("a sort on a modifier-held field follows sortDirection", results(descending).map((item) => pick(item, "title")), ["Hello", "Alpha"])]);
 });
 
 const joinedRead = shopJourney("a joined field flattens one remote field onto the row and sorts and filters on it in the database", async (shop) => {
@@ -195,6 +197,19 @@ const getGuard = shopJourney("a get guard denies by throwing and applies to its 
   context.expect(missing.folder, [status(missing, 404)]);
   const plain = await shop.request("memo through the plain route", "GET", "/documents/get?id=x2");
   context.expect(plain.folder, [status(plain, 200), ...holds(plain, { title: "Memo" })]);
+});
+
+const guardUnlocked = shopJourney("a get guard reads the loaded model unlocked with the request's modifier key", async (shop) => {
+  const { context } = shop;
+  const created = await shop.request("create in English", "POST", "/articles/new", { body: '{"title":"Hello"}', headers: [`${LOCALE}: en`] });
+  const id = text(pick(created.json, "_id"));
+  context.expect(created.folder, [status(created, 200)]);
+  const english = await shop.request("read through the guarded route in English", "GET", `/articles/translated?id=${id}`, { headers: [`${LOCALE}: en`] });
+  context.expect(english.folder, [status(english, 200, "the guard sees the title unlocked in English"), ...holds(english, { title: "Hello" })]);
+  const german = await shop.request("read through the guarded route in German", "GET", `/articles/translated?id=${id}`, { headers: [`${LOCALE}: de`] });
+  context.expect(german.folder, [status(german, 404, "the guard sees no German title"), equal("the guard's error is the answer", german.body, "Not Found")]);
+  const plain = await shop.request("read through the plain route in German", "GET", `/articles/get?id=${id}`, { headers: [`${LOCALE}: de`] });
+  context.expect(plain.folder, [status(plain, 200, "the plain route is not guarded")]);
 });
 
 const amendBody = shopJourney("a route that wraps new can amend the parsed body before it is written", async (shop) => {
@@ -271,6 +286,7 @@ export const READ_JOURNEYS = {
   "joined-read": joinedRead,
   "computed-read": computedRead,
   "get-guard": getGuard,
+  "guard-unlocked": guardUnlocked,
   "amend-body": amendBody,
   "custom-route": customRoute,
   "effective-modes": effectiveModes,
