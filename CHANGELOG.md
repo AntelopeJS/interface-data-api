@@ -1,5 +1,43 @@
 # Changelog
 
+## v0.6.1
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.6.0...v0.6.1)
+
+### 🏡 Chore
+
+- Land the cleanup campaign on main ([#105](https://github.com/AntelopeJS/interface-data-api/pull/105))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](http://github.com/Upd4ting))
+
+## v0.6.0
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.5.0...v0.6.0)
+
+### 💅 Refactors
+
+- **components:** Assert the generic parameter key once in ExtractGeneric ([#55](https://github.com/AntelopeJS/interface-data-api/pull/55))
+
+### 📖 Documentation
+
+- **readme:** Use one Discord invite ([#70](https://github.com/AntelopeJS/interface-data-api/pull/70))
+- **github:** Send questions and ideas to Discord ([#87](https://github.com/AntelopeJS/interface-data-api/pull/87))
+- **readme:** Link the package to AntelopeJS and AntelopeJS DMS ([2a900b4](https://github.com/AntelopeJS/interface-data-api/commit/2a900b4))
+
+### 📦 Build
+
+- **deps:** Bump @antelopejs/tooling-configs to 0.2.17 ([#58](https://github.com/AntelopeJS/interface-data-api/pull/58))
+
+### 🏡 Chore
+
+- Land the cleanup campaign on main ([#102](https://github.com/AntelopeJS/interface-data-api/pull/102))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](http://github.com/Upd4ting))
+
 ## v0.5.0
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.4.0...v0.5.0)
