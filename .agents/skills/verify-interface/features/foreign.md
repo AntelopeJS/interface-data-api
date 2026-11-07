@@ -4,6 +4,8 @@ covers:
   - src/components.ts
   - src/metadata.ts
   - src/internal/computed.ts
+  - src/internal/default-filter.ts
+  - src/internal/deferred-joined-stream.ts
   - src/internal/extractors.ts
   - src/internal/foreign.ts
   - src/internal/guards.ts
