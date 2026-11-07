@@ -1,6 +1,7 @@
+import { createHash, randomUUID } from "node:crypto";
 import { createServer } from "node:net";
-import { readFileSync, realpathSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, realpathSync, renameSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 import { z } from "zod";
 
@@ -77,27 +78,65 @@ link("@antelopejs/interface-data-api", packed);
 for (const name of [...names, "zod"]) link(name, fs.realpathSync(path.join(repo, "node_modules", name)));
 `;
 
-async function compileShop(context: JourneyContext, project: string): Promise<void> {
+const TSC_FLAGS = [
+  "--strict", "--skipLibCheck", "--experimentalDecorators", "--emitDecoratorMetadata", "--esModuleInterop",
+  "--target", "es2022", "--module", "commonjs", "--moduleResolution", "node", "--types", "node",
+];
+
+/** Writes the shop module into `project` linked to the run's packed interface, and returns its folder and that interface. */
+async function writeShop(context: JourneyContext, project: string): Promise<{ shop: string; packed: string; source: string }> {
   const shop = join(project, "shop");
   const packed = realpathSync(join(project, "driver", "node_modules", "@antelopejs", "interface-data-api"));
+  const source = SHOP_SOURCE_PARTS.map((part) => readFileSync(part, "utf8")).join("");
   context.edit("write the shop module manifest", join(shop, "package.json"), `${JSON.stringify({
     name: "verify-shop",
     version: "1.0.0",
     main: "shop.js",
     dependencies: Object.fromEntries(INTERFACES.map((name) => [name, "*"])),
   }, null, 2)}\n`);
-  context.edit("write the shop module source", join(shop, "shop.ts"), SHOP_SOURCE_PARTS.map((part) => readFileSync(part, "utf8")).join(""));
+  context.edit("write the shop module source", join(shop, "shop.ts"), source);
   context.edit("write the link script", join(context.work, "link.cjs"), LINK_SCRIPT);
   const linked = await context.command("link the packed interface", "node", [join(context.work, "link.cjs"), shop, packed, context.repo, ...INTERFACES]);
   context.expect(linked.folder, [exitIs(linked, 0)], { critical: true });
+  return { shop, packed, source };
+}
+
+/** Type-checks and emits `shop.ts` against the packed declarations, and returns the compile when it passed. */
+async function compileShop(context: JourneyContext, shop: string): Promise<CommandResult | undefined> {
   const compiled = await context.command("compile the shop against the packed declarations", "node", [
     join(context.repo, "node_modules", "typescript", "bin", "tsc"),
-    "--strict", "--skipLibCheck", "--experimentalDecorators", "--emitDecoratorMetadata", "--esModuleInterop",
-    "--target", "es2022", "--module", "commonjs", "--moduleResolution", "node",
-    "--typeRoots", join(context.repo, "node_modules", "@types"), "--types", "node",
+    ...TSC_FLAGS, "--typeRoots", join(context.repo, "node_modules", "@types"),
     "--outDir", shop, join(shop, "shop.ts"),
   ], { timeoutMs: 180_000 });
-  context.expect(compiled.folder, [{ name: "the shop compiles against the packed declarations", pass: compiled.exitCode === 0, detail: compiled.stdout.slice(0, 600) }], { critical: true });
+  const passed = context.expect(compiled.folder, [{ name: "the shop compiles against the packed declarations", pass: compiled.exitCode === 0, detail: compiled.stdout.slice(0, 600) }], { critical: true });
+  return passed ? compiled : undefined;
+}
+
+function publish(file: string, content: string): void {
+  const staged = `${file}.${randomUUID()}`;
+  writeFileSync(staged, content);
+  renameSync(staged, file);
+}
+
+/**
+ * Compiles the shop once per packed interface: every input of the compile is the same in each journey of a run, so
+ * later journeys copy the emitted `shop.js` from beside the packed interface, which `clean` removes with the run, and
+ * record the compile that produced it in their own evidence.
+ */
+async function compiledShop(context: JourneyContext, project: string): Promise<void> {
+  const { shop, packed, source } = await writeShop(context, project);
+  const digest = createHash("sha256").update(JSON.stringify([source, TSC_FLAGS])).digest("hex").slice(0, 16);
+  const cached = join(dirname(packed), `verify-shop-${digest}.js`);
+  const record = `${cached}.compile.txt`;
+  if (existsSync(cached) && existsSync(record)) {
+    context.edit("record the compile of the reused shop", join(context.work, "shop-compile.txt"), readFileSync(record, "utf8"));
+    context.edit(`reuse the shop compiled earlier in this run as verify-shop-${digest}.js`, join(shop, "shop.js"), readFileSync(cached, "utf8"));
+    return;
+  }
+  const compiled = await compileShop(context, shop);
+  if (compiled === undefined) return;
+  publish(record, `${compiled.command}\nexit ${compiled.exitCode}\n${compiled.stdout}${compiled.stderr}`);
+  publish(cached, readFileSync(join(shop, "shop.js"), "utf8"));
 }
 
 function rewriteConfig(context: JourneyContext, project: string, apiPort: number): void {
@@ -137,13 +176,14 @@ async function curl(context: JourneyContext, base: string, name: string, call: {
 
 /** Compiles the consumer module against the packed declarations and stops. */
 export async function compileOnly(context: JourneyContext): Promise<void> {
-  await compileShop(context, context.fixture());
+  const { shop } = await writeShop(context, context.fixture());
+  await compileShop(context, shop);
 }
 
 /** Compiles the shop, starts `ajs project dev` with the API and MongoDB, waits until the routes answer, runs `use`, then stops the project by SIGINT. */
 export async function withShop(context: JourneyContext, use: (shop: Shop) => Promise<void>): Promise<void> {
   const project = context.fixture();
-  await compileShop(context, project);
+  await compiledShop(context, project);
   const apiPort = await freePort();
   rewriteConfig(context, project, apiPort);
   const app = await context.dev("ajs project dev", project);
