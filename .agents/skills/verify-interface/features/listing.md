@@ -3,10 +3,17 @@ covers:
   - src/index.ts
   - src/components.ts
   - src/metadata.ts
+  - src/internal/computed.ts
   - src/internal/extractors.ts
+  - src/internal/foreign.ts
+  - src/internal/guards.ts
+  - src/internal/joined.ts
   - src/internal/list.ts
   - src/internal/meta-records.ts
+  - src/internal/prototypes.ts
   - src/internal/read-properties.ts
+  - src/internal/tables.ts
+  - src/internal/validation.ts
 docs:
   - docs/6.listable.md
 journeys:

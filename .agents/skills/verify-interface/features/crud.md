@@ -3,10 +3,15 @@ covers:
   - src/index.ts
   - src/components.ts
   - src/metadata.ts
+  - src/internal/computed.ts
   - src/internal/controller-types.ts
   - src/internal/extractors.ts
+  - src/internal/foreign.ts
   - src/internal/guards.ts
+  - src/internal/joined.ts
   - src/internal/properties.ts
+  - src/internal/prototypes.ts
+  - src/internal/read-properties.ts
   - src/internal/tables.ts
   - src/internal/validation.ts
 docs:
