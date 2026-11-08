@@ -137,7 +137,7 @@ export const issue90 = shopJourney("fails on purpose until #90 is fixed: edit wi
   context.expect(row.folder, [equal("#90: the row found through the index holds the new title", pick(row.rows[0] ?? null, "title"), "New")]);
 });
 
-export const issue92 = shopJourney("fails on purpose until #92 is fixed: a getter that a list mode does not declare is left out of it", async (shop) => {
+export const issue92 = shopJourney("#92: a getter that a list mode does not declare is left out of it", async (shop) => {
   const { context } = shop;
   await seed(shop, USERS);
   const brief = await shop.request("people in the brief mode", "GET", "/people/brief");
