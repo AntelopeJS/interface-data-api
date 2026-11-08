@@ -1,4 +1,4 @@
-import { guardSemantics, newRowContents, editSetters, filterDetails, listUnknown, listableAlone, editAnswersForeign, readOverrides, issue90, issue92, issue93, noForeignStrings } from "./journeys-probe-1.ts";
+import { guardSemantics, newRowContents, editSetters, filterDetails, listUnknown, listableAlone, editAnswersForeign, readOverrides, issue90, issue92, foreignMulti, noForeignStrings } from "./journeys-probe-1.ts";
 import { noMandatoryStrings, noPluckStrings, derivedOwnModel, foreignTargetMeta, noModelAnswers500, optionBeatsQuery, foreignDeclarationThrows, routeFiltersListOnly, emptyForms, mandatoryBeforeValidators, holeyBody, joinedAccess, computedAccess, foreignUnplucked } from "./journeys-probe-2.ts";
 
 export const PROBE_JOURNEYS = {
@@ -27,5 +27,5 @@ export const PROBE_JOURNEYS = {
   "foreign-unplucked": foreignUnplucked,
   "issue-90-edit-index": issue90,
   "issue-92-getter-mode": issue92,
-  "issue-93-multi-foreign": issue93,
+  "foreign-multi": foreignMulti,
 };
