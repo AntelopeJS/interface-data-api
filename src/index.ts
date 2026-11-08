@@ -24,7 +24,7 @@ import {
 import type { WriteDocument } from "@antelopejs/interface-database/common";
 
 import { Parameters, Query, Validation } from "./components";
-import { isWriteDocument, isWriteValue } from "./internal/guards";
+import { isString, isWriteDocument, isWriteValue } from "./internal/guards";
 import { prototypeOf } from "./internal/prototypes";
 import { ReadProperties as readProperties } from "./internal/read-properties";
 import {
@@ -308,6 +308,8 @@ export namespace DefaultRoutes {
 
     const stored = await Query.Get(model.table, params.id, params.index);
     assert(stored, 404, "Not Found");
+    const { _id: primaryKey } = stored;
+    assert(isString(primaryKey), 500, "Stored row has no primary key");
 
     const dbData = await Query.WriteProperties(
       this,
@@ -319,11 +321,9 @@ export namespace DefaultRoutes {
     Validation.Lock(this, meta, dbData);
 
     triggerEvent(dbData, "update");
-    await model.table.get(params.id).update(writtenRow(dbData));
+    await model.table.get(primaryKey).update(writtenRow(dbData));
 
-    return readRow(this, meta, {
-      params: { id: params.id, index: params.index },
-    });
+    return readRow(this, meta, { params: { id: primaryKey } });
   }
 
   async function deleteRows(
