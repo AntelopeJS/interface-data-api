@@ -128,7 +128,7 @@ export const readOverrides = shopJourney("a per-action read override hides or gr
   context.expect(row.folder, [equal("a write-only field is written on new", pick(row.rows[0] ?? null, "nickname"), "nn")]);
 });
 
-export const issue90 = shopJourney("fails on purpose until #90 is fixed: edit with the index option updates the row the index found", async (shop) => {
+export const issue90 = shopJourney("#90: edit with the index option updates the row the index found", async (shop) => {
   const { context } = shop;
   await seed(shop, PROBES);
   const edited = await shop.request("edit p1 by its tag", "PUT", "/probes/slugEdit?id=A", { body: '{"title":"New"}' });
