@@ -21,6 +21,7 @@ import {
 import { Computed } from "./computed";
 import { wrapDeferredJoined } from "./deferred-joined-stream";
 import { Foreign } from "./foreign";
+import { ownEntry } from "./meta-records";
 import {
   deferredJoinedFields,
   Joined,
@@ -77,9 +78,10 @@ function isHeldByKeyedModifier(meta: DataAPIMeta, field: string): boolean {
     Array.from(meta.modifierKeys.keys(), (modifier) => modifier.name),
   );
   return (
-    getMetadata(meta.tableClass, ModifiersStaticMetadata).fields[field]?.some(
-      ({ id }) => keyed.has(id),
-    ) ?? false
+    ownEntry(
+      getMetadata(meta.tableClass, ModifiersStaticMetadata).fields,
+      field,
+    )?.some(({ id }) => keyed.has(id)) ?? false
   );
 }
 

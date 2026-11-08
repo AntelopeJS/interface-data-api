@@ -7,6 +7,7 @@ import type {
   RowFields,
   WritableAccessFields,
 } from "../metadata";
+import { ownEntry } from "./meta-records";
 import { fieldsOf, prototypeOf } from "./prototypes";
 
 function writableInBody(
@@ -28,8 +29,9 @@ function writeTargetDefaults(
   for (const [key, value] of defaults) {
     if (value !== undefined) {
       instance[key] = value;
-      if (key in meta.fields) {
-        dbData[meta.fields[key].dbName || key] = value;
+      const field = ownEntry(meta.fields, key);
+      if (field) {
+        dbData[field.dbName || key] = value;
       }
     }
   }
@@ -54,13 +56,14 @@ export function WriteProperties(
     writeTargetDefaults(instance, meta, dbData);
   }
   for (const [key, field] of writable.props) {
-    instance[key] = bodyData[key];
-    dbData[field.dbName || key] = bodyData[key];
+    const value = ownEntry(bodyData, key);
+    instance[key] = value;
+    dbData[field.dbName || key] = value;
   }
   instance.table = dbData;
   Object.setPrototypeOf(instance, prototypeOf(meta.target));
   for (const [key, field] of writable.setters) {
-    field.desc?.set?.apply(instance, [bodyData[key]]);
+    field.desc?.set?.apply(instance, [ownEntry(bodyData, key)]);
   }
   return dbData;
 }
