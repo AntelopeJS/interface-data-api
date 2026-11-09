@@ -487,7 +487,8 @@ export namespace Validation {
     return Array.isArray(value) && value.length === 0;
   }
 
-  const isAbsentFromBody = (body: RequestBody, name: string) => !(name in body);
+  const isAbsentFromBody = (body: RequestBody, name: string) =>
+    !Object.hasOwn(body, name);
 
   const isClearedByBody = (body: RequestBody, name: string) =>
     Object.hasOwn(body, name) && isClearingValue(body[name]);
@@ -563,7 +564,7 @@ export namespace Validation {
     const parsed = { ...obj };
     const invalid: string[] = [];
     for (const [name, field] of Object.entries(meta.fields)) {
-      if (!field.validator || !(name in obj)) continue;
+      if (!field.validator || !Object.hasOwn(obj, name)) continue;
       const result = toParseResult(await field.validator(obj[name]), obj[name]);
       if (result.success) {
         parsed[name] = result.data;

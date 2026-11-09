@@ -13,6 +13,7 @@ import {
   Filter,
   Listable,
   ModelReference,
+  Sortable,
 } from "../../metadata";
 import {
   BasicDataModel,
@@ -60,6 +61,7 @@ async function createController(testName: string) {
   Listable()(_PrototypeNamedFilterAPI.prototype, "valueOf");
   Access(AccessMode.ReadOnly)(_PrototypeNamedFilterAPI.prototype, "valueOf");
   Filter(undefined, false)(_PrototypeNamedFilterAPI.prototype, "valueOf");
+  Sortable()(_PrototypeNamedFilterAPI.prototype, "valueOf");
 
   await RegisterSchema(schemaName);
   const schema = Schema.get(schemaName);
@@ -96,5 +98,20 @@ describe("List route - a field named like an Object.prototype member", () => {
     expect(response.status, await response.clone().text()).to.equal(200);
     const data = await readJson(listSchema, response);
     expect(data.results.map(({ title }) => title)).to.eql(["alpha"]);
+  });
+
+  it("sorts on the field", async () => {
+    await createController("valueof-sorted");
+
+    const response = await listRequest("valueof-sorted", {
+      sortKey: "valueOf",
+    });
+
+    expect(response.status, await response.clone().text()).to.equal(200);
+    const data = await readJson(listSchema, response);
+    expect(data.results.map(({ title }) => title)).to.have.members([
+      "alpha",
+      "beta",
+    ]);
   });
 });
