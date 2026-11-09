@@ -1,5 +1,43 @@
 # Changelog
 
+## v0.6.2
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.6.1...v0.6.2)
+
+### 🚀 Enhancements
+
+- **skills:** Add the verify-interface and formal-field-access skills ([#91](https://github.com/AntelopeJS/interface-data-api/pull/91))
+
+### 🔥 Performance
+
+- **verify:** Compile the shop once per verify run ([#111](https://github.com/AntelopeJS/interface-data-api/pull/111))
+
+### 🩹 Fixes
+
+- **verify:** List every source file a feature's journeys run in its covers ([#110](https://github.com/AntelopeJS/interface-data-api/pull/110))
+- **list:** Leave out getters the route's pluck mode does not list ([#117](https://github.com/AntelopeJS/interface-data-api/pull/117))
+- **validation:** Read request bodies and field tables by own keys ([#112](https://github.com/AntelopeJS/interface-data-api/pull/112))
+- **foreign:** Keep missing elements and raw ids of a multi reference ([#116](https://github.com/AntelopeJS/interface-data-api/pull/116))
+- **routes:** Update the row the Edit index option finds ([#113](https://github.com/AntelopeJS/interface-data-api/pull/113))
+
+### 📦 Build
+
+- **deps:** Bump @antelopejs packages to the 2026-11-06 releases ([#109](https://github.com/AntelopeJS/interface-data-api/pull/109))
+- **deps:** Bump @antelopejs/tooling-configs to 0.4.0 ([#118](https://github.com/AntelopeJS/interface-data-api/pull/118))
+
+### 🏡 Chore
+
+- **verify:** Remove seeded runs from the verification skill ([#106](https://github.com/AntelopeJS/interface-data-api/pull/106))
+- **ci:** Remove the weekly mutation caller ([#107](https://github.com/AntelopeJS/interface-data-api/pull/107))
+
+### 🤖 CI
+
+- Call ci-node.yml@v1 ([#108](https://github.com/AntelopeJS/interface-data-api/pull/108))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](http://github.com/Upd4ting))
+
 ## v0.6.1
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.6.0...v0.6.1)
