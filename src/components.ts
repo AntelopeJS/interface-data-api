@@ -351,7 +351,7 @@ export namespace Query {
     action?: string,
     onlyList?: boolean,
   ) {
-    return readProperties(obj, meta, dbData, action, onlyList);
+    return readProperties(obj, meta, dbData, action, { onlyList });
   }
 
   /**

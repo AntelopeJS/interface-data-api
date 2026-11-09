@@ -5,15 +5,31 @@ import type {
   DataControllerInstance,
   RowFields,
 } from "../metadata";
+import type { FieldData } from "./field-types";
 import { isFunction } from "./guards";
+import { ownEntry } from "./meta-records";
 import { fieldsOf, prototypeOf } from "./prototypes";
+
+/** Which fields a read leaves out. */
+interface ReadFilter {
+  /** Leaves out the fields that no list mode lists. */
+  onlyList?: boolean;
+  /** Leaves out the getters that this list mode does not list. */
+  listMode?: string;
+}
+
+function listedIn(field: FieldData, mode: string) {
+  return (
+    field.listable !== undefined && ownEntry(field.listable, mode) !== undefined
+  );
+}
 
 export async function ReadProperties(
   obj: DataControllerInstance,
   meta: DataAPIMeta,
   dbData: RowFields,
   action?: string,
-  onlyList?: boolean,
+  { onlyList, listMode }: ReadFilter = {},
 ) {
   const readable =
     meta.readable[action ?? "_default"] ?? meta.readable._default;
@@ -30,6 +46,9 @@ export async function ReadProperties(
   Object.setPrototypeOf(instance, prototypeOf(meta.target));
   for (const [key, field] of readable.getters) {
     if (onlyList && !field.listable) {
+      continue;
+    }
+    if (listMode !== undefined && !listedIn(field, listMode)) {
       continue;
     }
     const val: unknown = field.desc?.get?.apply(instance);

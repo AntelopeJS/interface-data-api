@@ -22,7 +22,7 @@ One file per feature. `covers:` lists every source file that computes something 
 
 ## Known issues, driven on purpose
 
-Three journeys fail on head and cite their issue: `issue-90-edit-index` ([#90](https://github.com/AntelopeJS/interface-data-api/issues/90)), `issue-92-getter-mode` ([#92](https://github.com/AntelopeJS/interface-data-api/issues/92)) and `issue-93-multi-foreign` ([#93](https://github.com/AntelopeJS/interface-data-api/issues/93)). A verdict that runs their features is FAIL until the issue is fixed; the fix turns the journey green.
+Two journeys fail on head and cite their issue: `issue-90-edit-index` ([#90](https://github.com/AntelopeJS/interface-data-api/issues/90)) and `issue-93-multi-foreign` ([#93](https://github.com/AntelopeJS/interface-data-api/issues/93)). A verdict that runs their features is FAIL until the issue is fixed; the fix turns the journey green.
 
 ## Not driven
 

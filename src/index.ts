@@ -26,6 +26,7 @@ import type { WriteDocument } from "@antelopejs/interface-database/common";
 import { Parameters, Query, Validation } from "./components";
 import { isWriteDocument, isWriteValue } from "./internal/guards";
 import { prototypeOf } from "./internal/prototypes";
+import { ReadProperties as readProperties } from "./internal/read-properties";
 import {
   DataAPIMeta,
   type DataControllerCallback,
@@ -221,12 +222,12 @@ export namespace DefaultRoutes {
       { exposeDeferredJoined: true },
     );
 
-    const pluck: Set<string> | undefined =
-      meta.pluck[params.pluckMode ?? "list"];
+    const pluckMode = params.pluckMode ?? "list";
+    const pluck: Set<string> | undefined = meta.pluck[pluckMode];
     assert(
       params.noPluck || pluck,
       400,
-      `No fields found for pluckMode '${params.pluckMode ?? "list"}'`,
+      `No fields found for pluckMode '${pluckMode}'`,
     );
 
     const offset = params.offset || 0;
@@ -248,7 +249,9 @@ export namespace DefaultRoutes {
         const entryInstance = model.constructor.fromDatabase(entry);
         assert(entryInstance, 500, "The database answered an empty row.");
         Validation.Unlock(this, meta, entryInstance);
-        return Query.ReadProperties(this, meta, entryInstance, "list");
+        return readProperties(this, meta, entryInstance, "list", {
+          listMode: params.noPluck ? undefined : pluckMode,
+        });
       }),
     );
 
