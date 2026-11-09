@@ -20,10 +20,6 @@ One file per feature. `covers:` lists every source file that computes something 
 | [metadata](metadata.md) | A module author reads metadata and declares controllers. | effective-modes, declaration-errors, exports-runtime, consumer-compiles, derived-own-model, foreign-target-meta |
 | [smoke](smoke.md) | The fixed journey every verdict runs. | every-function, smoke-roundtrip |
 
-## Known issues, driven on purpose
-
-One journey fails on head and cites its issue: `issue-90-edit-index` ([#90](https://github.com/AntelopeJS/interface-data-api/issues/90)). A verdict that runs its feature is FAIL until the issue is fixed; the fix turns the journey green.
-
 ## Not driven
 
 Every documented behaviour of the README, `docs/` and the TSDoc has a journey above, or a row here with the reason.
