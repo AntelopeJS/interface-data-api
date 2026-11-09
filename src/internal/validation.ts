@@ -67,7 +67,9 @@ export function Unlock(
     if (field.foreign && isObject(dbData[name]) && field.foreign[1]) {
       const foreignSchema = field.foreign[1];
       dbData[name] = Array.isArray(dbData[name])
-        ? dbData[name].map((entry) => fromDatabase(entry, foreignSchema))
+        ? dbData[name].map<unknown>((entry) =>
+            isObject(entry) ? fromDatabase(entry, foreignSchema) : entry,
+          )
         : fromDatabase(dbData[name], field.foreign[1]);
     }
   }
@@ -144,7 +146,9 @@ export function ClearInternal(
           return plainPlucked;
         };
         entry[name] = Array.isArray(entry[name])
-          ? entry[name].map(processForeign)
+          ? entry[name].map<unknown>((item) =>
+              isObject(item) ? processForeign(item) : item,
+            )
           : processForeign(entry[name]);
       }
     }

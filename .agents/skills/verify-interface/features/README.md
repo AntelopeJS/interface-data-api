@@ -11,7 +11,7 @@ One file per feature. `covers:` lists every source file that computes something 
 | [access](access.md) | `@Access` decides what each route reads and writes. | access-modes, listable-alone, read-overrides |
 | [validation](validation.md) | `@Mandatory`, `@Validator` and `@Optional` check the body. | mandatory-and-validators, parsed-values, error-codes, empty-forms, mandatory-before-validators, holey-body |
 | [listing](listing.md) | A client pages, sorts and narrows a list. | pluck-modes, pagination, sorting, issue-92-getter-mode |
-| [foreign](foreign.md) | A key field answers the record it points to. | foreign-resolve, foreign-raw, issue-93-multi-foreign, no-foreign-strings, foreign-declaration-throws, foreign-unplucked |
+| [foreign](foreign.md) | A key field answers the record it points to. | foreign-resolve, foreign-raw, foreign-multi, no-foreign-strings, foreign-declaration-throws, foreign-unplucked |
 | [filters](filters.md) | A list request filters rows. | default-filter, custom-filters, filter-details, route-filters-list-only |
 | [modifiers](modifiers.md) | A per-request key selects a modifier's value. | localized-key |
 | [joined](joined.md) | A remote field is flattened onto the row. | joined-read, joined-access |
@@ -22,7 +22,7 @@ One file per feature. `covers:` lists every source file that computes something 
 
 ## Known issues, driven on purpose
 
-Two journeys fail on head and cite their issue: `issue-90-edit-index` ([#90](https://github.com/AntelopeJS/interface-data-api/issues/90)) and `issue-93-multi-foreign` ([#93](https://github.com/AntelopeJS/interface-data-api/issues/93)). A verdict that runs their features is FAIL until the issue is fixed; the fix turns the journey green.
+One journey fails on head and cites its issue: `issue-90-edit-index` ([#90](https://github.com/AntelopeJS/interface-data-api/issues/90)). A verdict that runs its feature is FAIL until the issue is fixed; the fix turns the journey green.
 
 ## Not driven
 

@@ -144,14 +144,14 @@ export const issue92 = shopJourney("#92: a getter that a list mode does not decl
   context.expect(brief.folder, [status(brief, 200), equal("#92: the brief mode lists only _id", keysOf(results(brief)[0] ?? null), ["_id"])]);
 });
 
-export const issue93 = shopJourney("fails on purpose until #93 is fixed: a multi reference answers null for a missing element and raw ids with noForeign", async (shop) => {
+export const foreignMulti = shopJourney("a multi reference answers null for a missing element and its raw ids with noForeign", async (shop) => {
   const { context } = shop;
   await seed(shop, `${ORDERS}\nd.verify__orders.insertOne({ _id: "o3", items: [], itemsAll: ["i1", "ghost"], labels: [], total: 1 });`);
   const resolved = await shop.request("an order with a missing element", "GET", "/orders/get?id=o3");
   const items = pick(resolved.json, "itemsAll");
-  context.expect(resolved.folder, [status(resolved, 200), equal("#93: the missing element is null", Array.isArray(items) ? items[1] : "not an array", null)]);
+  context.expect(resolved.folder, [status(resolved, 200), equal("the missing element is null", Array.isArray(items) ? items[1] : "not an array", null)]);
   const raw = await shop.request("the same order with noForeign", "GET", "/orders/raw?id=o3");
-  context.expect(raw.folder, [equal("#93: noForeign answers the raw ids of a multi reference", pick(raw.json, "itemsAll"), ["i1", "ghost"])]);
+  context.expect(raw.folder, [equal("noForeign answers the raw ids of a multi reference", pick(raw.json, "itemsAll"), ["i1", "ghost"])]);
 });
 
 export const noForeignStrings = shopJourney("the Get noForeign option skips resolving for any non-empty string, false included, and the List one is a boolean", async (shop) => {
