@@ -41,13 +41,15 @@ export interface Shop {
   mongo(name: string, script: string): Promise<CommandResult>;
 }
 
+const LISTEN_ADDRESS = z.object({ port: z.number() });
+
 function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const server = createServer();
     server.on("error", reject);
     server.listen(0, "127.0.0.1", () => {
-      const address = server.address();
-      const port = address instanceof Object ? address.port : 0;
+      const address = LISTEN_ADDRESS.safeParse(server.address());
+      const port = address.success ? address.data.port : 0;
       server.close(() => resolve(port));
     });
   });
