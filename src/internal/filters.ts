@@ -12,7 +12,7 @@ export function FilterValuesOf(filter: FieldFilter): FilterValue[] {
 }
 
 export function parseFilter(searchVal: string): FilterValue {
-  const match = searchVal.match(/([^:]+):(.*)/);
+  const match = searchVal.match(/^:*([^:]+):(.*)/);
   return match ? [match[2], match[1]] : [searchVal, "eq"];
 }
 
