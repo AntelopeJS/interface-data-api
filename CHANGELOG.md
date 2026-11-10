@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.6.3
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.6.2...v0.6.3)
+
+### 🔥 Performance
+
+- **filters:** Parse a filter value in linear time ([#121](https://github.com/AntelopeJS/interface-data-api/pull/121))
+
+### 📦 Build
+
+- **deps:** Update @antelopejs/tooling-configs to 0.5.0 ([#119](https://github.com/AntelopeJS/interface-data-api/pull/119))
+- **deps:** Bump @antelopejs/tooling-configs to 0.5.1 ([#120](https://github.com/AntelopeJS/interface-data-api/pull/120))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](http://github.com/Upd4ting))
+
 ## v0.6.2
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.6.1...v0.6.2)
