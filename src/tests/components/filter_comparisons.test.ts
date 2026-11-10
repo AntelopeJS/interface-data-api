@@ -60,4 +60,21 @@ describe("Parameters.ExtractFilters - comparisons", () => {
       ),
     ).to.eql({ title: ["//example.com", "http"] });
   });
+
+  it("reads the comparison after the colons a value opens with", () => {
+    expect(
+      Parameters.ExtractFilters(context("filter_title=::is:abc"), meta),
+    ).to.eql({ title: ["abc", "is"] });
+  });
+
+  it("reads a long value without a colon in linear time", () => {
+    const value = "a".repeat(64_000);
+    const start = performance.now();
+    const filters = Parameters.ExtractFilters(
+      context(`filter_title=${value}`),
+      meta,
+    );
+    expect(performance.now() - start).to.be.below(250);
+    expect(filters).to.eql({ title: [value, "eq"] });
+  });
 });
