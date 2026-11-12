@@ -5,6 +5,7 @@ import type { Constructible } from "@antelopejs/interface-database-decorators/co
 import type { DataModel } from "@antelopejs/interface-database-decorators/model";
 import type {
   SchemaInstance,
+  Stream,
   Table,
   ValueProxy,
 } from "@antelopejs/interface-database";
@@ -69,15 +70,13 @@ export function targetTable(
 
 /**
  * The lookup side of a relation: `table` reduced to `fields`, with the
- * internal fields the modifiers keep. A plucked table is a staged selection
- * the database accepts wherever it takes a table, but its type is a stream.
+ * internal fields the modifiers keep, as the stream `lookup` takes.
  */
 export function pluckedTable(
   table: Table<any>,
   ...fields: string[]
-): Table<any> {
-  // SAFETY: pluck returns a Stream, which has none of Table's own methods; pluckedTable is only called in joined.ts and foreign.ts to build the right-hand side of lookup, and lookup reads that argument only through its stage list (build()), which the pluck stage extends.
-  return table.pluck("_internal", ...fields) as Table<any>;
+): Stream<any> {
+  return table.pluck("_internal", ...fields);
 }
 
 export function Get<T extends object>(
