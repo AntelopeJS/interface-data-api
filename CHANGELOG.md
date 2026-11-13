@@ -4,6 +4,13 @@
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.6.3...v0.7.0)
 
+### Upgrade notes
+
+- **Breaking:** `RowFields` is removed ([#126](https://github.com/AntelopeJS/interface-data-api/pull/126)). Import `StoredRow` from `@antelopejs/interface-data-api/metadata` instead. Its values are typed: a value a database stores (`WriteValue`), a relation's row instance, a nested `StoredRow`, or a list of those. `Query.ReadProperties`, `Query.WriteProperties`, `Validation.Lock`, `Validation.Unlock`, `Validation.ClearInternal` and the `get`, `edit` and list routes of `DefaultRoutes`, including `GetGuard`'s `current`, take or answer `StoredRow`. Code that read a field as `unknown` and narrowed it keeps working; code that wrote a value outside that type no longer compiles.
+- **Breaking:** a getter that returns a `bigint`, a `symbol` or a function, or an object holding one (an own `toJSON` method or arrow-function field counts), now fails the read with `500` instead of sending it ([#126](https://github.com/AntelopeJS/interface-data-api/pull/126)). Return a stored value instead, for example `String(total)` for a `bigint`, or `null`.
+- **Breaking:** a decorated field whose class default is such a value, or a setter that writes one into `this.table`, now fails the write with `500` before the modifiers and the `insert`/`update` event run. A related row from `@Foreign` that holds one fails the read with `500` ([#126](https://github.com/AntelopeJS/interface-data-api/pull/126)). Convert the value in the default or the setter, or move a callback off the decorated fields.
+- Inside a getter or setter, `this` holds only the row fields and `table` as own properties; the controller's other fields are inherited ([#126](https://github.com/AntelopeJS/interface-data-api/pull/126)). Read them as `this.name`; do not enumerate `this`. The default of a non-decorated member, such as an arrow-function field, is no longer re-applied over the controller's current value on create.
+
 ### 💅 Refactors
 
 - **deferred-join:** Forward stream operations through one typed view ([#123](https://github.com/AntelopeJS/interface-data-api/pull/123))
