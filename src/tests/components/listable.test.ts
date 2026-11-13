@@ -205,7 +205,7 @@ async function _createDataController(
 async function _dropProductTable() {
   const schema = Schema.get(schemaName);
   if (schema) {
-    await schema.instance().table(productTableName).delete();
+    await schema.instance().table(productTableName).delete().run();
   }
 }
 

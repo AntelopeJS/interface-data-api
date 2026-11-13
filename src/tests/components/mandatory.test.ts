@@ -97,7 +97,7 @@ describe("Field Mandatory", () => {
 async function _dropOrderTable() {
   const schema = Schema.get(schemaName);
   if (schema) {
-    await schema.instance().table(orderTableName).delete();
+    await schema.instance().table(orderTableName).delete().run();
   }
 }
 

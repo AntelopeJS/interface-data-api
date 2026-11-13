@@ -64,7 +64,7 @@ async function createController(
   }
 
   await RegisterSchema(schemaName);
-  await Schema.get(schemaName)?.instance().table(tableName).delete();
+  await Schema.get(schemaName)?.instance().table(tableName).delete().run();
 }
 
 describe("New route - a field named like an Object.prototype member", () => {

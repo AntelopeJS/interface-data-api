@@ -239,8 +239,8 @@ async function _seedTables() {
 async function _dropTables() {
   const schema = Schema.get(schemaName);
   if (schema) {
-    await schema.instance().table(bookTableName).delete();
-    await schema.instance().table(authorTableName).delete();
+    await schema.instance().table(bookTableName).delete().run();
+    await schema.instance().table(authorTableName).delete().run();
   }
 }
 

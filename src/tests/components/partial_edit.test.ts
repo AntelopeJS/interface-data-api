@@ -113,7 +113,7 @@ describe("Partial edit", () => {
 async function _dropArticleTable() {
   const schema = Schema.get(schemaName);
   if (schema) {
-    await schema.instance().table(articleTableName).delete();
+    await schema.instance().table(articleTableName).delete().run();
   }
 }
 

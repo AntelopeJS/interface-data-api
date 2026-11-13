@@ -84,7 +84,11 @@ const validUserDataset = {
 describe("Routes", () => {
   beforeEach(async () => {
     try {
-      await Schema.get(schemaName)?.instance().table(userTableName).delete();
+      await Schema.get(schemaName)
+        ?.instance()
+        .table(userTableName)
+        .delete()
+        .run();
     } catch {}
   });
 
