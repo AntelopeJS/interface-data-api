@@ -9,7 +9,7 @@ import { equal, exitIs, interrupted } from "@antelopejs/tooling-configs/verify";
 import type { App, Check, CommandResult, Journey, JourneyContext } from "@antelopejs/tooling-configs/verify";
 
 /** The `@antelopejs/mongodb` release the package's own tests run against. */
-const MONGODB_VERSION = "1.4.4";
+const MONGODB_VERSION = "1.7.0";
 const READY_POLLS = 60;
 const READY_MS = 500;
 const INTERFACES = [
