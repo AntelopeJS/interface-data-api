@@ -27,10 +27,28 @@ class DeferredJoinedStream extends Stream<any> {
   declare deferredJoin: DeferredJoinContext;
 }
 
-type DeferredJoinedOperation = (
-  this: DeferredJoinedStream,
+type StreamOperation<S extends Stream<any>> = (
+  this: S,
   ...args: any[]
-) => any;
+) => ReturnType<Stream<any>[keyof Stream<any>]>;
+
+type DeferredJoinedOperation = StreamOperation<DeferredJoinedStream>;
+
+/** The methods of a stream, keyed by name. */
+interface StreamOperations<S extends Stream<any>> {
+  [name: string]: StreamOperation<S>;
+}
+
+/**
+ * `stream` viewed as its methods by name, read and written only under the
+ * names {@link wireDeferredJoinedStream} lists.
+ */
+function operationsOf<S extends Stream<any>>(
+  stream: S,
+): S & StreamOperations<S> {
+  // SAFETY: callers index the result only with a name wireDeferredJoinedStream lists (an own method name of Stream.prototype, or run, cursor or build), each a method on the prototype chain of every Stream that returns one of Stream's member return types, and they write only such an operation under such a name.
+  return stream as S & StreamOperations<S>;
+}
 
 function materializeDeferredJoin(stream: DeferredJoinedStream) {
   const { db, meta, names, raw } = stream.deferredJoin;
@@ -106,9 +124,8 @@ function forwardingDeferredJoinOperation(
   name: string,
 ): DeferredJoinedOperation {
   return function (this: DeferredJoinedStream, ...args: any[]) {
-    // SAFETY: name comes from wireDeferredJoinedStream, which lists the own method names of Stream.prototype plus run, cursor and build, all present on any Stream, and Joined returns a Stream for the raw Stream it is given.
-    // oxlint-disable-next-line typescript/no-unsafe-return -- the method is looked up by a runtime name on a Stream, which TypeScript cannot relate to a signature; Reflect.apply and a typed lookup were tried and moved the finding to no-reflect-get, no-reflect-apply and no-unknown-returns
-    return (materializeDeferredJoin(this) as any)[name](...args);
+    const materialized = materializeDeferredJoin(this);
+    return operationsOf(materialized)[name].apply(materialized, args);
   };
 }
 
@@ -141,8 +158,7 @@ function wireDeferredJoinedStream() {
     const factory =
       DEFERRED_JOIN_OPERATION_FACTORIES.get(name) ??
       forwardingDeferredJoinOperation;
-    // SAFETY: name is a method name of Stream.prototype (or run, cursor, build), so the key is a writable data property on DeferredJoinedStream's prototype chain and assigning a function to it cannot throw; each installed operation takes the arguments of the Stream method it replaces.
-    (DeferredJoinedStream.prototype as any)[name] = factory(name);
+    operationsOf(DeferredJoinedStream.prototype)[name] = factory(name);
   }
 }
 
