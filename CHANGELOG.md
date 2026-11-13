@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.7.0
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.6.3...v0.7.0)
+
+### 💅 Refactors
+
+- **deferred-join:** Forward stream operations through one typed view ([#123](https://github.com/AntelopeJS/interface-data-api/pull/123))
+- **tables:** Type the plucked lookup side as the stream it is ([#124](https://github.com/AntelopeJS/interface-data-api/pull/124))
+- **rows:** ⚠️  Type table rows as the values a database stores ([#126](https://github.com/AntelopeJS/interface-data-api/pull/126))
+
+### 📖 Documentation
+
+- **readme:** Adopt the AntelopeJS framework README style ([#122](https://github.com/AntelopeJS/interface-data-api/pull/122))
+
+### ✅ Tests
+
+- **parse-body:** Feed type-forbidden bodies from a plain JS spec ([#125](https://github.com/AntelopeJS/interface-data-api/pull/125))
+
+#### ⚠️ Breaking Changes
+
+- **rows:** ⚠️  Type table rows as the values a database stores ([#126](https://github.com/AntelopeJS/interface-data-api/pull/126))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](http://github.com/Upd4ting))
+
 ## v0.6.3
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.6.2...v0.6.3)
