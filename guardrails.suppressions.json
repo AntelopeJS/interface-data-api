@@ -3,7 +3,7 @@
     "anti-slop/no-unsafe-dictionary-type": 1,
     "typescript/no-unsafe-return": 0
   },
-  "tsExpectError": 5,
+  "tsExpectError": 0,
   "tsIgnore": 0,
   "safety": 2,
   "config": {},
