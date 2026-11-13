@@ -30,6 +30,7 @@ import type {
   ReadableAccessFields,
   WritableAccessFields,
 } from "./internal/field-types";
+import { DEFAULT_ACTION, rebuildAccess } from "./internal/access-lists";
 import {
   listedNames,
   merge,
@@ -80,9 +81,6 @@ export enum AccessMode {
   WriteOnly = 2,
   ReadWrite = 3,
 }
-
-/** The action whose access is a field's own `mode`, overrides aside. */
-const DEFAULT_ACTION = "_default";
 
 /**
  * The access a field has in one data API action (`get`, `list`, `new`,
@@ -140,11 +138,17 @@ export class DataAPIMeta {
   public readonly endpoints: Record<string, DataControllerCallbackWithOptions> =
     {};
 
-  /** The controller class. */
-  public readonly target: Class<object>;
+  readonly #target: Class<object> | undefined;
 
-  constructor(target: Class) {
-    this.target = target;
+  /** @param target The controller class, or a prototype above it. */
+  constructor(target: DecoratorTarget) {
+    this.#target = isClass(target) ? target : undefined;
+  }
+
+  /** The controller class; throws for a prototype above it. */
+  public get target(): Class<object> {
+    if (!this.#target) throw new TypeError("No controller class.");
+    return this.#target;
   }
 
   public inherit(parent: DataAPIMeta) {
@@ -179,47 +183,18 @@ export class DataAPIMeta {
   }
 
   private recomputeAccess() {
-    for (const key of Object.keys(this.readable)) {
-      delete this.readable[key];
-    }
-    for (const key of Object.keys(this.writable)) {
-      delete this.writable[key];
-    }
-
-    const actions = new Set([
-      DEFAULT_ACTION,
-      ...Object.values(this.fields).flatMap((field) =>
-        Object.keys(field.modeOverrides ?? {}),
-      ),
-    ]);
-
-    const access = new Map<
-      string,
-      [ReadableAccessFields, WritableAccessFields]
-    >();
-    for (const action of actions) {
-      const readable: ReadableAccessFields = { getters: [], props: [] };
-      const writable: WritableAccessFields = { setters: [], props: [] };
-      this.readable[action] = readable;
-      this.writable[action] = writable;
-      access.set(action, [readable, writable]);
-    }
-
-    for (const [key, field] of Object.entries(this.fields)) {
-      for (const [action, [readable, writable]] of access) {
-        const effectiveMode = GetEffectiveMode(field, action);
-        if (!effectiveMode) {
-          continue;
-        }
-
-        if (effectiveMode & AccessMode.ReadOnly) {
-          readable[field.desc?.get ? "getters" : "props"].push([key, field]);
-        }
-        if (effectiveMode & AccessMode.WriteOnly) {
-          writable[field.desc?.set ? "setters" : "props"].push([key, field]);
-        }
-      }
-    }
+    rebuildAccess(
+      this.readable,
+      this.writable,
+      this.fields,
+      (field, action) => {
+        const mode = GetEffectiveMode(field, action) ?? 0;
+        return [
+          (mode & AccessMode.ReadOnly) !== 0,
+          (mode & AccessMode.WriteOnly) !== 0,
+        ];
+      },
+    );
   }
 
   /**
