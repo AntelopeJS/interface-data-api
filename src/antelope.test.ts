@@ -18,7 +18,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/mongodb",
-        version: "1.4.4",
+        version: "1.7.0",
       },
     },
     api: {
