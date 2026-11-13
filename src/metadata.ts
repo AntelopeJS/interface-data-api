@@ -140,11 +140,17 @@ export class DataAPIMeta {
   public readonly endpoints: Record<string, DataControllerCallbackWithOptions> =
     {};
 
-  /** The controller class. */
-  public readonly target: Class<object>;
+  readonly #target: Class<object> | undefined;
 
-  constructor(target: Class) {
-    this.target = target;
+  /** @param target The controller class, or a prototype above it. */
+  constructor(target: DecoratorTarget) {
+    this.#target = isClass(target) ? target : undefined;
+  }
+
+  /** The controller class; throws for a prototype above it. */
+  public get target(): Class<object> {
+    if (!this.#target) throw new TypeError("No controller class.");
+    return this.#target;
   }
 
   public inherit(parent: DataAPIMeta) {
