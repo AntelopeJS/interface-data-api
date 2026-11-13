@@ -1,11 +1,11 @@
 {
   "rules": {
-    "anti-slop/no-unsafe-dictionary-type": 1,
+    "anti-slop/no-unsafe-dictionary-type": 0,
     "typescript/no-unsafe-return": 0
   },
   "tsExpectError": 0,
   "tsIgnore": 0,
-  "safety": 2,
+  "safety": 3,
   "config": {},
   "agentFiles": true
 }

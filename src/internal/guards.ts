@@ -6,7 +6,7 @@ import type {
   WriteValue,
 } from "@antelopejs/interface-database/common";
 
-import type { FieldValue, FieldValues, RowFields } from "./field-types";
+import type { FieldValue, FieldValues, StoredRow } from "./field-types";
 
 /** Whether a value is a string. */
 export function isString(value: unknown): value is string {
@@ -108,6 +108,10 @@ export function isWriteValue(value: unknown): value is WriteValue {
     const current = pending.pop();
     if (current === null || STORED_PRIMITIVES.has(typeof current)) continue;
     if (!isObject(current)) return false;
+    if (current instanceof Date) continue;
+    const bigintView =
+      current instanceof BigInt64Array || current instanceof BigUint64Array;
+    if (ArrayBuffer.isView(current) && !bigintView) continue;
     if (seen.has(current)) continue;
     seen.add(current);
     for (const member of Object.values(current)) pending.push(member);
@@ -116,6 +120,6 @@ export function isWriteValue(value: unknown): value is WriteValue {
 }
 
 /** Whether every own field of a row holds a {@link WriteValue}. */
-export function isWriteDocument(row: RowFields): row is WriteDocument {
+export function isWriteDocument(row: StoredRow): row is WriteDocument {
   return Object.values(row).every(isWriteValue);
 }

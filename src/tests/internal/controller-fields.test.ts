@@ -1,6 +1,6 @@
 import assert from "node:assert";
 
-import { fieldsOf } from "../../internal/prototypes";
+import { controllerField } from "../../internal/prototypes";
 
 class Holder {
   own = "own value";
@@ -10,18 +10,23 @@ class Holder {
   }
 }
 
-describe("fieldsOf", () => {
+describe("controllerField", () => {
   it("answers own fields and inherited accessors by name", () => {
-    const fields = fieldsOf(new Holder());
+    const holder = new Holder();
 
-    assert.strictEqual(fields.own, "own value");
-    assert.strictEqual(fields.inherited, "read from own value");
-    assert.strictEqual(fields.absent, undefined);
+    assert.deepStrictEqual(
+      [
+        controllerField(holder, "own"),
+        controllerField(holder, "inherited"),
+        controllerField(holder, "absent"),
+      ],
+      [["own value"], ["read from own value"], [undefined]],
+    );
   });
 
   it("refuses a value that is not an object", () => {
     assert.throws(
-      () => fieldsOf(() => undefined),
+      () => controllerField(() => undefined, "own"),
       /A data controller must be an object/,
     );
   });

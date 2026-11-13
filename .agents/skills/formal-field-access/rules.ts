@@ -1,5 +1,5 @@
 import { Query } from "../../../src/components.ts";
-import { AccessMode, type RowFields } from "../../../src/metadata.ts";
+import { AccessMode, type StoredRow } from "../../../src/metadata.ts";
 import { type AccessorCall, type Built, defaultsOf, getterValue, usesGetter, usesSetter } from "./build.ts";
 import { type Case, type ClassDecl, classNames, DB_ONLY_KEY, type Declaration, type Op } from "./cases.ts";
 
@@ -209,7 +209,7 @@ async function checkReads({ built, instance, promises, names, log }: Observed): 
 /** One write the check ran, with what the promises expect of it. */
 interface Write {
   where: string;
-  result: RowFields;
+  result: StoredRow;
   /** The row the write starts from: the stored row, or the class defaults of the decorated fields. */
   start: Map<string, string>;
   body: Map<string, string>;

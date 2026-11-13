@@ -11,7 +11,7 @@ import type {
 } from "@antelopejs/interface-database";
 import type { TableClass } from "@antelopejs/interface-database-decorators/table";
 
-import type { ComputedFieldData, RowFields } from "../metadata";
+import type { ComputedFieldData, StoredRow } from "../metadata";
 import { isFunction, isObject, isString } from "./guards";
 
 export type TableRow = Parameters<ComputedFieldData["expr"]>[0];
@@ -20,8 +20,8 @@ export type TableRow = Parameters<ComputedFieldData["expr"]>[0];
  * The database model a controller holds under its `@ModelReference` field,
  * typed by the table rows it reads.
  */
-export type ModelInstance = InstanceType<DataModel<RowFields>> & {
-  constructor: DataModel<RowFields>;
+export type ModelInstance = InstanceType<DataModel<StoredRow>> & {
+  constructor: DataModel<StoredRow>;
 };
 
 /** Whether a value is a database model: its table, and its row conversion. */

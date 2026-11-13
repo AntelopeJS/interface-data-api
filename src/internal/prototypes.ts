@@ -3,23 +3,41 @@
 import type { Class } from "@antelopejs/interface-core/decorators";
 
 import type { DataControllerInstance } from "./controller-types";
-import type { RowFields } from "./field-types";
+import type { StoredRow } from "./field-types";
 import { isClass, isObject } from "./guards";
 
 /**
- * A controller instance read by field name: an object answers every string key,
- * with `undefined` for a field it lacks, and inherited accessors run on the
- * instance, because this is the instance itself.
+ * The field `name` of a controller, as `@ModifierKey` and `@ModelReference`
+ * name it: read as a property of the controller itself, so an own field, an
+ * injected parameter and an inherited accessor all answer, and a field the
+ * controller lacks answers `undefined`. It comes as the one argument a keyed
+ * modifier takes.
  */
-export function fieldsOf(instance: DataControllerInstance): RowFields {
-  if (!holdsFields(instance)) {
+export function controllerField(
+  controller: DataControllerInstance,
+  name: string,
+): [value: unknown] {
+  if (!isObject(controller)) {
     throw new TypeError("A data controller must be an object.");
   }
-  return instance;
+  // SAFETY: the controller is an object (checked above), so reading any string key is an ordinary property read that runs inherited accessors and answers undefined for a missing field; the assertion types the runtime name a decorator recorded as keyof object, which is never, only so TypeScript lets the controller be indexed; the never-typed value is widened to unknown by this function's declared return type, which Query.GetModel parses with isModelInstance and the keyed modifiers take as the [key: unknown] they declare.
+  return [controller[name as keyof DataControllerInstance]];
 }
 
-function holdsFields(instance: DataControllerInstance): instance is RowFields {
-  return isObject(instance);
+/**
+ * Makes `fields` the `this` the getters and setters of `target` run on: it
+ * holds the fields a route reads or writes, and inherits a copy of the
+ * controller's own fields, which inherits the prototype of `target`.
+ */
+export function controllerReceiver(
+  controller: DataControllerInstance,
+  target: Class,
+  fields: StoredRow,
+) {
+  const controllerFields = { ...controller };
+  Object.setPrototypeOf(controllerFields, prototypeOf(target));
+  Object.setPrototypeOf(fields, controllerFields);
+  return fields;
 }
 
 /** The object the instances of a class inherit from. */

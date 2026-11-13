@@ -1,7 +1,10 @@
 /** @internal @packageDocumentation */
 
 import { assert } from "@antelopejs/interface-api-util";
-import type { Constructible } from "@antelopejs/interface-database-decorators/common";
+import type {
+  Constructible,
+  PlainRow,
+} from "@antelopejs/interface-database-decorators/common";
 import type { ValueProxy } from "@antelopejs/interface-database";
 import {
   fromDatabase,
@@ -16,12 +19,36 @@ import type { Validation } from "../components";
 import type {
   DataAPIMeta,
   DataControllerInstance,
-  RowFields,
+  StoredRow,
 } from "../metadata";
-import { fieldsOf } from "./prototypes";
-import { isFieldValues, isObject } from "./guards";
+import type { StoredValue } from "./field-types";
+import { controllerField } from "./prototypes";
+import { isFieldValues, isObject, isWriteValue } from "./guards";
 
 type RequestBody = Validation.RequestBody;
+
+/**
+ * The fields `keys` of a related row, refused with 500 when one holds a value
+ * no response can.
+ */
+function relatedRow(plain: PlainRow<any>, keys: string[]) {
+  const row: StoredRow = {};
+  for (const key of keys) {
+    const value: unknown = plain[key];
+    assert(
+      isWriteValue(value),
+      500,
+      `Field '${key}' of a related row holds a bigint, a symbol or a function, which a response cannot hold`,
+    );
+    row[key] = value;
+  }
+  return row;
+}
+
+/** Whether a row value is a list, whose items are row values too. */
+function isStoredList(value: StoredValue): value is readonly StoredValue[] {
+  return Array.isArray(value);
+}
 type WrittenBody = Validation.WrittenBody;
 
 /**
@@ -48,39 +75,39 @@ export function ParseBody(body: WrittenBody): RequestBody {
 export function Lock(
   obj: DataControllerInstance,
   meta: DataAPIMeta,
-  data: RowFields,
+  data: StoredRow,
   written: string[],
 ) {
   for (const [modifier, field] of meta.modifierKeys.entries()) {
     const keyed: KeyedModifier = modifier;
-    const key = fieldsOf(obj)[field];
-    lock(data, keyed, written, key);
+    lock(data, keyed, written, ...controllerField(obj, field));
   }
 }
 
 export function Unlock(
   obj: DataControllerInstance,
   meta: DataAPIMeta,
-  dbData: RowFields,
+  dbData: StoredRow,
 ) {
   for (const [name, field] of Object.entries(meta.fields)) {
     if (field.foreign && isObject(dbData[name]) && field.foreign[1]) {
       const foreignSchema = field.foreign[1];
-      dbData[name] = Array.isArray(dbData[name])
-        ? dbData[name].map<unknown>((entry) =>
+      const related = dbData[name];
+      dbData[name] = isStoredList(related)
+        ? related.map((entry) =>
             isObject(entry) ? fromDatabase(entry, foreignSchema) : entry,
           )
-        : fromDatabase(dbData[name], field.foreign[1]);
+        : fromDatabase(related, foreignSchema);
     }
   }
   for (const [modifier, field] of meta.modifierKeys.entries()) {
     const keyed: KeyedModifier = modifier;
-    const key = fieldsOf(obj)[field];
-    unlock(dbData, keyed, undefined, key);
+    const key = controllerField(obj, field);
+    unlock(dbData, keyed, undefined, ...key);
     for (const [foreign, fieldData] of Object.entries(meta.fields)) {
       const related = dbData[foreign];
       if (fieldData.foreign && isObject(related)) {
-        unlock(related, keyed, undefined, key);
+        unlock(related, keyed, undefined, ...key);
       }
     }
   }
@@ -95,7 +122,7 @@ export function UnlockRequest<T extends {}, K extends keyof T>(
   const modifiers = Array.from(meta.modifierKeys.entries()).map(
     ([modifier, field]) => ({
       modifier,
-      args: [fieldsOf(obj)[field]],
+      args: controllerField(obj, field),
     }),
   );
   return unlockrequest<T, K>(meta.tableClass, row, field, modifiers);
@@ -120,10 +147,10 @@ export function ClearInternal(
           entry[name][0] === null ||
           isObject(entry[name][0]))
       ) {
-        const processForeign = (data: any) => {
+        const processForeign = (data: any): StoredRow | null => {
           const plain = toPlainData(data);
           if (!foreign?.[4]) {
-            return plain;
+            return relatedRow(plain, Object.keys(plain));
           }
           const targetJoined = foreign[6];
           if (targetJoined?.length) {
@@ -138,18 +165,14 @@ export function ClearInternal(
               return null;
             }
           }
-          const plainPlucked: RowFields = {};
-          for (const key of foreign[4]) {
-            const value: unknown = plain[key];
-            plainPlucked[key] = value;
-          }
-          return plainPlucked;
+          return relatedRow(plain, foreign[4]);
         };
-        entry[name] = Array.isArray(entry[name])
-          ? entry[name].map<unknown>((item) =>
+        const related = entry[name];
+        entry[name] = isStoredList(related)
+          ? related.map((item) =>
               isObject(item) ? processForeign(item) : item,
             )
-          : processForeign(entry[name]);
+          : processForeign(related);
       }
     }
   }

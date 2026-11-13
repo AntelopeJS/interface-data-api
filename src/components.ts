@@ -27,7 +27,7 @@ import {
   type FieldValidationResult,
   type FieldValidator,
   GetDataControllerMeta,
-  type RowFields,
+  type StoredRow,
 } from "./metadata";
 import * as computed from "./internal/computed";
 import { copyFilter, parseFilter } from "./internal/filters";
@@ -37,7 +37,7 @@ import { isString } from "./internal/guards";
 import * as joined from "./internal/joined";
 import * as list from "./internal/list";
 import * as properties from "./internal/properties";
-import { fieldsOf } from "./internal/prototypes";
+import { controllerField } from "./internal/prototypes";
 import { ReadProperties as readProperties } from "./internal/read-properties";
 import * as tables from "./internal/tables";
 import * as validation from "./internal/validation";
@@ -272,7 +272,7 @@ export namespace Query {
     meta: DataAPIMeta,
   ): ModelInstance {
     assert(meta.modelKey, 500, "Missing model key.");
-    const model = fieldsOf(obj)[meta.modelKey];
+    const [model] = controllerField(obj, meta.modelKey);
     assert(
       tables.isModelInstance(model),
       500,
@@ -347,7 +347,7 @@ export namespace Query {
   export async function ReadProperties(
     obj: DataControllerInstance,
     meta: DataAPIMeta,
-    dbData: RowFields,
+    dbData: StoredRow,
     action?: string,
     onlyList?: boolean,
   ) {
@@ -369,7 +369,7 @@ export namespace Query {
     meta: DataAPIMeta,
     bodyData: FieldValues,
     action?: string,
-    existingDBData?: RowFields,
+    existingDBData?: StoredRow,
   ) {
     return properties.WriteProperties(
       obj,
@@ -600,7 +600,7 @@ export namespace Validation {
   export function Lock(
     obj: DataControllerInstance,
     meta: DataAPIMeta,
-    data: RowFields,
+    data: StoredRow,
   ) {
     const written = Object.keys(
       getMetadata(data, ModifiersDynamicMetadata).floating,
@@ -611,7 +611,7 @@ export namespace Validation {
   export function Unlock(
     obj: DataControllerInstance,
     meta: DataAPIMeta,
-    dbData: RowFields,
+    dbData: StoredRow,
   ) {
     validation.Unlock(obj, meta, dbData);
   }
@@ -627,7 +627,7 @@ export namespace Validation {
 
   export function ClearInternal(
     meta: DataAPIMeta,
-    obj: RowFields | RowFields[],
+    obj: StoredRow | StoredRow[],
   ) {
     validation.ClearInternal(meta, obj);
   }
