@@ -59,6 +59,7 @@ export type {
   FieldValidationResult,
   FieldValue,
   FieldValues,
+  RowFields,
   StoredRow,
   ForeignOptions,
   FieldValidator,

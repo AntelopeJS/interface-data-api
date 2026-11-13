@@ -63,6 +63,13 @@ export interface StoredRow {
   [field: string]: StoredValue;
 }
 
+/**
+ * The name {@link StoredRow} had before 0.7.0.
+ *
+ * @deprecated Use {@link StoredRow}.
+ */
+export type RowFields = StoredRow;
+
 /** Parse outcome accepting the field value, carrying the value to write. */
 export interface FieldParseSuccess {
   success: true;
