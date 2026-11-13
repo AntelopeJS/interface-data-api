@@ -142,7 +142,9 @@ async function _createDataController(testName: string) {
       { default: 0 },
     )
     @Sortable()
-    @Filter((_context, proxy, _key, value) => proxy.eq(parseFloat(value)))
+    @Filter((_context, proxy, _key, value) =>
+      proxy.eq(parseFloat(String(value))),
+    )
     declare devices_count: number;
 
     @Listable()

@@ -125,6 +125,9 @@ This exposes `GET /tasks/get?id=`, `GET /tasks/list`, `POST /tasks/new`, `PUT /t
   filterable.
   Repeating a field's filter (`filter_age=ge:18&filter_age=lt:65`) keeps the rows passing them all;
   the route then receives a list of tuples for it (`FieldFilter`, read with `FilterValuesOf`).
+  A tuple is `FilterValue = [value: string | boolean, mode: string]`: a request sends text, and a
+  route may write a boolean (an archive filter does), which reaches the filter function, the default
+  filter and the indexed lookup unchanged. A custom filter narrows `value` before it parses text.
 - `@Joined` and `@Computed` fields are materialized in-database, so `@Sortable` and `@Filter()` work
   efficiently on them — but those decorators must still be applied explicitly. Such fields are
   forced read-only and to non-indexed sorting.
