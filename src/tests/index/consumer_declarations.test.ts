@@ -56,11 +56,12 @@ function consumerDiagnostics() {
   const fileExists = host.fileExists.bind(host);
   const readFile = host.readFile.bind(host);
   const getSourceFile = host.getSourceFile.bind(host);
-  host.fileExists = (file) => file === consumerFile || fileExists(file);
+  const isConsumer = (file: string) => path.resolve(file) === consumerFile;
+  host.fileExists = (file) => isConsumer(file) || fileExists(file);
   host.readFile = (file) =>
-    file === consumerFile ? CONSUMER_SOURCE : readFile(file);
+    isConsumer(file) ? CONSUMER_SOURCE : readFile(file);
   host.getSourceFile = (file, languageVersion, onError, shouldCreate) =>
-    file === consumerFile
+    isConsumer(file)
       ? ts.createSourceFile(file, CONSUMER_SOURCE, languageVersion)
       : getSourceFile(file, languageVersion, onError, shouldCreate);
   const program = ts.createProgram([consumerFile], options, host);
