@@ -12,7 +12,7 @@ import { ownEntry } from "./meta-records";
 
 type ProxyFilterOperator = (
   proxy: ValueProxy<unknown>,
-  value: string,
+  value: FilterValue[0],
 ) => ValueProxyOrValue<boolean>;
 
 type DefaultFilterOperators = Record<Comparison, ProxyFilterOperator>;
@@ -36,7 +36,7 @@ const DEFAULT_FILTER_OPERATORS: DefaultFilterOperators = {
  */
 function applyDefaultFilterMode(
   proxy: ValueProxy<unknown>,
-  value: string,
+  value: FilterValue[0],
   mode: FilterValue[1],
 ): ValueProxyOrValue<boolean> {
   const operator = ownEntry(DEFAULT_FILTER_OPERATORS, mode);

@@ -109,7 +109,9 @@ async function _createDataController(testName: string) {
     @Listable()
     @Access(AccessMode.ReadWrite)
     @Filter((_context, proxy, _key, value, mode) =>
-      mode === "ge" ? proxy.ge(parseFloat(value)) : proxy.lt(parseFloat(value)),
+      mode === "ge"
+        ? proxy.ge(parseFloat(String(value)))
+        : proxy.lt(parseFloat(String(value))),
     )
     declare age: number;
 

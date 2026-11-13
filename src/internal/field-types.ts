@@ -236,11 +236,13 @@ export type Comparison = "eq" | "ne" | "gt" | "ge" | "lt" | "le";
 
 /**
  * One filter of a list request: the value, and the mode to compare it with.
- * The mode is text: what the request sent, or what the route wrote. The
- * default filter refuses a mode that is not a {@link Comparison}. A custom
- * filter defines its own modes.
+ * A request sends the value as text; a route may write a boolean, as an
+ * archive filter does, and every reader hands the value to the database as
+ * it is. The mode is text: what the request sent, or what the route wrote.
+ * The default filter refuses a mode that is not a {@link Comparison}. A
+ * custom filter defines its own modes.
  */
-export type FilterValue = [value: string, mode: string];
+export type FilterValue = [value: string | boolean, mode: string];
 
 /**
  * The filters of one field in a list request: one {@link FilterValue}, or
