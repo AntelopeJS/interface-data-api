@@ -5,6 +5,8 @@
     "lib": ["ES2022"],
     "types": ["node", "mocha"],
     "esModuleInterop": true,
+    "allowJs": true,
+    "checkJs": false,
     "strict": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
@@ -17,5 +19,5 @@
       "@antelopejs/interface-data-api/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src/**/*.ts", "src/**/*.js"]
 }
