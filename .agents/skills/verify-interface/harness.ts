@@ -81,7 +81,7 @@ for (const name of [...names, "zod"]) link(name, fs.realpathSync(path.join(repo,
 `;
 
 const TSC_FLAGS = [
-  "--strict", "--skipLibCheck", "--experimentalDecorators", "--emitDecoratorMetadata", "--esModuleInterop",
+  "--strict", "--experimentalDecorators", "--emitDecoratorMetadata", "--esModuleInterop",
   "--target", "es2022", "--module", "commonjs", "--moduleResolution", "node", "--types", "node",
 ];
 
