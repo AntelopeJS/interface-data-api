@@ -117,7 +117,7 @@ export class DataAPIMeta {
   public modelKey?: string;
 
   /** Keys of the DataAPI class containing database modifier keys. */
-  public modifierKeys = new Map<typeof ContainerModifier<any>, string>();
+  public modifierKeys = new Map<Class<ContainerModifier>, string>();
 
   /** Schema name where the table is registered. */
   public schemaName!: string;
@@ -452,10 +452,7 @@ export class DataAPIMeta {
    * @param name Field name
    * @param modifierClass Modifier
    */
-  public setModifierKey(
-    name: string,
-    modifierClass: typeof ContainerModifier<any>,
-  ) {
+  public setModifierKey(name: string, modifierClass: Class<ContainerModifier>) {
     this.modifierKeys.set(modifierClass, name);
     return this;
   }
@@ -700,7 +697,7 @@ export const ModelReference = MakePropertyDecorator((target, key) => {
  * @param modifierClass Modifier
  */
 export const ModifierKey = MakePropertyDecorator(
-  (target, key, modifierClass: typeof ContainerModifier<any>) => {
+  (target, key, modifierClass: Class<ContainerModifier>) => {
     onField(target, key, (meta, name) =>
       meta.setModifierKey(name, modifierClass),
     );
