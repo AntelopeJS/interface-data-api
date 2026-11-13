@@ -78,6 +78,17 @@ function nthDeferredJoinOperation(): DeferredJoinedOperation {
   };
 }
 
+/**
+ * `cast` changes only the row type, so the wrapper answers itself and keeps
+ * its deferred joins; a `Stream` built from the wrapper would copy its raw
+ * stages and drop them.
+ */
+function castDeferredJoinOperation(): DeferredJoinedOperation {
+  return function (this: DeferredJoinedStream) {
+    return this;
+  };
+}
+
 function rawDeferredJoinOperation(): DeferredJoinedOperation {
   return function (this: DeferredJoinedStream) {
     return this.deferredJoin.raw.changes();
@@ -136,6 +147,7 @@ const DEFERRED_JOIN_OPERATION_FACTORIES = new Map<
 >([
   ["slice", pagedDeferredJoinOperation],
   ["nth", nthDeferredJoinOperation],
+  ["cast", castDeferredJoinOperation],
   ["changes", rawDeferredJoinOperation],
   ["count", () => fieldAggregateDeferredJoinOperation("count", true)],
   ["sum", () => fieldAggregateDeferredJoinOperation("sum", false)],
@@ -145,7 +157,7 @@ const DEFERRED_JOIN_OPERATION_FACTORIES = new Map<
   ["distinct", () => fieldAggregateDeferredJoinOperation("distinct", false)],
 ]);
 
-const DEFERRED_JOIN_INHERITED_OPERATIONS = new Set(["constructor", "cast"]);
+const DEFERRED_JOIN_INHERITED_OPERATIONS = new Set(["constructor"]);
 
 function wireDeferredJoinedStream() {
   const operationNames = [

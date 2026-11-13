@@ -105,8 +105,8 @@ async function _createDataController(testName: string) {
   await RegisterSchema(schemaName);
   const schema = Schema.get(schemaName);
   if (schema) {
-    await schema.instance().table(orderTableName).delete();
-    await schema.instance().table(itemTableName).delete();
+    await schema.instance().table(orderTableName).delete().run();
+    await schema.instance().table(itemTableName).delete().run();
   }
 
   const schemaInstance = getSchemaInstance(schemaName);

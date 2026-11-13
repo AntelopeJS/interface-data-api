@@ -59,11 +59,13 @@ function articles() {
 describe("Edit with the index option", () => {
   before(async () => {
     await RegisterSchema(SCHEMA);
-    await articles().insert([
-      { _id: "a1", slug: "hello", title: "Old" },
-      { _id: "hello", slug: "decoy", title: "Decoy" },
-      { _id: "a2", slug: "rename-me", title: "Before" },
-    ]);
+    await articles()
+      .insert([
+        { _id: "a1", slug: "hello", title: "Old" },
+        { _id: "hello", slug: "decoy", title: "Decoy" },
+        { _id: "a2", slug: "rename-me", title: "Before" },
+      ])
+      .run();
   });
 
   it("updates the row the index finds, not the row whose primary key is the id", async () => {
@@ -74,8 +76,10 @@ describe("Edit with the index option", () => {
     );
     expect(response.status).to.equal(200);
     expect(await response.json()).to.deep.include({ title: "New" });
-    expect(await articles().get("a1")).to.deep.include({ title: "New" });
-    expect(await articles().get("hello")).to.deep.include({ title: "Decoy" });
+    expect(await articles().get("a1").run()).to.deep.include({ title: "New" });
+    expect(await articles().get("hello").run()).to.deep.include({
+      title: "Decoy",
+    });
   });
 
   it("answers with the edited row when the edit changes the indexed field", async () => {
@@ -89,7 +93,7 @@ describe("Edit with the index option", () => {
       slug: "renamed",
       title: "After",
     });
-    expect(await articles().get("a2")).to.deep.include({
+    expect(await articles().get("a2").run()).to.deep.include({
       slug: "renamed",
       title: "After",
     });

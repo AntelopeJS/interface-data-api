@@ -94,7 +94,7 @@ async function _createFruits(testName: string) {
     declare name: string;
   }
   await RegisterSchema(schemaName);
-  await Schema.get(schemaName)?.instance().table(fruitTableName).delete();
+  await Schema.get(schemaName)?.instance().table(fruitTableName).delete().run();
   for (const fruit of fruits) {
     const response = await newRequest(testName, fruit, { locale: allLocales });
     expect(response.status).to.equal(200);

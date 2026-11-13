@@ -129,17 +129,18 @@ describe("Data API across interface instances", () => {
 });
 
 async function seed() {
-  await User.table().delete();
-  await Customer.table().delete();
-  const [ada, bea] = await User.table().insert([
-    { name: "Ada Owner" },
-    { name: "Bea Owner" },
-  ]);
-  await Customer.table().insert([
-    { name: "Ada", city: "Paris", owner: ada, ownerId: ada },
-    { name: "Bea", city: "Paris", owner: bea, ownerId: bea },
-    { name: "Cid", city: "Rome", owner: ada, ownerId: ada },
-  ]);
+  await User.table().delete().run();
+  await Customer.table().delete().run();
+  const [ada, bea] = await User.table()
+    .insert([{ name: "Ada Owner" }, { name: "Bea Owner" }])
+    .run();
+  await Customer.table()
+    .insert([
+      { name: "Ada", city: "Paris", owner: ada, ownerId: ada },
+      { name: "Bea", city: "Paris", owner: bea, ownerId: bea },
+      { name: "Cid", city: "Rome", owner: ada, ownerId: ada },
+    ])
+    .run();
 }
 
 function OtherInstanceReadsMetaTest() {

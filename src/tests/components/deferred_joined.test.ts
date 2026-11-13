@@ -170,8 +170,8 @@ async function _seedTables(): Promise<ListHarness> {
   await RegisterSchema(schemaName);
   const schema = Schema.get(schemaName);
   if (schema) {
-    await schema.instance().table(bookTableName).delete();
-    await schema.instance().table(authorTableName).delete();
+    await schema.instance().table(bookTableName).delete().run();
+    await schema.instance().table(authorTableName).delete().run();
   }
 
   const schemaInstance = getSchemaInstance(schemaName);
@@ -218,8 +218,9 @@ async function expectResolvesJoinedFieldsOnPagedTwoElementDestructure() {
 
   const page = await query
     .slice(0, 10)
-    .pluck("_internal", "title", "name", "email");
-  expect(await queryTotal).to.equal(5);
+    .pluck("_internal", "title", "name", "email")
+    .run();
+  expect(await queryTotal.run()).to.equal(5);
   expect(page).to.have.lengthOf(5);
 
   const alphaRising = page.find((book) => book.title === "Alpha Rising");
@@ -255,20 +256,20 @@ async function expectMaterializesJoinedFieldsForCallerFilter() {
 
   query = query.filter((row) => row.key("name").eq("Alice Carter"));
 
-  const matches = await query;
+  const matches = await query.run();
   expect(matches).to.have.lengthOf(2);
   for (const match of matches) {
     expect(match.name).to.equal("Alice Carter");
     expect(match.email).to.equal("alice@example.com");
   }
-  expect(await query.count()).to.equal(2);
+  expect(await query.count().run()).to.equal(2);
 }
 
 async function expectResolvesJoinedFieldsOnDirectAwait() {
   const harness = await _seedTables();
   const [query] = listAsConsumer(harness);
 
-  const rows = await query;
+  const rows = await query.run();
   expect(rows).to.have.lengthOf(5);
   const betaStories = rows.find((book) => book.title === "Beta Stories");
   expect(betaStories?.name).to.equal("Bob Stone");
@@ -279,7 +280,7 @@ async function expectResolvesJoinedFieldsOnNthDatum() {
   const harness = await _seedTables();
   const [query] = listAsConsumer(harness);
 
-  const first = await query.nth(0);
+  const first = await query.nth(0).run();
   assert.isNotNull(first);
   expect(first.title).to.be.a("string");
   expect(first).to.have.property("name");
@@ -291,7 +292,7 @@ async function expectResolvesJoinedFieldsOnNthDatum() {
   expect(internalKeys).to.deep.equal([]);
   expect(first.authorId).to.be.a("string");
 
-  const second = await query.nth(1);
+  const second = await query.nth(1).run();
   assert.isNotNull(second);
   expect(second.title).to.not.equal(first.title);
 }
@@ -300,7 +301,7 @@ async function expectOrdersByJoinedFieldOnCallerSort() {
   const harness = await _seedTables();
   const [query] = listAsConsumer(harness);
 
-  const rows = await query.orderBy("name", "desc");
+  const rows = await query.orderBy("name", "desc").run();
   expect(rows).to.have.lengthOf(5);
   const names = rows.map((book) => book.name).filter((name) => name !== null);
   expect(names).to.deep.equal([...names].sort().reverse());
@@ -321,7 +322,7 @@ async function expectMaterializesJoinedGroupOnListSort() {
   );
 
   expect(deferredJoined.size).to.equal(0);
-  const rows = await query.cast<BookListed>().slice(0, 5);
+  const rows = await query.cast<BookListed>().slice(0, 5).run();
   const gammaTales = rows.find((book) => book.title === "Gamma Tales");
   expect(gammaTales?.name).to.equal("Carol Wilde");
   expect(gammaTales?.email).to.equal("carol@example.com");
@@ -362,7 +363,7 @@ async function expectStillPagesLookupsAfterCast() {
     pageStages.indexOf("slice"),
   );
 
-  const page = await query.cast<BookListed>().slice(0, 10);
+  const page = await query.cast<BookListed>().slice(0, 10).run();
   const alphaRising = page.find((book) => book.title === "Alpha Rising");
   expect(alphaRising?.name).to.equal("Alice Carter");
 }
@@ -371,7 +372,7 @@ async function expectMaterializesJoinedFieldsWhenEmbedded() {
   const harness = await _seedTables();
   const [query] = listAsConsumer(harness);
 
-  const unioned = await harness.model.table.union(query);
+  const unioned = await harness.model.table.union(query).run();
   expect(unioned).to.have.lengthOf(10);
   const withJoined = unioned.filter((row) => "name" in row);
   expect(withJoined).to.have.lengthOf(5);
@@ -430,9 +431,9 @@ async function expectExposesDeferredSetOnDemand() {
   );
 
   expect(Array.from(deferredJoined).sort()).to.deep.equal(["email", "name"]);
-  expect(await rawTotal).to.equal(5);
+  expect(await rawTotal.run()).to.equal(5);
 
-  const rawRows = await rawQuery.slice(0, 5);
+  const rawRows = await rawQuery.slice(0, 5).run();
   expect(rawRows).to.have.lengthOf(5);
   for (const row of rawRows) {
     expect(row).to.not.have.property("name");

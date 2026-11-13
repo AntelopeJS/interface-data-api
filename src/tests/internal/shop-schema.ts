@@ -311,10 +311,10 @@ export async function initializeDatabase() {
 export async function cleanTables() {
   const db = getSchemaInstance(schemaName);
   await Promise.all([
-    db.table(customerTableName).delete(),
-    db.table(productTableName).delete(),
-    db.table(orderTableName).delete(),
-    db.table(orderItemTableName).delete(),
+    db.table(customerTableName).delete().run(),
+    db.table(productTableName).delete().run(),
+    db.table(orderTableName).delete().run(),
+    db.table(orderItemTableName).delete().run(),
   ]);
 }
 

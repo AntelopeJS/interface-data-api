@@ -173,7 +173,7 @@ export namespace DefaultRoutes {
       query = Query.Foreign(model.database, meta, query);
     }
 
-    const dbResult = model.constructor.fromDatabase(await query);
+    const dbResult = model.constructor.fromDatabase(await query.run());
     assert(dbResult, 404, "Not Found");
     Validation.Unlock(controller, meta, dbResult);
     if (guard && reqCtx) await guard.call(controller, reqCtx, dbResult, params);
@@ -242,7 +242,10 @@ export namespace DefaultRoutes {
       deferredJoined,
     });
 
-    const [dbResult, dbTotal] = await Promise.all([queryPaged, queryTotal]);
+    const [dbResult, dbTotal] = await Promise.all([
+      queryPaged.run(),
+      queryTotal.run(),
+    ]);
 
     const results = await Promise.all(
       dbResult.map((entry) => {
@@ -284,7 +287,7 @@ export namespace DefaultRoutes {
 
     const model = Query.GetModel(this, meta);
     triggerEvent(dbData, "insert");
-    const [id] = await model.table.insert(writtenRow(dbData));
+    const [id] = await model.table.insert(writtenRow(dbData)).run();
 
     const created = await readRow(this, meta, { params: { id } });
     return { _id: id, ...created };
@@ -306,7 +309,7 @@ export namespace DefaultRoutes {
 
     const model = Query.GetModel(this, meta);
 
-    const stored = await Query.Get(model.table, params.id, params.index);
+    const stored = await Query.Get(model.table, params.id, params.index).run();
     assert(stored, 404, "Not Found");
     const { _id: primaryKey } = stored;
     assert(isString(primaryKey), 500, "Stored row has no primary key");
@@ -321,7 +324,7 @@ export namespace DefaultRoutes {
     Validation.Lock(this, meta, dbData);
 
     triggerEvent(dbData, "update");
-    await model.table.get(primaryKey).update(writtenRow(dbData));
+    await model.table.get(primaryKey).update(writtenRow(dbData)).run();
 
     return readRow(this, meta, { params: { id: primaryKey } });
   }
@@ -337,7 +340,7 @@ export namespace DefaultRoutes {
 
     const query = Query.Delete(model.table, params.id);
 
-    const dbResult = await query;
+    const dbResult = await query.run();
     return dbResult;
   }
 

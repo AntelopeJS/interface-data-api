@@ -53,7 +53,7 @@ async function seedPages() {
   await RegisterSchema(schemaName);
   const schema = Schema.get(schemaName);
   if (schema) {
-    await schema.instance().table(pageTableName).delete();
+    await schema.instance().table(pageTableName).delete().run();
   }
   await new PageModel(getSchemaInstance(schemaName)).insert([
     { title: "alpha", url: "http://example.com" },

@@ -84,7 +84,7 @@ describe("Field Validator parsed value", () => {
 async function _dropEventTable() {
   const schema = Schema.get(schemaName);
   if (schema) {
-    await schema.instance().table(eventTableName).delete();
+    await schema.instance().table(eventTableName).delete().run();
   }
 }
 

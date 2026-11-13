@@ -75,7 +75,7 @@ async function _createDataController(testName: string) {
     }
   }
   await RegisterSchema(schemaName);
-  await counters().delete();
+  await counters().delete().run();
 }
 
 async function expectRefusesNewBigint() {
@@ -87,17 +87,17 @@ async function expectRefusesNewBigint() {
   });
 
   expect(response.status).to.equal(500);
-  expect(await counters().count()).to.equal(0);
+  expect(await counters().count().run()).to.equal(0);
 }
 
 async function expectRefusesEditedBigint() {
   await _createDataController(getFunctionName());
-  const [id] = await counters().insert({ name: counterName });
+  const [id] = await counters().insert({ name: counterName }).run();
 
   const response = await editRequest(getFunctionName(), { count: 3 }, { id });
 
   expect(response.status).to.equal(500);
-  const stored: unknown = await counters().get(id);
+  const stored: unknown = await counters().get(id).run();
   expect(stored).to.include({ name: counterName });
   expect(stored).to.not.have.property("count");
 }
