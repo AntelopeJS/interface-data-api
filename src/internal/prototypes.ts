@@ -7,31 +7,21 @@ import type { StoredRow } from "./field-types";
 import { isClass, isObject } from "./guards";
 
 /**
- * A controller read by field name, as `@ModifierKey` and `@ModelReference`
- * name its fields: an own field, an injected parameter or an inherited
- * accessor, whatever the controller class declares there.
+ * The field `name` of a controller, as `@ModifierKey` and `@ModelReference`
+ * name it: read as a property of the controller itself, so an own field, an
+ * injected parameter and an inherited accessor all answer, and a field the
+ * controller lacks answers `undefined`. It comes as the one argument a keyed
+ * modifier takes.
  */
-interface ControllerFields {
-  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- a controller field named at runtime by a decorator holds whatever the controller class declares there (an injected parameter, a model, an inherited accessor's result), and each reader parses it before use
-  [field: string]: unknown;
-}
-
-/**
- * A controller instance read by field name: an object answers every string key,
- * with `undefined` for a field it lacks, and inherited accessors run on the
- * instance, because this is the instance itself.
- */
-export function fieldsOf(instance: DataControllerInstance): ControllerFields {
-  if (!holdsFields(instance)) {
+export function controllerField(
+  controller: DataControllerInstance,
+  name: string,
+): [value: unknown] {
+  if (!isObject(controller)) {
     throw new TypeError("A data controller must be an object.");
   }
-  return instance;
-}
-
-function holdsFields(
-  instance: DataControllerInstance,
-): instance is ControllerFields {
-  return isObject(instance);
+  // SAFETY: the controller is an object (checked above), so reading any string key is an ordinary property read that runs inherited accessors and answers undefined for a missing field; the assertion only lets TypeScript index the controller with the runtime name a decorator recorded, and the value leaves typed unknown, which Query.GetModel parses with isModelInstance and the keyed modifiers take as the [key: unknown] they declare.
+  return [controller[name as keyof DataControllerInstance]];
 }
 
 /**

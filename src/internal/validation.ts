@@ -22,7 +22,7 @@ import type {
   StoredRow,
 } from "../metadata";
 import type { StoredValue } from "./field-types";
-import { fieldsOf } from "./prototypes";
+import { controllerField } from "./prototypes";
 import { isFieldValues, isObject, isWriteValue } from "./guards";
 
 type RequestBody = Validation.RequestBody;
@@ -80,8 +80,7 @@ export function Lock(
 ) {
   for (const [modifier, field] of meta.modifierKeys.entries()) {
     const keyed: KeyedModifier = modifier;
-    const key = fieldsOf(obj)[field];
-    lock(data, keyed, written, key);
+    lock(data, keyed, written, ...controllerField(obj, field));
   }
 }
 
@@ -103,12 +102,12 @@ export function Unlock(
   }
   for (const [modifier, field] of meta.modifierKeys.entries()) {
     const keyed: KeyedModifier = modifier;
-    const key = fieldsOf(obj)[field];
-    unlock(dbData, keyed, undefined, key);
+    const key = controllerField(obj, field);
+    unlock(dbData, keyed, undefined, ...key);
     for (const [foreign, fieldData] of Object.entries(meta.fields)) {
       const related = dbData[foreign];
       if (fieldData.foreign && isObject(related)) {
-        unlock(related, keyed, undefined, key);
+        unlock(related, keyed, undefined, ...key);
       }
     }
   }
@@ -123,7 +122,7 @@ export function UnlockRequest<T extends {}, K extends keyof T>(
   const modifiers = Array.from(meta.modifierKeys.entries()).map(
     ([modifier, field]) => ({
       modifier,
-      args: [fieldsOf(obj)[field]],
+      args: controllerField(obj, field),
     }),
   );
   return unlockrequest<T, K>(meta.tableClass, row, field, modifiers);

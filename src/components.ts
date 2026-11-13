@@ -37,7 +37,7 @@ import { isString } from "./internal/guards";
 import * as joined from "./internal/joined";
 import * as list from "./internal/list";
 import * as properties from "./internal/properties";
-import { fieldsOf } from "./internal/prototypes";
+import { controllerField } from "./internal/prototypes";
 import { ReadProperties as readProperties } from "./internal/read-properties";
 import * as tables from "./internal/tables";
 import * as validation from "./internal/validation";
@@ -272,7 +272,7 @@ export namespace Query {
     meta: DataAPIMeta,
   ): ModelInstance {
     assert(meta.modelKey, 500, "Missing model key.");
-    const model = fieldsOf(obj)[meta.modelKey];
+    const [model] = controllerField(obj, meta.modelKey);
     assert(
       tables.isModelInstance(model),
       500,
