@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.7.1
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.7.0...v0.7.1)
+
+### 🩹 Fixes
+
+- **metadata:** Build DataAPIMeta from a DecoratorTarget for interface-core 0.5 ([#128](https://github.com/AntelopeJS/interface-data-api/pull/128))
+
+### 📖 Documentation
+
+- **changelog:** Add the v0.7.0 upgrade notes ([#127](https://github.com/AntelopeJS/interface-data-api/pull/127))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](http://github.com/Upd4ting))
+
 ## v0.7.0
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.6.3...v0.7.0)
