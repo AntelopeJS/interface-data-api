@@ -8,6 +8,7 @@ import type {
   ValueProxy,
   ValueProxyOrValue,
 } from "@antelopejs/interface-database";
+import type { WriteValue } from "@antelopejs/interface-database/common";
 import type { Table } from "@antelopejs/interface-database-decorators";
 
 import type { AccessMode, DataAPIMeta } from "../metadata";
@@ -43,13 +44,23 @@ export interface FieldValues {
 }
 
 /**
- * The fields of a table row a route holds, by name. The table class decides
- * what they hold: a relation holds a row instance, and a getter's result is
- * what the getter returned. Read a field through a guard.
+ * A value a table row holds: one a database stores, or the row instance a
+ * relation resolves to.
  */
-export interface RowFields {
-  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- a table row holds whatever its table class declares (relation instances, getter results), and a route reads each field through a guard, so no schema-derived value type exists for the fields of a schemaless store row
-  [field: string]: unknown;
+export type StoredValue =
+  | WriteValue
+  | Table
+  | StoredRow
+  | readonly StoredValue[];
+
+/**
+ * The fields of a table row a route holds, by name: the stored values, the
+ * relations resolved to row instances, and the results of the getters a read
+ * selects. A getter, a controller default or a setter that leaves a `bigint`,
+ * a `symbol` or a function in a row is refused with 500.
+ */
+export interface StoredRow {
+  [field: string]: StoredValue;
 }
 
 /** Parse outcome accepting the field value, carrying the value to write. */

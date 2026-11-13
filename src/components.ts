@@ -27,7 +27,7 @@ import {
   type FieldValidationResult,
   type FieldValidator,
   GetDataControllerMeta,
-  type RowFields,
+  type StoredRow,
 } from "./metadata";
 import * as computed from "./internal/computed";
 import { copyFilter, parseFilter } from "./internal/filters";
@@ -347,7 +347,7 @@ export namespace Query {
   export async function ReadProperties(
     obj: DataControllerInstance,
     meta: DataAPIMeta,
-    dbData: RowFields,
+    dbData: StoredRow,
     action?: string,
     onlyList?: boolean,
   ) {
@@ -369,7 +369,7 @@ export namespace Query {
     meta: DataAPIMeta,
     bodyData: FieldValues,
     action?: string,
-    existingDBData?: RowFields,
+    existingDBData?: StoredRow,
   ) {
     return properties.WriteProperties(
       obj,
@@ -600,7 +600,7 @@ export namespace Validation {
   export function Lock(
     obj: DataControllerInstance,
     meta: DataAPIMeta,
-    data: RowFields,
+    data: StoredRow,
   ) {
     const written = Object.keys(
       getMetadata(data, ModifiersDynamicMetadata).floating,
@@ -611,7 +611,7 @@ export namespace Validation {
   export function Unlock(
     obj: DataControllerInstance,
     meta: DataAPIMeta,
-    dbData: RowFields,
+    dbData: StoredRow,
   ) {
     validation.Unlock(obj, meta, dbData);
   }
@@ -627,7 +627,7 @@ export namespace Validation {
 
   export function ClearInternal(
     meta: DataAPIMeta,
-    obj: RowFields | RowFields[],
+    obj: StoredRow | StoredRow[],
   ) {
     validation.ClearInternal(meta, obj);
   }

@@ -1,14 +1,17 @@
 /** @internal @packageDocumentation */
 
+import { assert } from "@antelopejs/interface-api-util";
+
 import type { Query } from "../components";
 import type {
   DataAPIMeta,
   DataControllerInstance,
-  RowFields,
+  StoredRow,
   WritableAccessFields,
 } from "../metadata";
+import { isWriteValue } from "./guards";
 import { ownEntry } from "./meta-records";
-import { fieldsOf, prototypeOf } from "./prototypes";
+import { controllerReceiver, prototypeOf } from "./prototypes";
 
 function writableInBody(
   writable: WritableAccessFields,
@@ -20,20 +23,43 @@ function writableInBody(
   };
 }
 
+/**
+ * Writes the defaults of the controller class's fields into `fields` and
+ * `dbData`, and answers the defaults of its other members, which reach the
+ * setters unread.
+ */
 function writeTargetDefaults(
-  instance: RowFields,
+  fields: StoredRow,
   meta: DataAPIMeta,
-  dbData: RowFields,
+  dbData: StoredRow,
 ) {
   const defaults: [string, unknown][] = Object.entries(new meta.target());
+  const others: [string, unknown][] = [];
   for (const [key, value] of defaults) {
-    if (value !== undefined) {
-      instance[key] = value;
-      const field = ownEntry(meta.fields, key);
-      if (field) {
-        dbData[field.dbName || key] = value;
-      }
+    if (value === undefined) continue;
+    const field = ownEntry(meta.fields, key);
+    if (!field) {
+      others.push([key, value]);
+      continue;
     }
+    assert(
+      isWriteValue(value),
+      500,
+      `The default of field '${key}' is a bigint, a symbol or a function, which no database stores`,
+    );
+    fields[key] = value;
+    dbData[field.dbName || key] = value;
+  }
+  return Object.fromEntries(others);
+}
+
+function refuseUnstoredValues(dbData: StoredRow) {
+  for (const [key, value] of Object.entries(dbData)) {
+    assert(
+      isWriteValue(value),
+      500,
+      `A setter wrote a bigint, a symbol or a function into field '${key}', which no database stores`,
+    );
   }
 }
 
@@ -49,21 +75,26 @@ export function WriteProperties(
   const writable = existingDBData
     ? writableInBody(actionWritable, bodyData)
     : actionWritable;
-  const instance = fieldsOf({ ...obj });
-  const dbData: RowFields = existingDBData || {};
+  const fields: StoredRow = {};
+  const dbData: StoredRow = existingDBData || {};
   Object.setPrototypeOf(dbData, prototypeOf(meta.tableClass));
-  if (!existingDBData) {
-    writeTargetDefaults(instance, meta, dbData);
-  }
+  const otherDefaults = existingDBData
+    ? {}
+    : writeTargetDefaults(fields, meta, dbData);
   for (const [key, field] of writable.props) {
     const value = ownEntry(bodyData, key);
-    instance[key] = value;
+    fields[key] = value;
     dbData[field.dbName || key] = value;
   }
-  instance.table = dbData;
-  Object.setPrototypeOf(instance, prototypeOf(meta.target));
+  fields.table = dbData;
+  const instance = controllerReceiver(
+    { ...obj, ...otherDefaults },
+    meta.target,
+    fields,
+  );
   for (const [key, field] of writable.setters) {
     field.desc?.set?.apply(instance, [ownEntry(bodyData, key)]);
   }
+  refuseUnstoredValues(dbData);
   return dbData;
 }

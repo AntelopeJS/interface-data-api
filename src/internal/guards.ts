@@ -6,7 +6,7 @@ import type {
   WriteValue,
 } from "@antelopejs/interface-database/common";
 
-import type { FieldValue, FieldValues, RowFields } from "./field-types";
+import type { FieldValue, FieldValues, StoredRow } from "./field-types";
 
 /** Whether a value is a string. */
 export function isString(value: unknown): value is string {
@@ -116,6 +116,6 @@ export function isWriteValue(value: unknown): value is WriteValue {
 }
 
 /** Whether every own field of a row holds a {@link WriteValue}. */
-export function isWriteDocument(row: RowFields): row is WriteDocument {
+export function isWriteDocument(row: StoredRow): row is WriteDocument {
   return Object.values(row).every(isWriteValue);
 }

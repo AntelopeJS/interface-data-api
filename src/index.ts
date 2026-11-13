@@ -35,7 +35,7 @@ import {
   type DataControllerInstance,
   type ExtractDefCallbacks,
   GetDataControllerMeta,
-  type RowFields,
+  type StoredRow,
 } from "./metadata";
 
 export {
@@ -127,7 +127,7 @@ export const RegisterDataController =
   };
 
 /** The row a route writes, refused before the write when a field holds a value no database stores. */
-function writtenRow(row: RowFields): WriteDocument {
+function writtenRow(row: StoredRow): WriteDocument {
   if (isWriteDocument(row)) {
     return row;
   }
@@ -143,7 +143,7 @@ export namespace DefaultRoutes {
   export type GetGuard = (
     this: DataControllerInstance,
     ctx: RequestContext,
-    current: RowFields,
+    current: StoredRow,
     params: Parameters.GetParameters,
   ) => void | Promise<void>;
 
@@ -349,7 +349,7 @@ export namespace DefaultRoutes {
 
   export const Get: DataControllerCallback<
     Parameters.GetParameters,
-    RowFields,
+    StoredRow,
     [RequestContext, Parameters.GetParameters]
   > = {
     func: getRow,
@@ -368,7 +368,7 @@ export namespace DefaultRoutes {
     guard: GetGuard,
   ): DataControllerCallback<
     Parameters.GetParameters,
-    RowFields,
+    StoredRow,
     [RequestContext, Parameters.GetParameters]
   > {
     return {
