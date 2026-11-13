@@ -20,7 +20,7 @@ export function controllerField(
   if (!isObject(controller)) {
     throw new TypeError("A data controller must be an object.");
   }
-  // SAFETY: the controller is an object (checked above), so reading any string key is an ordinary property read that runs inherited accessors and answers undefined for a missing field; the assertion only lets TypeScript index the controller with the runtime name a decorator recorded, and the value leaves typed unknown, which Query.GetModel parses with isModelInstance and the keyed modifiers take as the [key: unknown] they declare.
+  // SAFETY: the controller is an object (checked above), so reading any string key is an ordinary property read that runs inherited accessors and answers undefined for a missing field; the assertion types the runtime name a decorator recorded as keyof object, which is never, only so TypeScript lets the controller be indexed; the never-typed value is widened to unknown by this function's declared return type, which Query.GetModel parses with isModelInstance and the keyed modifiers take as the [key: unknown] they declare.
   return [controller[name as keyof DataControllerInstance]];
 }
 

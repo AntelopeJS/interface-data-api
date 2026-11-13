@@ -24,9 +24,8 @@ function writableInBody(
 }
 
 /**
- * Writes the defaults of the controller class's fields into `fields` and
- * `dbData`, and answers the defaults of its other members, which reach the
- * setters unread.
+ * Writes the defaults the controller class declares for its decorated fields
+ * into `fields` and `dbData`.
  */
 function writeTargetDefaults(
   fields: StoredRow,
@@ -34,14 +33,9 @@ function writeTargetDefaults(
   dbData: StoredRow,
 ) {
   const defaults: [string, unknown][] = Object.entries(new meta.target());
-  const others: [string, unknown][] = [];
   for (const [key, value] of defaults) {
-    if (value === undefined) continue;
     const field = ownEntry(meta.fields, key);
-    if (!field) {
-      others.push([key, value]);
-      continue;
-    }
+    if (value === undefined || !field) continue;
     assert(
       isWriteValue(value),
       500,
@@ -50,7 +44,6 @@ function writeTargetDefaults(
     fields[key] = value;
     dbData[field.dbName || key] = value;
   }
-  return Object.fromEntries(others);
 }
 
 function refuseUnstoredValues(dbData: StoredRow) {
@@ -78,20 +71,16 @@ export function WriteProperties(
   const fields: StoredRow = {};
   const dbData: StoredRow = existingDBData || {};
   Object.setPrototypeOf(dbData, prototypeOf(meta.tableClass));
-  const otherDefaults = existingDBData
-    ? {}
-    : writeTargetDefaults(fields, meta, dbData);
+  if (!existingDBData) {
+    writeTargetDefaults(fields, meta, dbData);
+  }
   for (const [key, field] of writable.props) {
     const value = ownEntry(bodyData, key);
     fields[key] = value;
     dbData[field.dbName || key] = value;
   }
   fields.table = dbData;
-  const instance = controllerReceiver(
-    { ...obj, ...otherDefaults },
-    meta.target,
-    fields,
-  );
+  const instance = controllerReceiver(obj, meta.target, fields);
   for (const [key, field] of writable.setters) {
     field.desc?.set?.apply(instance, [ownEntry(bodyData, key)]);
   }

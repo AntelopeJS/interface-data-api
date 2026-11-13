@@ -40,6 +40,11 @@ class Stamped {
   stamp = () => "now";
 }
 
+class Hooked {
+  onSave = () => "saved";
+  title = "draft";
+}
+
 class Counted {
   declare table: { count?: bigint };
 
@@ -94,6 +99,15 @@ describe("A row value no database stores", () => {
     ).to.equal(500);
   });
 
+  it("writes a field default beside a member default that is a function", async () => {
+    const meta = metaOf(Hooked);
+    meta.setMode("title", AccessMode.ReadOnly);
+
+    expect(await Query.WriteProperties(new Hooked(), meta, {})).to.eql({
+      title: "draft",
+    });
+  });
+
   it("refuses a setter that writes a bigint into the row", async () => {
     const meta = metaOf(Counted);
     meta
@@ -113,6 +127,20 @@ describe("A row value no database stores", () => {
   it("refuses a related row that holds a bigint", async () => {
     const meta = metaOf(Stamped);
     meta.setForeign("owner", "stored-row-owners");
+
+    expect(
+      await statusOf(() =>
+        Validation.ClearInternal(meta, { owner: new Owner() }),
+      ),
+    ).to.equal(500);
+  });
+
+  it("refuses a plucked related row that holds a bigint", async () => {
+    const meta = metaOf(Stamped);
+    meta.setForeign("owner", "stored-row-owners", undefined, undefined, [
+      "name",
+      "count",
+    ]);
 
     expect(
       await statusOf(() =>

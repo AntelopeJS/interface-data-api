@@ -108,6 +108,10 @@ export function isWriteValue(value: unknown): value is WriteValue {
     const current = pending.pop();
     if (current === null || STORED_PRIMITIVES.has(typeof current)) continue;
     if (!isObject(current)) return false;
+    if (current instanceof Date) continue;
+    const bigintView =
+      current instanceof BigInt64Array || current instanceof BigUint64Array;
+    if (ArrayBuffer.isView(current) && !bigintView) continue;
     if (seen.has(current)) continue;
     seen.add(current);
     for (const member of Object.values(current)) pending.push(member);
