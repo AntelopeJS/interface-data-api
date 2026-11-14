@@ -1,5 +1,42 @@
 # Changelog
 
+## v0.8.0
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.7.1...v0.8.0)
+
+### 🩹 Fixes
+
+- **metadata:** Declare modifier classes without type arguments for decorators 0.5 ([#129](https://github.com/AntelopeJS/interface-data-api/pull/129))
+- **metadata:** Keep RowFields as a deprecated alias of StoredRow ([#131](https://github.com/AntelopeJS/interface-data-api/pull/131))
+- **routes:** Run every database query with .run() for interface-database 0.4 ([#133](https://github.com/AntelopeJS/interface-data-api/pull/133))
+- **filters:** ⚠️  Type a filter value as string or boolean ([#134](https://github.com/AntelopeJS/interface-data-api/pull/134))
+
+### 💅 Refactors
+
+- **metadata:** ⚠️  Remove the RowFields alias of StoredRow ([#135](https://github.com/AntelopeJS/interface-data-api/pull/135))
+
+### 📦 Build
+
+- **deps:** ⚠️  Cap @antelopejs ranges below the next minor on tooling-configs 0.6.0 ([#136](https://github.com/AntelopeJS/interface-data-api/pull/136))
+
+### ✅ Tests
+
+- **verify:** Type-check the consumer shop with library checks on ([#130](https://github.com/AntelopeJS/interface-data-api/pull/130))
+
+### 🤖 CI
+
+- Run the checks on Windows beside Linux ([#132](https://github.com/AntelopeJS/interface-data-api/pull/132))
+
+#### ⚠️ Breaking Changes
+
+- **filters:** ⚠️  Type a filter value as string or boolean ([#134](https://github.com/AntelopeJS/interface-data-api/pull/134))
+- **metadata:** ⚠️  Remove the RowFields alias of StoredRow ([#135](https://github.com/AntelopeJS/interface-data-api/pull/135))
+- **deps:** ⚠️  Cap @antelopejs ranges below the next minor on tooling-configs 0.6.0 ([#136](https://github.com/AntelopeJS/interface-data-api/pull/136))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](http://github.com/Upd4ting))
+
 ## v0.7.1
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.7.0...v0.7.1)
