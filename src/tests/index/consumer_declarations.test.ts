@@ -11,7 +11,7 @@ import { Table } from "@antelopejs/interface-database-decorators";
 import { LocalizationModifier } from "@antelopejs/interface-database-decorators/modifiers/localization";
 import { DataController, DefaultRoutes, RegisterDataController } from "@antelopejs/interface-data-api";
 import { Query, Validation } from "@antelopejs/interface-data-api/components";
-import { Access, AccessMode, ModifierKey, type RowFields, type StoredRow } from "@antelopejs/interface-data-api/metadata";
+import { Access, AccessMode, ModifierKey, type StoredRow } from "@antelopejs/interface-data-api/metadata";
 
 class Article extends Table {
   declare title: string;
@@ -29,8 +29,7 @@ export class ArticleAPI extends DataController(Article, DefaultRoutes.All, Contr
 export const read: typeof Query.ReadProperties = Query.ReadProperties;
 export const clear: typeof Validation.ClearInternal = Validation.ClearInternal;
 export const row: StoredRow = { title: "a" };
-export const legacyRow: RowFields = row;
-export const legacyGet: typeof DefaultRoutes.Get extends { func: (...args: never[]) => Promise<RowFields> | RowFields } ? true : false = true;
+export const get: typeof DefaultRoutes.Get extends { func: (...args: never[]) => Promise<StoredRow> | StoredRow } ? true : false = true;
 `;
 
 /** The diagnostics of a module that imports this package's built declarations, library declarations checked too. */
