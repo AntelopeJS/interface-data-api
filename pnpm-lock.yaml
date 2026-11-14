@@ -10,10 +10,10 @@ importers:
     devDependencies:
       '@antelopejs/api':
         specifier: ~1.7.0
-        version: 1.7.0(@antelopejs/core@1.22.0)
+        version: 1.7.0(@antelopejs/core@1.23.0)
       '@antelopejs/core':
-        specifier: ~1.22.0
-        version: 1.22.0
+        specifier: ~1.23.0
+        version: 1.23.0
       '@antelopejs/interface-api':
         specifier: '>=0.3.0 <0.4.0'
         version: 0.3.2(@antelopejs/interface-core@0.5.1)
@@ -94,8 +94,8 @@ packages:
       '@antelopejs/core':
         optional: true
 
-  '@antelopejs/core@1.22.0':
-    resolution: {integrity: sha512-Fsq2dGO6xZpypD9nrXxhy8WOMnZB8a9Oc+hysH+chG101GFnxUb49aFjc5LhkKOhcW/xQTOa2JBQMIOVLCB3IQ==}
+  '@antelopejs/core@1.23.0':
+    resolution: {integrity: sha512-RZvKjGqY8UntJxBNXtoYSSQwQxvM+WUgWfwB/YbQVk7K7GFugDCj3zyoLWmWyQDg48lwNbfrLDAMGvQ4OFy1Jg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
 
@@ -2780,7 +2780,7 @@ packages:
 
 snapshots:
 
-  '@antelopejs/api@1.7.0(@antelopejs/core@1.22.0)':
+  '@antelopejs/api@1.7.0(@antelopejs/core@1.23.0)':
     dependencies:
       '@antelopejs/interface-api': 0.3.2(@antelopejs/interface-core@0.5.1)
       '@antelopejs/interface-api-util': 0.3.0(@antelopejs/interface-api@0.3.2(@antelopejs/interface-core@0.5.1))(@antelopejs/interface-core@0.5.1)
@@ -2788,12 +2788,12 @@ snapshots:
       reflect-metadata: 0.2.2
       ws: 8.22.1
     optionalDependencies:
-      '@antelopejs/core': 1.22.0
+      '@antelopejs/core': 1.23.0
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@antelopejs/core@1.22.0':
+  '@antelopejs/core@1.23.0':
     dependencies:
       '@antelopejs/interface-core': 0.5.1
       '@clack/prompts': 1.8.1
@@ -2805,7 +2805,7 @@ snapshots:
       picocolors: 1.1.1
       proper-lockfile: 4.1.2
       reflect-metadata: 0.2.2
-      semver: 7.7.4
+      semver: 7.8.6
       typescript: 5.9.3
 
   '@antelopejs/interface-api-util@0.3.0(@antelopejs/interface-api@0.3.2(@antelopejs/interface-core@0.5.1))(@antelopejs/interface-core@0.5.1)':
