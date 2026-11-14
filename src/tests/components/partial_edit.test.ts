@@ -137,7 +137,7 @@ async function _createDataController(
 
     @Parameter("locale", "query")
     @ModifierKey(LocalizationModifier)
-    declare locale: string;
+    declare locale: string | true | undefined;
 
     declare _id: string;
 
