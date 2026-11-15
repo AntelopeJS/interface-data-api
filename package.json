@@ -22,8 +22,7 @@
   "files": [
     "dist",
     "docs",
-    "skills",
-    "!dist/tests/internal/http.d.ts"
+    "skills"
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
