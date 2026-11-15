@@ -71,12 +71,12 @@
     "suppressions:update": "antelopejs-suppressions --update"
   },
   "devDependencies": {
-    "@antelopejs/api": "~1.7.0",
-    "@antelopejs/core": "~1.23.0",
+    "@antelopejs/api": "~1.7.5",
+    "@antelopejs/core": "~1.24.0",
     "@antelopejs/interface-api": ">=0.3.0 <0.4.0",
     "@antelopejs/interface-api-util": "^0.3.0",
     "@antelopejs/interface-core": "^0.5.1",
-    "@antelopejs/interface-database": "^0.4.0",
+    "@antelopejs/interface-database": ">=0.4.1 <0.5.0",
     "@antelopejs/interface-database-decorators": "^0.5.2",
     "@antelopejs/tooling-configs": ">=0.6.0 <0.7.0",
     "@types/chai": "^4.3.20",
@@ -101,7 +101,7 @@
     "@antelopejs/interface-api": ">=0.3.0 <0.4.0",
     "@antelopejs/interface-api-util": ">=0.3.0 <0.4.0",
     "@antelopejs/interface-core": ">=0.5.1 <0.6.0",
-    "@antelopejs/interface-database": ">=0.4.0 <0.5.0",
+    "@antelopejs/interface-database": ">=0.4.1 <0.5.0",
     "@antelopejs/interface-database-decorators": ">=0.5.0 <0.6.0"
   },
   "packageManager": "pnpm@10.33.0",
