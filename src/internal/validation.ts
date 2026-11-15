@@ -106,8 +106,12 @@ export function Unlock(
     unlock(dbData, keyed, undefined, ...key);
     for (const [foreign, fieldData] of Object.entries(meta.fields)) {
       const related = dbData[foreign];
-      if (fieldData.foreign && isObject(related)) {
-        unlock(related, keyed, undefined, ...key);
+      if (!fieldData.foreign || !isObject(related)) continue;
+      const rows: readonly unknown[] = isStoredList(related)
+        ? related
+        : [related];
+      for (const row of rows) {
+        if (isObject(row)) unlock(row, keyed, undefined, ...key);
       }
     }
   }
