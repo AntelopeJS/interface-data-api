@@ -18,6 +18,7 @@ import {
 import {
   BasicDataModel,
   Field,
+  Index,
   Model,
   RegisterSchema,
   RegisterTable,
@@ -40,6 +41,10 @@ class Item extends Table {
 
   @Field("string")
   declare name: string;
+
+  @Index()
+  @Field("string")
+  declare sku: string;
 }
 class ItemModel extends BasicDataModel(Item, itemTableName) {}
 
@@ -52,6 +57,9 @@ class Order extends Table {
 
   @Field("array")
   declare itemsAll: (string | null)[];
+
+  @Field("array")
+  declare itemNames: (string | null)[];
 }
 class OrderModel extends BasicDataModel(Order, orderTableName) {}
 
@@ -59,11 +67,14 @@ const orderSchema = z.looseObject({
   _id: z.string(),
   items: z.array(z.unknown()),
   itemsAll: z.array(z.unknown()),
+  itemNames: z.array(z.unknown()).optional(),
 });
 
 describe("Foreign multi references", () => {
   it("gets null for a missing element", async () =>
     await expectGetAnswersNullForMissing());
+  it("lists null at the position of a missing element", async () =>
+    await expectListAnswersNullForMissing());
   it("gets the raw ids with noForeign", async () =>
     await expectGetAnswersRawIds());
   it("lists the raw ids with noForeign", async () =>
@@ -76,6 +87,7 @@ async function _createDataController(testName: string) {
     Order,
     {
       get: DefaultRoutes.Get,
+      list: DefaultRoutes.List,
       raw: DefaultRoutes.WithOptions(DefaultRoutes.Get, { noForeign: "true" }),
       rawList: DefaultRoutes.WithOptions(DefaultRoutes.List, {
         noForeign: true,
@@ -100,6 +112,11 @@ async function _createDataController(testName: string) {
     @Foreign(Item, undefined, true)
     @Access(AccessMode.ReadOnly)
     declare itemsAll: Item[];
+
+    @Listable()
+    @Foreign(Item, "sku", true, ["name"])
+    @Access(AccessMode.ReadOnly)
+    declare itemNames: Item[];
   }
 
   await RegisterSchema(schemaName);
@@ -111,14 +128,16 @@ async function _createDataController(testName: string) {
 
   const schemaInstance = getSchemaInstance(schemaName);
   const [itemId] = Object.values(
-    await new ItemModel(schemaInstance).insert([{ name: "Widget" }]),
+    await new ItemModel(schemaInstance).insert([
+      { name: "Widget", sku: "W-1" },
+    ]),
   );
   const ids = [itemId, "ghost"];
   const nullFirst = [null, itemId];
   const [orderId, nullFirstId] = Object.values(
     await new OrderModel(schemaInstance).insert([
-      { items: ids, itemsAll: ids },
-      { items: nullFirst, itemsAll: nullFirst },
+      { items: ids, itemsAll: ids, itemNames: ["W-1", "ghost"] },
+      { items: nullFirst, itemsAll: nullFirst, itemNames: [null, "W-1"] },
     ]),
   );
   return { itemId, orderId, nullFirstId };
@@ -138,6 +157,35 @@ async function expectGetAnswersNullForMissing() {
   expect(order.itemsAll).to.have.length(2);
   expect(order.itemsAll[0]).to.include({ _id: itemId, name: "Widget" });
   expect(order.itemsAll[1]).to.equal(null);
+}
+
+async function expectListAnswersNullForMissing() {
+  const { itemId, orderId, nullFirstId } =
+    await _createDataController(getFunctionName());
+
+  const response = await request(getFunctionName(), "list", "GET");
+  expect(response.status, await response.clone().text()).to.equal(200);
+  const data = await readJson(listResponseSchema(orderSchema), response);
+  const byId = new Map(data.results.map((o) => [o._id, o]));
+  const item = { _id: itemId, name: "Widget" };
+  expect(byId.get(orderId)?.items).to.deep.equal([item, null]);
+  expect(byId.get(nullFirstId)?.items).to.deep.equal([null, item]);
+  expect(byId.get(orderId)?.itemNames).to.deep.equal([
+    { name: "Widget" },
+    null,
+  ]);
+  expect(byId.get(nullFirstId)?.itemNames).to.deep.equal([
+    null,
+    { name: "Widget" },
+  ]);
+  const order = byId.get(orderId)?.itemsAll;
+  expect(order).to.have.length(2);
+  expect(order?.[0]).to.include(item);
+  expect(order?.[1]).to.equal(null);
+  const nullFirst = byId.get(nullFirstId)?.itemsAll;
+  expect(nullFirst).to.have.length(2);
+  expect(nullFirst?.[0]).to.equal(null);
+  expect(nullFirst?.[1]).to.include(item);
 }
 
 async function expectGetAnswersRawIds() {
