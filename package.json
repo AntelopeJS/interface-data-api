@@ -23,7 +23,7 @@
     "dist",
     "docs",
     "skills",
-    "!dist/tests/internal"
+    "!dist/tests/internal/http.d.ts"
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
