@@ -81,7 +81,7 @@ type GroupListedFields = Pick<
   z.infer<typeof groupListedSchema>,
   "name" | "devices_count" | "display_name"
 >;
-type ListResponse = z.infer<typeof listSchema>;
+type ListResponse = ReturnType<typeof listSchema.parse>;
 
 const groupsDataset: Partial<Group>[] = [
   { name: "Alpha" },

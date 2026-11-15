@@ -75,7 +75,7 @@ const memberListedSchema = z.looseObject({
 });
 
 const listSchema = listResponseSchema(memberListedSchema);
-type ListResponse = z.infer<typeof listSchema>;
+type ListResponse = ReturnType<typeof listSchema.parse>;
 
 describe("Foreign and Computed fields on the same key", () => {
   it("lists the computed value read from the key and the resolved relation", async () =>
