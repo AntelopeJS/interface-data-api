@@ -24,35 +24,64 @@ export function createRequestContext(
   };
 }
 
+/** Anything that turns a raw body into a typed value, such as a zod schema. */
+export interface BodyParser<Value> {
+  parse(data: ReturnType<typeof JSON.parse>): Value;
+}
+
+/** One page of rows and where it sits. */
+export interface ListPage<Row> {
+  results: Row[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
+const listPageSchema = z.looseObject({
+  results: z.array(z.unknown()),
+  total: z.number(),
+  offset: z.number(),
+  limit: z.number(),
+});
+
 /**
- * Schema of what the `list` route answers around a row schema: one page of
- * rows and where it sits. Fields the row schema does not name pass through.
+ * Parser of what the `list` route answers around a row parser: one page of
+ * rows and where it sits.
  *
- * @param row Schema of one listed row
- * @returns Schema of one page of rows
+ * @param row Parser of one listed row
+ * @returns Parser of one page of rows
  */
-export function listResponseSchema<Row extends z.ZodType>(row: Row) {
-  return z.looseObject({
-    results: z.array(row),
-    total: z.number(),
-    offset: z.number(),
-    limit: z.number(),
-  });
+export function listResponseSchema<Row>(
+  row: BodyParser<Row>,
+): BodyParser<ListPage<Row>> {
+  return {
+    parse(data) {
+      const page = listPageSchema.parse(data);
+      return {
+        total: page.total,
+        offset: page.offset,
+        limit: page.limit,
+        results: page.results.map((item) => row.parse(item)),
+      };
+    },
+  };
 }
 
 /** What the `new` route answers: the created row, with its key. */
-export const createdRowSchema = z.looseObject({ _id: z.string() });
+export const createdRowSchema: BodyParser<{ _id: string }> = z.looseObject({
+  _id: z.string(),
+});
 
 /**
- * Reads a response body and parses it with the schema the caller expects.
+ * Reads a response body and parses it with the parser the caller expects.
  *
  * @param schema Shape the body must have
  * @param response The response whose body is read
  * @returns The parsed body
  */
-export async function readJson<Schema extends z.ZodType>(
-  schema: Schema,
+export async function readJson<Value>(
+  schema: BodyParser<Value>,
   response: Response,
-): Promise<z.infer<Schema>> {
+): Promise<Value> {
   return schema.parse(JSON.parse(await response.text()));
 }

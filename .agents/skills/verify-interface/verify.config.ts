@@ -60,10 +60,7 @@ const config: VerifyConfig<typeof DataApi> = {
       ],
       files: [".agents/skills/formal-field-access/**"],
       command: ["node", ".agents/skills/formal-field-access/check.mjs", "--full"],
-      baseCommand: ["node", ".agents/skills/formal-field-access/check.mjs"],
       violation: /^(?:finding|BROKEN|CHANGED|HOLDS) +(\w+)/gm,
-      passing: /(?<=^holds +(?:\w+, )*)(\w+)(?=,| \()/gm,
-      behaviour: { kind: "emit" },
     },
   ],
   services: {
