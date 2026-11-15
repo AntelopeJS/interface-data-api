@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.8.1
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.8.0...v0.8.1)
+
+### 📦 Build
+
+- **deps:** Move to the 15 November 2026 releases ([#137](https://github.com/AntelopeJS/interface-data-api/pull/137))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](http://github.com/Upd4ting))
+
 ## v0.8.0
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.7.1...v0.8.0)
