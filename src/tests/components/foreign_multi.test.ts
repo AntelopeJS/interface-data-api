@@ -64,6 +64,8 @@ const orderSchema = z.looseObject({
 describe("Foreign multi references", () => {
   it("gets null for a missing element", async () =>
     await expectGetAnswersNullForMissing());
+  it("lists null at the position of a missing element", async () =>
+    await expectListAnswersNullForMissing());
   it("gets the raw ids with noForeign", async () =>
     await expectGetAnswersRawIds());
   it("lists the raw ids with noForeign", async () =>
@@ -76,6 +78,7 @@ async function _createDataController(testName: string) {
     Order,
     {
       get: DefaultRoutes.Get,
+      list: DefaultRoutes.List,
       raw: DefaultRoutes.WithOptions(DefaultRoutes.Get, { noForeign: "true" }),
       rawList: DefaultRoutes.WithOptions(DefaultRoutes.List, {
         noForeign: true,
@@ -138,6 +141,27 @@ async function expectGetAnswersNullForMissing() {
   expect(order.itemsAll).to.have.length(2);
   expect(order.itemsAll[0]).to.include({ _id: itemId, name: "Widget" });
   expect(order.itemsAll[1]).to.equal(null);
+}
+
+async function expectListAnswersNullForMissing() {
+  const { itemId, orderId, nullFirstId } =
+    await _createDataController(getFunctionName());
+
+  const response = await request(getFunctionName(), "list", "GET");
+  expect(response.status, await response.clone().text()).to.equal(200);
+  const data = await readJson(listResponseSchema(orderSchema), response);
+  const byId = new Map(data.results.map((o) => [o._id, o]));
+  const item = { _id: itemId, name: "Widget" };
+  expect(byId.get(orderId)?.items).to.deep.equal([item, null]);
+  expect(byId.get(nullFirstId)?.items).to.deep.equal([null, item]);
+  const order = byId.get(orderId)?.itemsAll;
+  expect(order).to.have.length(2);
+  expect(order?.[0]).to.include(item);
+  expect(order?.[1]).to.equal(null);
+  const nullFirst = byId.get(nullFirstId)?.itemsAll;
+  expect(nullFirst).to.have.length(2);
+  expect(nullFirst?.[0]).to.equal(null);
+  expect(nullFirst?.[1]).to.include(item);
 }
 
 async function expectGetAnswersRawIds() {
