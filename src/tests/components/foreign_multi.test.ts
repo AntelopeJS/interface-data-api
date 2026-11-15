@@ -18,6 +18,7 @@ import {
 import {
   BasicDataModel,
   Field,
+  Index,
   Model,
   RegisterSchema,
   RegisterTable,
@@ -40,6 +41,10 @@ class Item extends Table {
 
   @Field("string")
   declare name: string;
+
+  @Index()
+  @Field("string")
+  declare sku: string;
 }
 class ItemModel extends BasicDataModel(Item, itemTableName) {}
 
@@ -52,6 +57,9 @@ class Order extends Table {
 
   @Field("array")
   declare itemsAll: (string | null)[];
+
+  @Field("array")
+  declare itemNames: (string | null)[];
 }
 class OrderModel extends BasicDataModel(Order, orderTableName) {}
 
@@ -59,6 +67,7 @@ const orderSchema = z.looseObject({
   _id: z.string(),
   items: z.array(z.unknown()),
   itemsAll: z.array(z.unknown()),
+  itemNames: z.array(z.unknown()).optional(),
 });
 
 describe("Foreign multi references", () => {
@@ -103,6 +112,11 @@ async function _createDataController(testName: string) {
     @Foreign(Item, undefined, true)
     @Access(AccessMode.ReadOnly)
     declare itemsAll: Item[];
+
+    @Listable()
+    @Foreign(Item, "sku", true, ["name"])
+    @Access(AccessMode.ReadOnly)
+    declare itemNames: Item[];
   }
 
   await RegisterSchema(schemaName);
@@ -114,14 +128,16 @@ async function _createDataController(testName: string) {
 
   const schemaInstance = getSchemaInstance(schemaName);
   const [itemId] = Object.values(
-    await new ItemModel(schemaInstance).insert([{ name: "Widget" }]),
+    await new ItemModel(schemaInstance).insert([
+      { name: "Widget", sku: "W-1" },
+    ]),
   );
   const ids = [itemId, "ghost"];
   const nullFirst = [null, itemId];
   const [orderId, nullFirstId] = Object.values(
     await new OrderModel(schemaInstance).insert([
-      { items: ids, itemsAll: ids },
-      { items: nullFirst, itemsAll: nullFirst },
+      { items: ids, itemsAll: ids, itemNames: ["W-1", "ghost"] },
+      { items: nullFirst, itemsAll: nullFirst, itemNames: [null, "W-1"] },
     ]),
   );
   return { itemId, orderId, nullFirstId };
@@ -154,6 +170,14 @@ async function expectListAnswersNullForMissing() {
   const item = { _id: itemId, name: "Widget" };
   expect(byId.get(orderId)?.items).to.deep.equal([item, null]);
   expect(byId.get(nullFirstId)?.items).to.deep.equal([null, item]);
+  expect(byId.get(orderId)?.itemNames).to.deep.equal([
+    { name: "Widget" },
+    null,
+  ]);
+  expect(byId.get(nullFirstId)?.itemNames).to.deep.equal([
+    null,
+    { name: "Widget" },
+  ]);
   const order = byId.get(orderId)?.itemsAll;
   expect(order).to.have.length(2);
   expect(order?.[0]).to.include(item);
