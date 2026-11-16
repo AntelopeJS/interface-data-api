@@ -75,6 +75,8 @@ describe("Foreign multi references", () => {
     await expectGetAnswersNullForMissing());
   it("lists null at the position of a missing element", async () =>
     await expectListAnswersNullForMissing());
+  it("lists the elements in the stored order", async () =>
+    await expectListKeepsStoredOrder());
   it("gets the raw ids with noForeign", async () =>
     await expectGetAnswersRawIds());
   it("lists the raw ids with noForeign", async () =>
@@ -186,6 +188,38 @@ async function expectListAnswersNullForMissing() {
   expect(nullFirst).to.have.length(2);
   expect(nullFirst?.[0]).to.equal(null);
   expect(nullFirst?.[1]).to.include(item);
+}
+
+async function expectListKeepsStoredOrder() {
+  await _createDataController(getFunctionName());
+  const schemaInstance = getSchemaInstance(schemaName);
+  await new ItemModel(schemaInstance).insert([
+    { _id: "item-a", name: "Anvil", sku: "A-1" },
+    { _id: "item-z", name: "Zither", sku: "Z-1" },
+  ]);
+  const stored = ["item-z", "item-a"];
+  const [storedId] = Object.values(
+    await new OrderModel(schemaInstance).insert([
+      { items: stored, itemsAll: stored, itemNames: ["Z-1", "A-1"] },
+    ]),
+  );
+
+  const response = await request(getFunctionName(), "list", "GET");
+  expect(response.status, await response.clone().text()).to.equal(200);
+  const data = await readJson(listResponseSchema(orderSchema), response);
+  const order = data.results.find((o) => o._id === storedId);
+  const zither = { _id: "item-z", name: "Zither" };
+  const anvil = { _id: "item-a", name: "Anvil" };
+  expect(order?.items).to.deep.equal([zither, anvil]);
+  expect(order?.itemNames).to.deep.equal([
+    { name: "Zither" },
+    { name: "Anvil" },
+  ]);
+  expect(order?.itemsAll).to.have.length(2);
+  expect(order?.itemsAll[0]).to.include(zither);
+  expect(order?.itemsAll[1]).to.include(anvil);
+  const detail = await _getOrder(getFunctionName(), "get", storedId);
+  expect(order?.items).to.deep.equal(detail.items);
 }
 
 async function expectGetAnswersRawIds() {
