@@ -552,8 +552,9 @@ export namespace Validation {
   }
 
   /**
-   * Runs the validator of each field present in `obj` and rejects with 400
-   * when one fails, with a {@link FieldsErrorBody} of
+   * Runs the validator of each field present in `obj`, and rejects with 400
+   * a multi reference field present in `obj` that holds anything but an array
+   * or `null`. A rejection carries a {@link FieldsErrorBody} of
    * {@link INVALID_FIELD_TYPES}. Returns a copy of `obj` where each validated field holds
    * the value its validator parsed (see {@link FieldValidationResult}).
    */
@@ -564,7 +565,12 @@ export namespace Validation {
     const parsed = { ...obj };
     const invalid: string[] = [];
     for (const [name, field] of Object.entries(meta.fields)) {
-      if (!field.validator || !Object.hasOwn(obj, name)) continue;
+      if (!Object.hasOwn(obj, name)) continue;
+      if (validation.isMultiReferenceMisuse(field, obj[name])) {
+        invalid.push(name);
+        continue;
+      }
+      if (!field.validator) continue;
       const result = toParseResult(await field.validator(obj[name]), obj[name]);
       if (result.success) {
         parsed[name] = result.data;

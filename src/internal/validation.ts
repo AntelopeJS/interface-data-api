@@ -21,7 +21,7 @@ import type {
   DataControllerInstance,
   StoredRow,
 } from "../metadata";
-import type { StoredValue } from "./field-types";
+import type { FieldData, StoredValue } from "./field-types";
 import { controllerField } from "./prototypes";
 import { isFieldValues, isObject, isWriteValue } from "./guards";
 
@@ -58,6 +58,22 @@ type WrittenBody = Validation.WrittenBody;
  * then finds nothing under the key.
  */
 type KeyedModifier = Constructible<OneWayModifier<any, [key: unknown]>>;
+
+/**
+ * Whether `value` is written to a multi reference field and is neither an
+ * array nor `null`, the two shapes a multi reference reads back from.
+ */
+export function isMultiReferenceMisuse(
+  field: FieldData,
+  value: RequestBody[string] | undefined,
+) {
+  return (
+    !!field.foreign?.[3] &&
+    value !== undefined &&
+    value !== null &&
+    !Array.isArray(value)
+  );
+}
 
 export function ParseBody(body: WrittenBody): RequestBody {
   let data: unknown = body;
