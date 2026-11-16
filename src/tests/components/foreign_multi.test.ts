@@ -220,6 +220,8 @@ async function expectListKeepsStoredOrder() {
   expect(order?.itemsAll[1]).to.include(anvil);
   const detail = await _getOrder(getFunctionName(), "get", storedId);
   expect(order?.items).to.deep.equal(detail.items);
+  expect(order?.itemsAll).to.deep.equal(detail.itemsAll);
+  expect(order?.itemNames).to.deep.equal(detail.itemNames);
 }
 
 async function expectGetAnswersRawIds() {
