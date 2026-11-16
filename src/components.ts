@@ -566,13 +566,7 @@ export namespace Validation {
     const invalid: string[] = [];
     for (const [name, field] of Object.entries(meta.fields)) {
       if (!Object.hasOwn(obj, name)) continue;
-      const value = obj[name];
-      if (
-        field.foreign?.[3] &&
-        value !== undefined &&
-        value !== null &&
-        !Array.isArray(value)
-      ) {
+      if (validation.isMultiReferenceMisuse(field, obj[name])) {
         invalid.push(name);
         continue;
       }
