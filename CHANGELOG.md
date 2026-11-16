@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.8.2
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.8.1...v0.8.2)
+
+### 🩹 Fixes
+
+- **foreign:** Return @Localized fields of each multi reference element ([#140](https://github.com/AntelopeJS/interface-data-api/pull/140))
+- **foreign:** Answer null for a missing multi reference element on list ([#141](https://github.com/AntelopeJS/interface-data-api/pull/141))
+- **verify:** Compile the shop fixture and cover access-lists ([#145](https://github.com/AntelopeJS/interface-data-api/pull/145))
+- **foreign:** Refuse a non-array write to a multi reference field with 400 ([#143](https://github.com/AntelopeJS/interface-data-api/pull/143))
+- **foreign:** Check a multi reference after its validator parsed it ([#146](https://github.com/AntelopeJS/interface-data-api/pull/146))
+
+### 📦 Build
+
+- Move to @antelopejs/tooling-configs 0.8 and the three-tier CI ([#138](https://github.com/AntelopeJS/interface-data-api/pull/138))
+
+### ✅ Tests
+
+- **foreign:** List a multi reference in its stored order ([#144](https://github.com/AntelopeJS/interface-data-api/pull/144))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v0.8.1
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.8.0...v0.8.1)
