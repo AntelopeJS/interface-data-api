@@ -21,7 +21,7 @@ import type {
   DataControllerInstance,
   StoredRow,
 } from "../metadata";
-import type { StoredValue } from "./field-types";
+import type { FieldData, StoredValue } from "./field-types";
 import { controllerField } from "./prototypes";
 import { isFieldValues, isObject, isWriteValue } from "./guards";
 
@@ -58,6 +58,22 @@ type WrittenBody = Validation.WrittenBody;
  * then finds nothing under the key.
  */
 type KeyedModifier = Constructible<OneWayModifier<any, [key: unknown]>>;
+
+/**
+ * Whether `value` is written to a multi reference field and is neither an
+ * array nor `null`, the two shapes a multi reference reads back from.
+ */
+export function isMultiReferenceMisuse(
+  field: FieldData,
+  value: RequestBody[string] | undefined,
+) {
+  return (
+    !!field.foreign?.[3] &&
+    value !== undefined &&
+    value !== null &&
+    !Array.isArray(value)
+  );
+}
 
 export function ParseBody(body: WrittenBody): RequestBody {
   let data: unknown = body;
@@ -106,8 +122,12 @@ export function Unlock(
     unlock(dbData, keyed, undefined, ...key);
     for (const [foreign, fieldData] of Object.entries(meta.fields)) {
       const related = dbData[foreign];
-      if (fieldData.foreign && isObject(related)) {
-        unlock(related, keyed, undefined, ...key);
+      if (!fieldData.foreign || !isObject(related)) continue;
+      const rows: readonly unknown[] = isStoredList(related)
+        ? related
+        : [related];
+      for (const row of rows) {
+        if (isObject(row)) unlock(row, keyed, undefined, ...key);
       }
     }
   }

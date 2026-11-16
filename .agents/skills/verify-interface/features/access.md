@@ -3,6 +3,7 @@ covers:
   - src/index.ts
   - src/components.ts
   - src/metadata.ts
+  - src/internal/access-lists.ts
   - src/internal/computed.ts
   - src/internal/default-filter.ts
   - src/internal/deferred-joined-stream.ts

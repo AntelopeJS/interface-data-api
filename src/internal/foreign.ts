@@ -8,7 +8,7 @@ import {
   type ValueProxy,
 } from "@antelopejs/interface-database";
 
-import type { DataAPIMeta, ForeignJoinedRef } from "../metadata";
+import type { DataAPIMeta, ForeignJoinedRef, StoredRow } from "../metadata";
 import { Get, pluckedTable, type TableRow, targetTable } from "./tables";
 
 export function Foreign(
@@ -52,20 +52,29 @@ export function Foreign(
         targetJoined,
       ] = field.foreign;
       const other = targetTable(db, { table, tableClass, schemaName });
+      const otherKey = index || "_id";
       const hasTargetJoined = !multi && !!targetJoined?.length;
+      const keysKey = `__fkeys_${name}`;
+      if (multi) {
+        query = query.map((row) => row.merge({ [keysKey]: row.key(name) }));
+      }
       if (pluckField) {
-        const lookupPluck = hasTargetJoined
-          ? Array.from(
-              new Set([...pluckField, ...targetJoined.map((g) => g.localKey)]),
-            )
-          : pluckField;
+        const extraKeys = hasTargetJoined
+          ? targetJoined.map((g) => g.localKey)
+          : multi
+            ? [otherKey]
+            : [];
+        const lookupPluck = Array.from(new Set([...pluckField, ...extraKeys]));
         query = query.lookup(
           pluckedTable(other, ...lookupPluck),
           name,
-          index || "_id",
+          otherKey,
         );
       } else {
-        query = query.lookup(other, name, index || "_id");
+        query = query.lookup(other, name, otherKey);
+      }
+      if (multi) {
+        query = restoreMultiPositions(query, name, keysKey, otherKey);
       }
       if (hasTargetJoined) {
         query = applyForeignJoinedStream(db, query, name, targetJoined);
@@ -121,6 +130,36 @@ export function Foreign(
     };
     return query.do(oldForeign);
   }
+}
+
+/**
+ * Rebuilds a multi reference from its stored keys after a lookup, which keeps
+ * only the matching rows: each key becomes its looked-up row, or `null` when
+ * no row matches, so the array keeps the stored length and order.
+ */
+function restoreMultiPositions(
+  stream: Stream<any>,
+  foreignName: string,
+  keysKey: string,
+  otherKey: string,
+): Stream<any> {
+  return stream
+    .map((row) =>
+      row.merge({
+        [foreignName]: row
+          .key(keysKey)
+          .default([])
+          .map((key) =>
+            row
+              .key(foreignName)
+              .cast<StoredRow[]>()
+              .filter((found) => found.key(otherKey).eq(key))
+              .index(0)
+              .default(null),
+          ),
+      }),
+    )
+    .without(keysKey);
 }
 
 /**

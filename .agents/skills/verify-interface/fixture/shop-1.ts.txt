@@ -54,8 +54,9 @@ function isComparison(mode: string): mode is Comparison {
 
 /** The numeric filter of docs/8.filters.md. */
 const numberFilter: FilterFunction<Record<string, unknown>> = (_context, proxy, _key, raw, mode) => {
-  const value = Number(raw);
-  assert(raw.trim() !== "" && Number.isFinite(value), 400, "Invalid number");
+  const text = typeof raw === "string" ? raw.trim() : "";
+  const value = Number(text);
+  assert(text !== "" && Number.isFinite(value), 400, "Invalid number");
   assert(isComparison(mode), 400, "Invalid comparison");
   return proxy[mode](value);
 };
@@ -63,6 +64,7 @@ const numberFilter: FilterFunction<Record<string, unknown>> = (_context, proxy, 
 /** The email-domain filter of docs/8.filters.md: equality only, with the domain escaped. */
 const emailDomainFilter: FilterFunction<Record<string, unknown>> = (_context, proxy, _key, raw, mode) => {
   assert(mode === "eq", 400, "Only equality is supported for email domains");
+  assert(typeof raw === "string", 400, "Invalid email domain");
   const escaped = raw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return proxy.match(`@${escaped}$`);
 }
