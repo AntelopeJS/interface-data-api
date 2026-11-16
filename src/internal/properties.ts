@@ -76,14 +76,6 @@ export function WriteProperties(
   }
   for (const [key, field] of writable.props) {
     const value = ownEntry(bodyData, key);
-    assert(
-      !field.foreign?.[3] ||
-        value === undefined ||
-        value === null ||
-        Array.isArray(value),
-      400,
-      `Field '${key}' is a multi reference and must be an array.`,
-    );
     fields[key] = value;
     dbData[field.dbName || key] = value;
   }

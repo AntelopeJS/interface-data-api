@@ -17,6 +17,7 @@ import {
   Table,
 } from "@antelopejs/interface-database-decorators";
 
+import { Validation } from "../../components";
 import { createdRowSchema, readJson } from "../internal/http";
 import {
   editRequest,
@@ -50,6 +51,12 @@ class Order extends Table {
 
   @Field("array")
   declare items: (string | null)[];
+
+  @Field("array")
+  declare tags: (string | null)[];
+
+  @Field("string")
+  declare main: string;
 }
 class OrderModel extends BasicDataModel(Order, orderTableName) {}
 
@@ -58,6 +65,12 @@ describe("Foreign multi reference writes", () => {
     await expectNewRefusesNonArray());
   it("refuses an update with a non-array value and keeps the stored array", async () =>
     await expectEditRefusesNonArray());
+  it("refuses a non-array setter-backed multi reference", async () =>
+    await expectSetterFieldRefusesNonArray());
+  it("keeps null as a way to clear a multi reference", async () =>
+    await expectNullClearsMultiReference());
+  it("keeps a string for a single reference", async () =>
+    await expectSingleReferenceAcceptsString());
   it("keeps creating with an array and without the field", async () =>
     await expectNewAcceptsArrayAndAbsent());
   it("keeps updating with an array and without the field", async () =>
@@ -81,6 +94,19 @@ async function _createDataController(testName: string) {
     @Foreign(Item, undefined, true)
     @Access(AccessMode.ReadWrite)
     declare items: Item[];
+
+    @Foreign(Item, undefined, true)
+    @Access(AccessMode.ReadWrite)
+    get tags(): (string | null)[] {
+      return this.table.tags;
+    }
+    set tags(value: (string | null)[]) {
+      this.table.tags = value;
+    }
+
+    @Foreign(Item)
+    @Access(AccessMode.ReadWrite)
+    declare main: Item;
   }
 
   await RegisterSchema(schemaName);
@@ -89,10 +115,12 @@ async function _createDataController(testName: string) {
   return new OrderModel(getSchemaInstance(schemaName));
 }
 
-async function expectRefusal(response: Response) {
-  const text = await response.text();
-  expect(response.status, text).to.equal(400);
-  expect(text).to.include("items");
+async function expectRefusal(response: Response, field = "items") {
+  expect(response.status).to.equal(400);
+  expect(await response.json()).to.deep.equal({
+    code: Validation.INVALID_FIELD_TYPES,
+    fields: [field],
+  });
 }
 
 async function expectNewRefusesNonArray() {
@@ -152,4 +180,39 @@ async function expectEditAcceptsArrayAndAbsent() {
   );
   expect(withArray.status, await withArray.clone().text()).to.equal(200);
   expect((await model.get(id))?.items).to.deep.equal(["c", "d"]);
+}
+
+async function expectSetterFieldRefusesNonArray() {
+  const model = await _createDataController(getFunctionName());
+  await expectRefusal(
+    await newRequest(getFunctionName(), { label: "bad", tags: "item-1" }),
+    "tags",
+  );
+  expect(await model.getAll()).to.have.length(0);
+}
+
+async function expectNullClearsMultiReference() {
+  const model = await _createDataController(getFunctionName());
+  const created = await newRequest(getFunctionName(), {
+    label: "null",
+    items: null,
+  });
+  expect(created.status, await created.clone().text()).to.equal(200);
+  const [id] = Object.values(
+    await model.insert([{ label: "old", items: ["a"] }]),
+  );
+  const edited = await editRequest(getFunctionName(), { items: null }, { id });
+  expect(edited.status, await edited.clone().text()).to.equal(200);
+  expect((await model.get(id))?.items ?? []).to.deep.equal([]);
+}
+
+async function expectSingleReferenceAcceptsString() {
+  const model = await _createDataController(getFunctionName());
+  const response = await newRequest(getFunctionName(), {
+    label: "single",
+    main: "item-1",
+  });
+  expect(response.status, await response.clone().text()).to.equal(200);
+  const created = await readJson(createdRowSchema, response);
+  expect((await model.get(created._id))?.main).to.equal("item-1");
 }
