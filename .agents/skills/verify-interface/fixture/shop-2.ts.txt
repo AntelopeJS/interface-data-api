@@ -229,7 +229,7 @@ const alwaysThrowsGuard = DefaultRoutes.WithGetGuard(function () {
 const titleThisFilter: FilterFunction<Record<string, unknown>> = (context, proxy, _key, raw) =>
   proxy.eq(context.this instanceof _ProbeAPI ? raw : "__no_controller__");
 
-const upperTagFilter: FilterFunction<Record<string, unknown>> = (_context, proxy, _key, raw) => proxy.eq(raw.toUpperCase());
+const upperTagFilter: FilterFunction<Record<string, unknown>> = (_context, proxy, _key, raw) => proxy.eq(String(raw).toUpperCase());
 
 @RegisterDataController()
 class _ProbeAPI extends DataController(
