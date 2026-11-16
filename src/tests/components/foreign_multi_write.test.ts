@@ -1,5 +1,6 @@
 import path from "node:path";
 import { expect } from "chai";
+import { z } from "zod";
 import { Controller } from "@antelopejs/interface-api";
 import { Schema } from "@antelopejs/interface-database";
 import {
@@ -7,7 +8,13 @@ import {
   DefaultRoutes,
   RegisterDataController,
 } from "../../index";
-import { Access, AccessMode, Foreign, ModelReference } from "../../metadata";
+import {
+  Access,
+  AccessMode,
+  Foreign,
+  ModelReference,
+  Validator,
+} from "../../metadata";
 import {
   BasicDataModel,
   Field,
@@ -57,6 +64,12 @@ class Order extends Table {
 
   @Field("string")
   declare main: string;
+
+  @Field("array")
+  declare csv: (string | null)[];
+
+  @Field("array")
+  declare broken: (string | null)[];
 }
 class OrderModel extends BasicDataModel(Order, orderTableName) {}
 
@@ -69,6 +82,10 @@ describe("Foreign multi reference writes", () => {
     await expectSetterFieldRefusesNonArray());
   it("keeps null as a way to clear a multi reference", async () =>
     await expectNullClearsMultiReference());
+  it("accepts a string a validator parses into an array", async () =>
+    await expectValidatorParsedArrayAccepted());
+  it("refuses a validator result that is not an array", async () =>
+    await expectValidatorParsedNonArrayRefused());
   it("keeps a string for a single reference", async () =>
     await expectSingleReferenceAcceptsString());
   it("keeps creating with an array and without the field", async () =>
@@ -107,6 +124,21 @@ async function _createDataController(testName: string) {
     @Foreign(Item)
     @Access(AccessMode.ReadWrite)
     declare main: Item;
+
+    @Foreign(Item, undefined, true)
+    @Validator((value) => {
+      const text = z.string().safeParse(value);
+      return text.success
+        ? { success: true, data: text.data.split(",") }
+        : Array.isArray(value);
+    })
+    @Access(AccessMode.ReadWrite)
+    declare csv: Item[];
+
+    @Foreign(Item, undefined, true)
+    @Validator(() => ({ success: true, data: "not-an-array" }))
+    @Access(AccessMode.ReadWrite)
+    declare broken: Item[];
   }
 
   await RegisterSchema(schemaName);
@@ -215,4 +247,24 @@ async function expectSingleReferenceAcceptsString() {
   expect(response.status, await response.clone().text()).to.equal(200);
   const created = await readJson(createdRowSchema, response);
   expect((await model.get(created._id))?.main).to.equal("item-1");
+}
+
+async function expectValidatorParsedArrayAccepted() {
+  const model = await _createDataController(getFunctionName());
+  const response = await newRequest(getFunctionName(), {
+    label: "csv",
+    csv: "a,b",
+  });
+  expect(response.status, await response.clone().text()).to.equal(200);
+  const created = await readJson(createdRowSchema, response);
+  expect((await model.get(created._id))?.csv).to.deep.equal(["a", "b"]);
+}
+
+async function expectValidatorParsedNonArrayRefused() {
+  const model = await _createDataController(getFunctionName());
+  await expectRefusal(
+    await newRequest(getFunctionName(), { label: "bad", broken: ["a"] }),
+    "broken",
+  );
+  expect(await model.getAll()).to.have.length(0);
 }
