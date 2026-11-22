@@ -5,7 +5,7 @@ description: Bounded exhaustive check of field exposure and write gating in @ant
 
 # Formal check: field exposure and write gating
 
-A module author declares a controller class over a table and marks each field with `@Access(mode, overrides?)`, `@Listable`, `@Computed` or `@Joined`. Per action (`get`, `list`, `new`, `edit`, or a custom one), a field's effective mode decides which fields a response holds and which body keys reach the database: `ReadProperties` builds the response from `meta.readable[action]`, `WriteProperties` builds the row from `meta.writable[action]`, both rebuilt by `DataAPIMeta.recomputeAccess`. The `exposure` door of `verify.config.ts` names the harm: a write-only field that leaks exposes a secret.
+A module author declares a controller class over a table and marks each field with `@Access(mode, overrides?)`, `@Listable`, `@Computed` or `@Joined`. Per action (`get`, `list`, `new`, `edit`, or a custom one), a field's effective mode decides which fields a response holds and which body keys reach the database: `ReadProperties` builds the response from `meta.readable[action]`, `WriteProperties` builds the row from `meta.writable[action]`, both rebuilt by `DataAPIMeta.recomputeAccess`. A write-only field that leaks exposes a secret.
 
 No verifier runs on this TypeScript, so the check enumerates every controller declaration within the bounds below and runs the real code on each: `cases.ts` lists the declarations, `build.ts` turns each into real classes (`class extends DataController(Row, {}, Controller(...))`, the accessors, then each decorator in the order TypeScript applies them, bottom first, with the descriptor `__decorate` would pass), and `rules.ts` runs `Query.ReadProperties` and `Query.WriteProperties` for every action and compares them with an oracle built from the decorators' TSDoc. `field-access.ts` holds the record of findings. `ts-loader.mjs` lets Node run the `src` TypeScript as it is.
 
@@ -35,7 +35,7 @@ The lines that name a changed rule match `^(?:finding|BROKEN|CHANGED|HOLDS) +(\w
 
 ## When to run it
 
-Run `--full` when a change touches a covered file (see the coverage record) or this folder. A changed rule (exit 1) makes the Verdict FAIL. The recorded findings fail it only when the diff changes what the covered files do, which `antelopejs-verify formal` decides by comparing their JavaScript on the base and on HEAD (`verify-interface` verdict rule 5; the entry is `formal-field-access` in `.agents/skills/verify-interface/verify.config.ts`, which runs `--full` on HEAD and the CI bounds on the base).
+Run `--full` when a change touches a covered file (see the coverage record) or this folder. A changed rule (exit 1) fails the change. A recorded finding that still breaks on its recorded cases (exit 0) does not.
 
 ## The rules
 
@@ -89,10 +89,10 @@ The full alphabet is `@Access` with each mode and each of 8 override tables (non
 
 The check leaves out:
 
-- the routes and the database. From `src/index.ts` the check runs only `DataController`, and from `src/components.ts` only `Query.ReadProperties` and `Query.WriteProperties`. Both files stay in `covers` so that a diff to them reruns the check, but the rest of them is not driven here: which action each route passes, `Validation.Lock` and `Unlock`, the get guard, and `ListPage`, which applies `pluck` (so a database field a getter's `@Listable([...])` names is answered when it has read access). The `verify-interface` features `access`, `modifiers`, `guards` and `listing` drive those through HTTP. Foreign, joined and computed values, the rest of `Validation`, modifiers, and `dbName`, which nothing in `src` sets, are left out too.
+- the routes and the database. From `src/index.ts` the check runs only `DataController`, and from `src/components.ts` only `Query.ReadProperties` and `Query.WriteProperties`. Both files stay in `covers` so that a diff to them reruns the check, but the rest of them is not driven here: which action each route passes, `Validation.Lock` and `Unlock`, the get guard, and `ListPage`, which applies `pluck` (so a database field a getter's `@Listable([...])` names is answered when it has read access). The route tests under `src/tests` drive those through HTTP. Foreign, joined and computed values, the rest of `Validation`, modifiers, and `dbName`, which nothing in `src` sets, are left out too.
 - `@Mandatory`, `@Sortable`, `@Validator`, `@Foreign` and `@Filter`, which create the field and record its descriptor without changing access.
 - a class default on a property no decorator names: `writeTargetDefaults` stores defaults only for keys in `meta.fields`, and the oracle follows (`decorated`).
-- getters and setters that read other fields (the `verify-interface` journey `listing/pluck-modes` drives one), actions named like `Object.prototype` keys, three levels of inheritance, and more than two siblings.
+- getters and setters that read other fields, actions named like `Object.prototype` keys, three levels of inheritance, and more than two siblings.
 
 ## Confirm the check can fail
 
