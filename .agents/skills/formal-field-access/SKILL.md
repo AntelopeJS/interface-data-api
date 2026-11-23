@@ -73,13 +73,13 @@ The check runs the published code: `Query.ReadProperties` and `Query.WriteProper
 
 | Check part | Code |
 | --- | --- |
-| alphabet and oracle of `@Access` | `Access` (metadata.ts:525-537), `setDescriptor` (433-436), `setMode` (231-241), `GetEffectiveMode` (93-99), `AccessMode` (78-82) |
-| oracle of `@Listable` and `ListPluck` | `Listable` (550-562), `setListable` (250-263), `recomputeListable` (177-179), `listedNames` and `rebuildPluck` (meta-records.ts:80-94, 26-45) |
-| oracle of `@Computed` and `@Joined` | `Computed` (643-647), `setComputed` (305-318), `Joined` (613-627), `setJoined` (330-375), `resolveTableReference` for a table name in the same schema (table-reference.ts:56-72) |
-| the known descriptor, `readable` and `writable` | `onField` (507-518), `recomputeAccess` (181-223), `field` (170-175) |
-| `derived` configuration | `inherit` (150-168), `merge` (meta-records.ts:6-15), `DataController` (index.ts:54-91), `GetDataControllerMeta` (metadata.ts:735-739), `classOf` and `prototypeOf` (prototypes.ts:26-41) |
-| reads | `Query.ReadProperties` (components.ts:347-355), `ReadProperties` (read-properties.ts:11-39), `fieldsOf` (prototypes.ts:14-19); read from the code, not driven: the routes pass `get` (index.ts:180-185) and `list` (251) and never `onlyList` |
-| writes | `Query.WriteProperties` (components.ts:367-381), `WriteProperties`, `writableInBody`, `writeTargetDefaults` (properties.ts:12-66); read from the code, not driven: the routes pass `new` (index.ts:279) and `edit` with the stored row (309-315) |
+| alphabet and oracle of `@Access` | `Access` (metadata.ts:497-508), `setDescriptor` (408-411), `setMode` (206-216), `GetEffectiveMode` (91-97), `AccessMode` (79-83) |
+| oracle of `@Listable` and `ListPluck` | `Listable` (522-533), `setListable` (225-238), `recomputeListable` (181-183), `listedNames` and `rebuildPluck` (meta-records.ts:80-94, 26-45) |
+| oracle of `@Computed` and `@Joined` | `Computed` (615-619), `setComputed` (280-293), `Joined` (585-599), `setJoined` (305-350), `resolveTableReference` for a table name in the same schema (table-reference.ts:25-73) |
+| the known descriptor, `readable` and `writable` | `onField` (479-490), `recomputeAccess` (185-198), `rebuildAccess` (access-lists.ts:20-60), `field` (174-179) |
+| `derived` configuration | `inherit` (154-172), `merge` (meta-records.ts:6-15), `DataController` (index.ts:55-92), `GetDataControllerMeta` (metadata.ts:707-711), `classOf` and `prototypeOf` (prototypes.ts:53-59, 44-50) |
+| reads | `Query.ReadProperties` (components.ts:347-355), `ReadProperties` (read-properties.ts:29-66), `controllerReceiver` (prototypes.ts:32-41); read from the code, not driven: the routes pass `get` (index.ts:181-186) and `list` (255) and never `onlyList` |
+| writes | `Query.WriteProperties` (components.ts:367-381), `WriteProperties`, `writableInBody`, `writeTargetDefaults` (properties.ts:16-24, 30-47, 59-89); read from the code, not driven: the routes pass `new` (index.ts:285) and `edit` with the stored row (317-323) |
 
 The sync commit is `a91c1c0` on AntelopeJS/interface-data-api `feat/verify-interface-skill` (PR #91).
 
@@ -89,7 +89,7 @@ The full alphabet is `@Access` with each mode and each of 8 override tables (non
 
 The check leaves out:
 
-- the routes and the database. From `src/index.ts` the check runs only `DataController`, and from `src/components.ts` only `Query.ReadProperties` and `Query.WriteProperties`. Both files stay in `covers` so that a diff to them reruns the check, but the rest of them is not driven here: which action each route passes, `Validation.Lock` and `Unlock`, the get guard, and `ListPage`, which applies `pluck` (so a database field a getter's `@Listable([...])` names is answered when it has read access). The route tests under `src/tests` drive those through HTTP. Foreign, joined and computed values, the rest of `Validation`, modifiers, and `dbName`, which nothing in `src` sets, are left out too.
+- the routes and the database. From `src/index.ts` the check runs only `DataController`, and from `src/components.ts` only `Query.ReadProperties` and `Query.WriteProperties`. Nothing runs the check when either file changes: no CI job or hook calls `check.mjs`, so run it by hand after a change to them. The rest of them is not driven here: which action each route passes, `Validation.Lock` and `Unlock`, the get guard, and `ListPage`, which applies `pluck` (so a database field a getter's `@Listable([...])` names is answered when it has read access). The route tests under `src/tests` drive those through HTTP. Foreign, joined and computed values, the rest of `Validation`, modifiers, and `dbName`, which nothing in `src` sets, are left out too.
 - `@Mandatory`, `@Sortable`, `@Validator`, `@Foreign` and `@Filter`, which create the field and record its descriptor without changing access.
 - a class default on a property no decorator names: `writeTargetDefaults` stores defaults only for keys in `meta.fields`, and the oracle follows (`decorated`).
 - getters and setters that read other fields, actions named like `Object.prototype` keys, three levels of inheritance, and more than two siblings.
@@ -100,11 +100,11 @@ Apply one change at a time to `src`, run `check.mjs` with the CI bounds, then `g
 
 | Scratch change in the code | CI bounds |
 | --- | --- |
-| `drop-onlylist-skip`: `ReadProperties` ignores `onlyList` for props (read-properties.ts:23-25) | `BROKEN ReadNoLeak` 977 (`single`), 1,476 (`pair`); `CHANGED ReadNoLeak` 408 (`derived`) |
-| `read-default-action`: `ReadProperties` reads `meta.readable._default` whatever the action (line 18-19) | `BROKEN ReadNoLeak` 316, shortest `@Access(ReadOnly, { get: WriteOnly }) get a()` answered on `get`; `CHANGED ReadComplete` 389 |
-| `drop-writable-in-body`: edit writes every writable field (properties.ts:47-49) | `BROKEN WriteGated` 2,477 (`single`), 1,328 (`pair`), `CHANGED` 384 (`derived`): an empty edit body writes `a = undefined` and runs setters |
-| `writable-on-readonly`: `recomputeAccess` fills `writable` from the read bit (metadata.ts:218) | `BROKEN WriteGated`, `BROKEN WriteComplete`, `CHANGED ComputedReadOnly` in every configuration |
-| `computed-keeps-mode`: `setComputed` no longer sets `ReadOnly` (line 312) | `BROKEN WriteGated` 116 (`single`), 60 (`pair`), `BROKEN ReadComplete` 308 (`pair`), `CHANGED` on six rules |
+| `drop-onlylist-skip`: `ReadProperties` ignores `onlyList` for props (read-properties.ts:41-43, 50-52) | `BROKEN ReadNoLeak` 977 (`single`), 1,476 (`pair`); `CHANGED ReadNoLeak` 408 (`derived`) |
+| `read-default-action`: `ReadProperties` reads `meta.readable._default` whatever the action (read-properties.ts:36-37) | `BROKEN ReadNoLeak` 316, shortest `@Access(ReadOnly, { get: WriteOnly }) get a()` answered on `get`; `CHANGED ReadComplete` 389 |
+| `drop-writable-in-body`: edit writes every writable field (properties.ts:68-70) | `BROKEN WriteGated` 2,477 (`single`), 1,328 (`pair`), `CHANGED` 384 (`derived`): an empty edit body writes `a = undefined` and runs setters |
+| `writable-on-readonly`: `recomputeAccess` fills `writable` from the read bit (metadata.ts:194) | `BROKEN WriteGated`, `BROKEN WriteComplete`, `CHANGED ComputedReadOnly` in every configuration |
+| `computed-keeps-mode`: `setComputed` no longer sets `ReadOnly` (metadata.ts:287) | `BROKEN WriteGated` 116 (`single`), 60 (`pair`), `BROKEN ReadComplete` 308 (`pair`), `CHANGED` on six rules |
 | Fix candidate `fix-inherit-copies-fields`: `inherit` copies each parent field and its `listable` table | `HOLDS ReadNoLeak`, `HOLDS WriteGated`, `HOLDS WriteComplete`, `HOLDS ListPluck` (`derived`); `CHANGED ReadComplete` 28, all F3 |
 | Fix candidate `fix-derived-clears-overrides`: `setComputed` clears `modeOverrides` | `CHANGED ComputedReadOnly` 430, 180, 54; `BROKEN ReadNoLeak` 12 and `WriteComplete` 62 (`single`), from the oracle keeping overrides |
 | Fix candidate `fix-listable-recomputes-access`: `setListable` calls `recomputeAccess` | `HOLDS ReadComplete` (`single`); `CHANGED ReadComplete` 196 (`derived`) |
