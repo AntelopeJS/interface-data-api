@@ -151,10 +151,17 @@ function OtherInstanceReadsMetaTest() {
   expect(meta.fields.ownerName.joined?.schemaName).to.equal(coreSchema);
 }
 
+/** The database instance of the client schema, which `RegisterSchema` has created by the time a test runs. */
+function ClientInstance() {
+  const schema = Schema.get(clientSchema);
+  if (!schema) throw new Error(`schema ${clientSchema} is not registered`);
+  return schema.instance();
+}
+
 async function OtherInstanceListsTest() {
   const controller = new CustomerAPI();
   const meta = OtherMetadata.GetDataControllerMeta(controller);
-  const db = Schema.get(clientSchema)!.instance();
+  const db = ClientInstance();
   const [sorted, total] = OtherComponents.Query.List(
     controller,
     meta,
@@ -178,7 +185,7 @@ async function OtherInstanceListsTest() {
 async function OtherInstanceDecoratesStreamTest() {
   const controller = new CustomerAPI();
   const meta = OtherMetadata.GetDataControllerMeta(controller);
-  const db = Schema.get(clientSchema)!.instance();
+  const db = ClientInstance();
   const stream = Customer.table().orderBy("name");
   const withForeign = OtherComponents.Query.Foreign(db, meta, stream);
   const decorated = OtherComponents.Query.Computed(db, meta, withForeign);

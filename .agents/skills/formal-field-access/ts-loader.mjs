@@ -1,13 +1,13 @@
+import { existsSync, readFileSync } from "node:fs";
+import { registerHooks, stripTypeScriptTypes } from "node:module";
+import { fileURLToPath } from "node:url";
+
 /**
  * Node module hooks that run this repository's TypeScript sources as they
  * are: a relative import with no extension resolves to its `.ts` file, and
  * each `.ts` file is transformed with Node's own TypeScript support, enums
  * and namespaces included. `check.mjs` passes this file to `--import`.
  */
-import { existsSync, readFileSync } from "node:fs";
-import { registerHooks, stripTypeScriptTypes } from "node:module";
-import { fileURLToPath } from "node:url";
-
 const HAS_SCRIPT_EXTENSION = /\.[cm]?[jt]s$/;
 
 registerHooks({

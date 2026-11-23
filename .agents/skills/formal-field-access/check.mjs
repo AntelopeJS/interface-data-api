@@ -1,4 +1,9 @@
 #!/usr/bin/env node
+import { spawnSync } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+const dir = path.dirname(fileURLToPath(import.meta.url));
 /**
  * Checks field exposure and write gating of @antelopejs/interface-data-api:
  * `field-access.ts` declares every controller within its bounds through the
@@ -8,11 +13,6 @@
  * rule matches the record in SKILL.md, 1 when a rule changed, 2 when the
  * check could not run.
  */
-import { spawnSync } from "node:child_process";
-import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
-
-const dir = path.dirname(fileURLToPath(import.meta.url));
 const run = spawnSync(
   process.execPath,
   [
