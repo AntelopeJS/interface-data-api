@@ -24,8 +24,10 @@ class DefaultSchemaReadinessModel extends BasicDataModel(
  * the shared schema before the first test runs, so a test is not charged for
  * that one-time build. A query waits until the database module has built them.
  */
-before("build the tables of the default schema", async function () {
+async function BuildDefaultSchemaTables(this: Mocha.Context) {
   this.timeout(30_000);
   await RegisterSchema(schemaName);
   await new DefaultSchemaReadinessModel(getSchemaInstance(schemaName)).getAll();
-});
+}
+
+before("build the tables of the default schema", BuildDefaultSchemaTables);
