@@ -715,17 +715,23 @@ export function GetDataControllerMeta(
  * this package, where `instanceof` fails.
  */
 export function isDataAPIMeta(value: unknown): value is DataAPIMeta {
-  if (!isObject(value)) return false;
-  // SAFETY: each property is checked below before the value is trusted.
-  const candidate = value as Partial<DataAPIMeta>;
   return (
-    isObject(candidate.filters) &&
-    isObject(candidate.fields) &&
-    isObject(candidate.pluck) &&
-    isObject(candidate.readable) &&
-    isObject(candidate.writable) &&
-    isObject(candidate.endpoints) &&
-    candidate.modifierKeys instanceof Map &&
-    typeof candidate.inherit === "function"
+    isObject(value) &&
+    "filters" in value &&
+    isObject(value.filters) &&
+    "fields" in value &&
+    isObject(value.fields) &&
+    "pluck" in value &&
+    isObject(value.pluck) &&
+    "readable" in value &&
+    isObject(value.readable) &&
+    "writable" in value &&
+    isObject(value.writable) &&
+    "endpoints" in value &&
+    isObject(value.endpoints) &&
+    "modifierKeys" in value &&
+    value.modifierKeys instanceof Map &&
+    "inherit" in value &&
+    typeof value.inherit === "function"
   );
 }
