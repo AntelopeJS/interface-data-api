@@ -111,7 +111,10 @@ export namespace Parameters {
     const result: Partial<T> = { ...GetOptionOverrides(reqCtx) };
     for (const key in dynamic) {
       const extractor = dynamic[key];
-      if (!extractor || (key in result && !combinesWithOptions(extractor))) {
+      if (
+        !extractor ||
+        (Object.hasOwn(result, key) && !combinesWithOptions(extractor))
+      ) {
         continue;
       }
       const value = extractor(reqCtx, meta, key);

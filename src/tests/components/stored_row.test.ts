@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { HTTPResult } from "@antelopejs/interface-api";
+import { httpStatusOf } from "../internal/http";
 import {
   RegisterSchema,
   RegisterTable,
@@ -13,8 +13,9 @@ async function statusOf(run: () => Promise<StoredRow> | void) {
   try {
     await run();
   } catch (error) {
-    if (!(error instanceof HTTPResult)) throw error;
-    return error.getStatus();
+    const status = httpStatusOf(error);
+    if (status === undefined) throw error;
+    return status;
   }
   return 200;
 }

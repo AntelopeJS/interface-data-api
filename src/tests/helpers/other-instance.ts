@@ -60,7 +60,8 @@ function exportsAllOf<Exports extends object>(
   reference: Exports,
 ): loaded is Exports {
   return (
-    isObject(loaded) && Object.keys(reference).every((name) => name in loaded)
+    isObject(loaded) &&
+    Object.keys(reference).every((name) => Object.hasOwn(loaded, name))
   );
 }
 

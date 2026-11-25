@@ -1,9 +1,8 @@
 import { expect } from "chai";
-import { HTTPResult } from "@antelopejs/interface-api";
 import { Parameters, Query } from "../../components";
 import { DataAPIMeta } from "../../metadata";
 
-import { createRequestContext } from "../internal/http";
+import { createRequestContext, httpStatusOf } from "../internal/http";
 
 const meta = new DataAPIMeta(Object);
 
@@ -76,7 +75,7 @@ describe("Query.GetModel", () => {
     try {
       Query.GetModel({}, keyed);
     } catch (error) {
-      status = error instanceof HTTPResult ? error.getStatus() : undefined;
+      status = httpStatusOf(error);
     }
     expect(status).to.equal(500);
   });
