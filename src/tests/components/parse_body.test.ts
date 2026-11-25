@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { HTTPResult } from "@antelopejs/interface-api";
+import { httpStatusOf } from "../internal/http";
 
 import { Validation } from "../../components";
 import type { FieldValue, FieldValues } from "../../metadata";
@@ -8,7 +8,7 @@ function statusOfRefusal(body: Parameters<typeof Validation.ParseBody>[0]) {
   try {
     Validation.ParseBody(body);
   } catch (error) {
-    return error instanceof HTTPResult ? error.getStatus() : undefined;
+    return httpStatusOf(error);
   }
   return 200;
 }

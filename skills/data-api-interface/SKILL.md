@@ -37,6 +37,7 @@ import {
   Validator,
   ModelReference,
   ModifierKey,
+  isDataAPIMeta,
 } from "@antelopejs/interface-data-api/metadata";
 import {
   Parameters,

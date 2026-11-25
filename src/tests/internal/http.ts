@@ -2,6 +2,7 @@
 import { IncomingMessage, ServerResponse } from "node:http";
 import { Socket } from "node:net";
 import { z } from "zod";
+import { isObject } from "../../internal/guards";
 import { HTTPResult, type RequestContext } from "@antelopejs/interface-api";
 
 /**
@@ -84,4 +85,33 @@ export async function readJson<Value>(
   response: Response,
 ): Promise<Value> {
   return schema.parse(JSON.parse(await response.text()));
+}
+
+/** A thrown route refusal, from any copy of the api interface. */
+export interface Refusal {
+  getStatus(): number;
+}
+
+/**
+ * Whether a caught value is a route refusal.
+ *
+ * @param error The caught value
+ * @returns True when it carries a numeric status
+ */
+export function isRefusal(error: unknown): error is Refusal {
+  if (!isObject(error) || !("getStatus" in error)) return false;
+  const { getStatus } = error;
+  return (
+    typeof getStatus === "function" && typeof getStatus.call(error) === "number"
+  );
+}
+
+/**
+ * The status of a thrown route refusal.
+ *
+ * @param error The caught value
+ * @returns The refusal's HTTP status, or undefined for any other value
+ */
+export function httpStatusOf(error: unknown): number | undefined {
+  return isRefusal(error) ? error.getStatus() : undefined;
 }

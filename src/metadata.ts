@@ -38,7 +38,7 @@ import {
   rebuildPluck,
   targetJoinedFields,
 } from "./internal/meta-records";
-import { isClass, isString } from "./internal/guards";
+import { isClass, isObject, isString } from "./internal/guards";
 import { classOf } from "./internal/prototypes";
 import { resolveTableReference } from "./internal/table-reference";
 
@@ -708,4 +708,30 @@ export function GetDataControllerMeta(
   thisObj: DataControllerInstance,
 ): DataAPIMeta {
   return GetMetadata(classOf(thisObj), DataAPIMeta, true);
+}
+
+/**
+ * Whether a value is a `DataAPIMeta`, including one built by another copy of
+ * this package, where `instanceof` fails.
+ */
+export function isDataAPIMeta(value: unknown): value is DataAPIMeta {
+  return (
+    isObject(value) &&
+    "filters" in value &&
+    isObject(value.filters) &&
+    "fields" in value &&
+    isObject(value.fields) &&
+    "pluck" in value &&
+    isObject(value.pluck) &&
+    "readable" in value &&
+    isObject(value.readable) &&
+    "writable" in value &&
+    isObject(value.writable) &&
+    "endpoints" in value &&
+    isObject(value.endpoints) &&
+    "modifierKeys" in value &&
+    value.modifierKeys instanceof Map &&
+    "inherit" in value &&
+    typeof value.inherit === "function"
+  );
 }
