@@ -1,5 +1,39 @@
 # Changelog
 
+## v0.8.3
+
+[compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.8.2...v0.8.3)
+
+### 🚀 Enhancements
+
+- Add isDataAPIMeta and adopt tooling-configs 0.10.3 ([#158](https://github.com/AntelopeJS/interface-data-api/pull/158))
+
+### 📖 Documentation
+
+- Drop retired verify tooling from the formal-field-access skill ([#153](https://github.com/AntelopeJS/interface-data-api/pull/153))
+- Put the ts-loader TSDoc on the hooks it describes ([#156](https://github.com/AntelopeJS/interface-data-api/pull/156))
+- Bring the formal-field-access skill up to date with its sources ([#157](https://github.com/AntelopeJS/interface-data-api/pull/157))
+
+### 📦 Build
+
+- **deps:** Update the AntelopeJS module locks ([#151](https://github.com/AntelopeJS/interface-data-api/pull/151))
+- **deps:** Update the AntelopeJS module locks ([#154](https://github.com/AntelopeJS/interface-data-api/pull/154))
+
+### 🏡 Chore
+
+- Adopt tooling-configs 0.10 and its comment rule ([#155](https://github.com/AntelopeJS/interface-data-api/pull/155))
+
+### 🤖 CI
+
+- Roll out the trunk CI and merge queue ([#147](https://github.com/AntelopeJS/interface-data-api/pull/147))
+- Re-sync the AntelopeJS pack for the release app ([#149](https://github.com/AntelopeJS/interface-data-api/pull/149))
+- Adopt the shared module lock refresh and checks ([#150](https://github.com/AntelopeJS/interface-data-api/pull/150))
+- Stop forwarding the retired RELEASE_GITHUB_TOKEN ([#152](https://github.com/AntelopeJS/interface-data-api/pull/152))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v0.8.2
 
 [compare changes](https://github.com/AntelopeJS/interface-data-api/compare/v0.8.1...v0.8.2)
