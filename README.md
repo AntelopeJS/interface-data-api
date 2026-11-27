@@ -130,7 +130,7 @@ The package declares these `@antelopejs/*` peer dependencies.
 
 | Package                                     | Supported        | Tested with |
 | ------------------------------------------- | ---------------- | ----------- |
-| `@antelopejs/interface-api`                 | `>=0.3.0 <0.4.0` | `0.3.2`     |
+| `@antelopejs/interface-api`                 | `>=0.3.0 <0.4.0` | `0.3.5`     |
 | `@antelopejs/interface-api-util`            | `>=0.3.0 <0.4.0` | `0.3.0`     |
 | `@antelopejs/interface-core`                | `>=0.5.1 <0.6.0` | `0.5.1`     |
 | `@antelopejs/interface-database`            | `>=0.4.1 <0.5.0` | `0.4.1`     |
